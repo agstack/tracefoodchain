@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 class DataLoadingIndicator extends StatelessWidget {
   final String? text;
   final Color? textColor;
   final Color? spinnerColor;
-  const DataLoadingIndicator({
-    super.key,
-    this.text,
-    this.textColor,this.spinnerColor
-  });
+  const DataLoadingIndicator(
+      {super.key, this.text, this.textColor, this.spinnerColor});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +25,7 @@ class DataLoadingIndicator extends StatelessWidget {
         child: Column(
           children: [
             CircularProgressIndicator(
-              color: spinnerColor ??const Color(0xFF95D155),
+              color: spinnerColor ?? const Color(0xFF95D155),
             ),
             const SizedBox(height: 20),
             Text(

@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'package:nfc_manager/nfc_manager.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:geolocator/geolocator.dart';
@@ -28,7 +28,7 @@ import 'package:trace_foodchain_app/widgets/tracked_value_notifier.dart';
 String country = "Honduras"; //TODO: enable other contries if needed;
 int cloudSyncFrequency =
     600; //in case internet is connected, this will sync with the cloud every xxx seconds
-late Box<Map<dynamic, dynamic>> localStorage;
+Box<Map<dynamic, dynamic>>? localStorage;
 late Box<Map<dynamic, dynamic>> openRALTemplates;
 late Map<String, Map<String, dynamic>> cloudConnectors;
 Map<String, dynamic>? appUserDoc;
@@ -175,7 +175,7 @@ ThemeData customTheme = ThemeData(
     ),
   ),
   //* CARD
-  cardTheme: const CardTheme(surfaceTintColor: Colors.white),
+  cardTheme: const CardThemeData(surfaceTintColor: Colors.white),
 
   colorScheme: ColorScheme.fromSeed(
       seedColor: Colors.white,
@@ -295,9 +295,9 @@ void main() async {
   // final deviceId = await getDeviceId();
   await Hive.initFlutter();
 
-  //*Start accessing local data storage
-  localStorage = await Hive.openBox<Map<dynamic, dynamic>>(
-      'localStorage'); //ToDo: 1 Hive DB per logged-in user
+  //Removed: *Start accessing local data storage
+  // localStorage = await Hive.openBox<Map<dynamic, dynamic>>(
+  //     'localStorage');
   // await localStorage.deleteFromDisk(); //DEBUG: DELETE DATABASE
 
   //*Start accessing local template storage
@@ -314,8 +314,8 @@ void main() async {
     }
   }
 
-  cloudConnectors =
-      await getCloudConnectors(); //get available cloudConnectors to talk to clouds if available from localStorage
+  // cloudConnectors =
+  //     await getCloudConnectors(); //get available cloudConnectors to talk to clouds if available from localStorage
 
   final appState = AppState();
   await appState.initializeApp(); // Initialize locale
@@ -331,6 +331,38 @@ void main() async {
       ),
     ),
   );
+}
+
+// Neue Funktion zum Initialisieren des User-spezifischen LocalStorage
+Future<void> initializeUserLocalStorage(String userId) async {
+  // Schließe vorherige Box falls vorhanden
+  if (localStorage != null && localStorage!.isOpen) {
+    await localStorage!.close();
+  }
+
+  // Öffne neue Box für den spezifischen User
+  localStorage =
+      await Hive.openBox<Map<dynamic, dynamic>>('localStorage_$userId');
+
+  // Lade cloudConnectors für diesen User
+  cloudConnectors = await getCloudConnectors();
+
+  debugPrint("LocalStorage für User $userId initialisiert");
+}
+
+// Funktion zum Schließen des User LocalStorage (bei Logout)
+Future<void> closeUserLocalStorage() async {
+  if (localStorage != null && localStorage!.isOpen) {
+    await localStorage!.close();
+    localStorage = null;
+    cloudConnectors.clear();
+    debugPrint("User LocalStorage geschlossen");
+  }
+}
+
+// Helper Funktion um sicherzustellen, dass localStorage verfügbar ist
+bool isLocalStorageInitialized() {
+  return localStorage != null && localStorage!.isOpen;
 }
 
 Future<void> _initializeAppState(AppState appState) async {
@@ -408,7 +440,7 @@ class MyApp extends StatelessWidget {
           builder: DevicePreview.appBuilder,
           debugShowCheckedModeBanner: false,
           localizationsDelegates: const [
-            AppLocalizations.delegate,
+             
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,

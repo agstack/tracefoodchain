@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trace_foodchain_app/helpers/helpers.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/widgets/stepper_first_sale.dart';
 
 class CoffeeProcessingStateSelector extends StatefulWidget {

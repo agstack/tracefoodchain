@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as excel;
@@ -67,13 +67,13 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   bool _isAppFullyInitialized() {
     try {
       // Prüfe localStorage
-      if (!localStorage.isOpen) {
+      if (!localStorage!.isOpen) {
         debugPrint('localStorage is not open');
         return false;
       }
 
       // Prüfe ob localStorage tatsächlich funktioniert
-      localStorage.values.length; // Test access
+      localStorage!.values.length; // Test access
 
       // Weitere Prüfungen können hier hinzugefügt werden
       return true;
@@ -582,7 +582,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     final l10n = AppLocalizations.of(context)!;
     bool alreadyExists = false;
     // Sicherheitsprüfungen für globale Variablen
-    if (!localStorage.isOpen) {
+    if (!localStorage!.isOpen) {
       return ("registrationError: localStorage is not open");
     }
 

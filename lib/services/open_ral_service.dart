@@ -30,11 +30,11 @@ Future<Map<String, Map<String, dynamic>>> getCloudConnectors() async {
   for (final cc in initialCloudConnectors) {
     final domain = getSpecificPropertyfromJSON(cc, "cloudDomain");
     rList.addAll({domain: cc});
-    //update local storage
-    if (!localStorage.isOpen) {
-      localStorage = await Hive.openBox<Map<dynamic, dynamic>>('localStorage');
+    if (localStorage != null) {
+      //update local storage
+     
+      localStorage!.put(getObjectMethodUID(cc), cc);
     }
-    localStorage.put(getObjectMethodUID(cc), cc);
   }
 
   return rList;
@@ -107,7 +107,7 @@ Future<Map<String, dynamic>> getLocalObjectMethod(
     String objectMethodUID) async {
   Map<String, dynamic> doc2 = {};
   try {
-    for (var doc in localStorage.values) {
+    for (var doc in localStorage!.values) {
       if (doc['identity'] != null &&
           doc['identity']["UID"] == objectMethodUID) {
         doc2 = Map<String, dynamic>.from(doc);
@@ -260,7 +260,7 @@ Future<Map<String, dynamic>> setObjectMethod(Map<String, dynamic> objectMethod,
   if (markForSyncToCloud) objectMethod["needsSync"] = true;
 
   //Local storage
-  await localStorage.put(getObjectMethodUID(objectMethod), objectMethod);
+  await localStorage!.put(getObjectMethodUID(objectMethod), objectMethod);
 
   // sync with cloud if tagged for this and device is connected to the internet
   var connectivityResult = await (Connectivity().checkConnectivity());
@@ -488,7 +488,7 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
     String uid, List<String> types, String field) async {
   Map<String, dynamic> rDoc = {};
   //check all items with these types: do they have the id on the field?
-  List<Map<dynamic, dynamic>> candidates = localStorage.values
+  List<Map<dynamic, dynamic>> candidates = localStorage!.values
       .where((candidate) => types.contains(candidate['template']["RALType"]))
       .toList();
   for (dynamic candidate in candidates) {
@@ -518,7 +518,7 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
 }
 
 Future<bool> checkAlternateIDExists(String alternateID) async {
-  List<Map<dynamic, dynamic>> allItems = localStorage.values
+  List<Map<dynamic, dynamic>> allItems = localStorage!.values
       .where((item) => item['identity']?['alternateIDs'] != null)
       .toList();
 
@@ -537,7 +537,7 @@ Future<bool> checkAlternateIDExists(String alternateID) async {
 Future<Map<String, dynamic>> getContainerByAlternateUID(String uid) async {
   Map<String, dynamic> rDoc = {};
   //check all items with this type: do they have the id on the field?
-  List<Map<dynamic, dynamic>> candidates = localStorage.values
+  List<Map<dynamic, dynamic>> candidates = localStorage!.values
       .where((candidate) => candidate['template']["RALType"] != "")
       .toList();
   for (dynamic candidate in candidates) {

@@ -238,7 +238,7 @@ class CloudSyncService {
         "objectHashTable": [],
         "methodHashTable": [],
       };
-      for (var doc in localStorage.values) {
+      for (var doc in localStorage!.values) {
         final doc2 = Map<String, dynamic>.from(doc);
         if (doc2["methodHistoryRef"] != null) {
           //This is an object

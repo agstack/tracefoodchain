@@ -6,7 +6,7 @@ import 'package:trace_foodchain_app/widgets/online_sale_dialog.dart';
 import 'package:trace_foodchain_app/widgets/shared_widgets.dart';
 import 'package:trace_foodchain_app/widgets/stepper_sell_coffee.dart';
 import 'package:trace_foodchain_app/widgets/safe_popup_menu.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 class CoffeeActionsMenu extends StatefulWidget {
   final Map<String, dynamic> coffee;

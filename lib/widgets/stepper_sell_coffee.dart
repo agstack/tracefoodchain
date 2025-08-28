@@ -15,7 +15,7 @@ import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/widgets/stepper_first_sale.dart';
 import 'package:uuid/uuid.dart';
 import '../services/service_functions.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Add this import
+import '../l10n/app_localizations.dart'; // Add this import
 
 Map<String, dynamic> receivingContainer = {};
 Map<String, dynamic> field = {};
@@ -813,7 +813,7 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
     String uid, type, field) async {
   Map<String, dynamic> rDoc = {};
   //check all items with this type: do they have the id on the field?
-  List<Map<dynamic, dynamic>> candidates = localStorage.values
+  List<Map<dynamic, dynamic>> candidates = localStorage!.values
       .where((candidate) => candidate['template']["RALType"] == type)
       .toList();
   for (dynamic candidate in candidates) {

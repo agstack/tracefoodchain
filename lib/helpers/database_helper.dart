@@ -95,7 +95,7 @@ class DatabaseHelper {
   Future<void> deleteFromBox<T>(String boxName, dynamic key) async {
     final box = Hive.box<T>(boxName);
     bool deleted = false;
-    for (var key2 in localStorage.keys) {
+    for (var key2 in localStorage!.keys) {
       if (key2 == key) {
         await box.delete(key);
         debugPrint("Deleted $key");
@@ -111,7 +111,7 @@ class DatabaseHelper {
     // if (accountUID!="") ownerUID = accountUID; // TESTACCOUNT
     List<Map<String, dynamic>> rList = [];
     debugPrint("getting containers owned by $ownerUID");
-    for (var doc in localStorage.values) {
+    for (var doc in localStorage!.values) {
       if (["bag", "container", "building", "transportVehicle"]
           .contains(doc["template"]["RALType"])) {
         //ToDo: get a dynamic list of what is a container
@@ -141,7 +141,7 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getInboxItems(String ownerUID) async {
     List<Map<String, dynamic>> rList = [];
     debugPrint("getting inbox items for $ownerUID");
-    for (var doc in localStorage.values) {
+    for (var doc in localStorage!.values) {
       if (doc["currentGeolocation"] != null) {
         final currentGeolocationIncomingUID =
             doc["currentGeolocation"]["container"]["UID"];
@@ -197,7 +197,7 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getContainedItems(
       String containerUID) async {
     List<Map<String, dynamic>> rList = [];
-    for (var doc in localStorage.values) {
+    for (var doc in localStorage!.values) {
       try {
         final containerUID2 = doc["currentGeolocation"]["container"]["UID"];
 

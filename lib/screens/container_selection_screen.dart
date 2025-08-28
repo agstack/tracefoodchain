@@ -8,7 +8,7 @@ import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/widgets/add_empty_item_dialog.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 
 class ContainerSelectionScreen extends StatefulWidget {

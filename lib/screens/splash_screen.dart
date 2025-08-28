@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
@@ -15,7 +16,7 @@ import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/screens/home_screen.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:trace_foodchain_app/widgets/data_loading_indicator.dart';
 import 'package:trace_foodchain_app/widgets/status_bar.dart';
 import 'package:trace_foodchain_app/constants.dart';
@@ -197,6 +198,9 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 100));
       l10n = AppLocalizations.of(context);
     }
+    //successful auth, initialize Hive
+    await initializeUserLocalStorage(FirebaseAuth.instance.currentUser!.uid);
+
     // At this stage, we have to sync first with the cloud, e.g. to download an existing user doc!
 
     final appState = Provider.of<AppState>(context, listen: false);
@@ -229,7 +233,7 @@ class _SplashScreenState extends State<SplashScreen>
           await getCloudConnectors(); //refresh cloud connectors (if updates where downloaded)
     }
 
-    for (var doc in localStorage.values) {
+    for (var doc in localStorage!.values) {
       if (doc['template'] != null && doc['template']["RALType"] == "human") {
         final doc2 = Map<String, dynamic>.from(doc);
 
@@ -267,7 +271,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (secureCommunicationEnabled) {
         //Do we get one from cloud?
         await cloudSyncService.syncMethods("tracefoodchain.org");
-        for (var doc in localStorage.values) {
+        for (var doc in localStorage!.values) {
           if (doc['template'] != null &&
               doc['template']["RALType"] == "human") {
             final doc2 = Map<String, dynamic>.from(doc);
@@ -316,7 +320,6 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
 //DEBUG CHANGE: CHECK IF THE APPUSERDOC CAN BE FOUND IN CLOUD DATABASE. IF NOT WRITE IT DIRECTLY TO THE CLOUD,IF ONLINE
-//DEBUG CHANGE: CHECK IF THE APPUSERDOC CAN BE FOUND IN CLOUD DATABASE. IF NOT WRITE IT DIRECTLY TO THE CLOUD,IF ONLINE
     if (appState.isConnected && appUserDoc != null) {
       try {
         final userDocRef = FirebaseFirestore.instance
@@ -327,7 +330,8 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (!userDocSnapshot.exists) {
           debugPrint("User doc not found in cloud, uploading local doc...");
-          snackbarMessageNotifier.value = "DEBUG: Uploading user profile to the cloud...";
+          snackbarMessageNotifier.value =
+              "DEBUG: Uploading user profile to the cloud...";
 
           await userDocRef.set(appUserDoc!);
           debugPrint("User doc successfully uploaded to cloud");

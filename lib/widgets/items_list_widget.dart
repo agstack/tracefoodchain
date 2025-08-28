@@ -14,7 +14,8 @@ import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/pdf_generator_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/services/whisp_api_service.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/widgets/coffe_actions_menu.dart';
 import 'package:trace_foodchain_app/widgets/container_actions_menu.dart';
 import 'package:trace_foodchain_app/widgets/debug_value_listenable_builder.dart';
@@ -107,7 +108,7 @@ double computeCoffeeSum(Map<String, dynamic> container, double maxCapacity) {
       Map<String, dynamic> parentContainer, List<Map<String, dynamic>> stack) {
     if (parentContainer.containsKey("identity") &&
         parentContainer["identity"]["UID"] != null) {
-      for (var doc in localStorage.values) {
+      for (var doc in localStorage!.values) {
         try {
           final childContainerUID =
               doc["currentGeolocation"]["container"]["UID"];

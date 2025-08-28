@@ -13,7 +13,7 @@ import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/scanning_service.dart';
 import 'package:uuid/uuid.dart';
 import '../services/service_functions.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 Map<String, dynamic> receivingContainer = {};
 Map<String, dynamic> field = {};

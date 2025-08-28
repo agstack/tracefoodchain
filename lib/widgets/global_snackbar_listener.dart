@@ -1,5 +1,5 @@
 // import 'package:flutter/material.dart';
-// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// import '../l10n/app_localizations.dart';
 // import 'package:trace_foodchain_app/screens/home_screen.dart';
 
 // // Globaler ValueNotifier, der eine Map mit Keys "type" und "text" hält.
@@ -103,7 +103,7 @@
 
 //   @override
 //   Widget build(BuildContext context) {
-    
+
 //     return widget.child;
 //   }
 // }

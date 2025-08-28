@@ -12,7 +12,7 @@ import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/widgets/language_selector.dart';
 import 'package:trace_foodchain_app/widgets/role_based_speed_dial.dart';
 import 'package:trace_foodchain_app/widgets/status_bar.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'package:flutter/scheduler.dart'; // Falls benötigt

@@ -16,7 +16,7 @@ import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/widgets/coffee_processing_state_selector.dart';
 import 'package:trace_foodchain_app/widgets/stepper_buy_coffee.dart';
 import 'package:trace_foodchain_app/widgets/stepper_first_sale.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 
 Future<void> showBuyCoffeeOptions(BuildContext context,

@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trace_foodchain_app/helpers/fade_route.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 // import 'package:trace_foodchain_app/screens/geo_ids_view.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/screens/field_registry_screen.dart';
@@ -100,8 +100,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
- 
-
   /// Zeigt einen Login-Dialog für die User Registry an
   Future<Map<String, String>?> _showUserRegistryLoginDialog(
       BuildContext context) async {
@@ -159,8 +157,6 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-
-
 
   void _showChangefarmerIdDialog(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
