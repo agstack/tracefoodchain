@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +44,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint("🔍 SplashScreen initState() called");
     _controller = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -106,6 +108,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _showEmailVerificationOverlay() {
+    debugPrint("🔍 _showEmailVerificationOverlay() called");
     if (_disposed) return;
 
     _verificationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
@@ -116,7 +119,35 @@ class _SplashScreenState extends State<SplashScreen>
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        final l10n = AppLocalizations.of(context)!;
+        debugPrint("🔍 Email verification dialog builder called");
+        final l10n = AppLocalizations.of(context);
+        if (l10n == null) {
+          debugPrint(
+              "❌ CRITICAL: AppLocalizations is null in email verification dialog!");
+          return AlertDialog(
+            title: const Text("Email Verification"),
+            content: const SizedBox(
+                height: 150,
+                child: Center(
+                    child: Text(
+                        "Localization Error - please check main.dart configuration"))),
+            actions: <Widget>[
+              TextButton(
+                child: const Text("Resend Email"),
+                onPressed: () async {
+                  await sendVerificationEmail();
+                },
+              ),
+              TextButton(
+                child: const Text("Sign Out"),
+                onPressed: () async {
+                  _signOut();
+                },
+              ),
+            ],
+          );
+        }
+
         return AlertDialog(
           title: Text(l10n.emailVerification),
           content: SizedBox(
@@ -175,7 +206,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future sendVerificationEmail() async {
-    final l10n = AppLocalizations.of(context)!;
+    debugPrint("🔍 sendVerificationEmail() called");
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      debugPrint("❌ AppLocalizations is null in sendVerificationEmail!");
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text("Localization error - cannot send verification email")));
+      return;
+    }
+
     try {
       final user = FirebaseAuth.instance.currentUser!;
       await user.sendEmailVerification();
@@ -193,11 +233,27 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToNextScreen() async {
+    debugPrint("🔍 _navigateToNextScreen() called");
     AppLocalizations? l10n;
-    while (l10n == null) {
+    int attempts = 0;
+    while (l10n == null && attempts < 50) {
+      // Max 5 seconds wait
       await Future.delayed(const Duration(milliseconds: 100));
       l10n = AppLocalizations.of(context);
+      attempts++;
+      if (attempts % 10 == 0) {
+        debugPrint("🔍 Waiting for AppLocalizations... attempt $attempts");
+      }
     }
+
+    if (l10n == null) {
+      debugPrint(
+          "❌ CRITICAL: AppLocalizations still null after waiting 5 seconds!");
+      return;
+    }
+
+    debugPrint(
+        "✅ AppLocalizations loaded successfully in _navigateToNextScreen");
     //successful auth, initialize Hive
     await initializeUserLocalStorage(FirebaseAuth.instance.currentUser!.uid);
 
@@ -244,6 +300,8 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
     }
+
+  
 
     // Check if private key exists, if not generate new keypair
     final privateKey = await keyManager.getPrivateKey();
@@ -375,7 +433,23 @@ class _SplashScreenState extends State<SplashScreen>
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          final l10n = AppLocalizations.of(context)!;
+          final l10n = AppLocalizations.of(context);
+          if (l10n == null) {
+            debugPrint("❌ AppLocalizations is null in security error dialog!");
+            return AlertDialog(
+              title: const Text("Security Error"),
+              content: const Text(
+                  "Failed to initialize key management - app cannot continue securely."),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text("Close App"),
+                  onPressed: () =>
+                      Navigator.of(context).pop(() => SystemNavigator.pop()),
+                ),
+              ],
+            );
+          }
+
           return AlertDialog(
             title: Text(l10n.securityError),
             content: Text(l10n.securityErrorMessage),
@@ -399,7 +473,42 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    debugPrint("🔍 SplashScreen build() called");
+
+    // Sicherheitsprüfung für AppLocalizations
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      debugPrint(
+          "❌ CRITICAL ERROR: AppLocalizations.of(context) returned null!");
+      debugPrint(
+          "❌ This means AppLocalizations.delegate is missing from main.dart localizationsDelegates");
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Localization Configuration Error',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'AppLocalizations.delegate is missing in main.dart\nlocalizationsDelegates configuration',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    debugPrint("✅ AppLocalizations successfully loaded");
     return Scaffold(
       body: Stack(
         children: [

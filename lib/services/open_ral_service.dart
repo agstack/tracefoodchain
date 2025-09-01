@@ -32,7 +32,7 @@ Future<Map<String, Map<String, dynamic>>> getCloudConnectors() async {
     rList.addAll({domain: cc});
     if (localStorage != null) {
       //update local storage
-     
+
       localStorage!.put(getObjectMethodUID(cc), cc);
     }
   }
@@ -479,6 +479,9 @@ Stream<QuerySnapshot> getMyObjectsStream() {
   if (currentUserUID == null) {
     throw Exception('User not authenticated');
   }
+
+  // currentUserUID = "";
+
   return FirebaseFirestore.instance.collection('TFC_objects').where(
       'currentOwners',
       arrayContains: {'UID': currentUserUID}).snapshots();

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
@@ -91,6 +93,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   }
 
   Future<void> _loadRegisteredFields() async {
+    if (!mounted) return;
+
     setState(() {
       isLoading = true;
     });
@@ -98,6 +102,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     try {
       // Lade registrierte Felder aus der Cloud-Datenbank
       final fields = await _getFieldsFromCloudDatabase();
+
+      if (!mounted) return; // Prüfe erneut vor setState
+
       setState(() {
         registeredFields = fields;
         _applyDateFilter(); // Wende den aktuellen Filter an
@@ -105,9 +112,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     } catch (e) {
       debugPrint('Error loading fields: $e');
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -116,59 +125,81 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
     try {
       // Verwende getMyObjectsStream aus open_ral_service
-      final streamSubscription = getMyObjectsStream().listen((querySnapshot) {
-        fields.clear(); // Lösche vorherige Einträge
+      late StreamSubscription streamSubscription;
+      final completer = Completer<void>();
 
-        for (final doc in querySnapshot.docs) {
-          final fieldData = doc.data() as Map<String, dynamic>;
+      streamSubscription = getMyObjectsStream().listen(
+        (querySnapshot) {
+          fields.clear(); // Lösche vorherige Einträge
 
-          // Filtere nur "field" Objekte
-          if (fieldData['template']?["RALType"] != "field") {
-            continue;
-          }
+          for (final doc in querySnapshot.docs) {
+            final fieldData = doc.data() as Map<String, dynamic>;
 
-          // Prüfe ob es sich um ein testmode-Objekt handelt, wenn wir nicht im Testmodus sind
-          if (!isTestmode &&
-              fieldData.containsKey("isTestmode") &&
-              fieldData["isTestmode"] == true) {
-            continue;
-          }
-          if (isTestmode && !fieldData.containsKey("isTestmode")) {
-            continue;
-          }
+            // Filtere nur "field" Objekte
+            if (fieldData['template']?["RALType"] != "field") {
+              continue;
+            }
 
-          // Extrahiere relevante Informationen
-          final String fieldName = fieldData["identity"]?["name"] ??
-              "Unnamed Field"; // Will be localized later
-          final String fieldUID = fieldData["identity"]?["UID"] ?? "";
-          String geoId = "";
+            // Prüfe ob es sich um ein testmode-Objekt handelt, wenn wir nicht im Testmodus sind
+            if (!isTestmode &&
+                fieldData.containsKey("isTestmode") &&
+                fieldData["isTestmode"] == true) {
+              continue;
+            }
+            if (isTestmode && !fieldData.containsKey("isTestmode")) {
+              continue;
+            }
 
-          // Versuche geoID aus alternateIDs zu extrahieren
-          if (fieldData["identity"]?["alternateIDs"] != null) {
-            for (final altId in fieldData["identity"]["alternateIDs"]) {
-              if (altId["issuedBy"] == "Asset Registry") {
-                geoId = altId["UID"];
-                break;
+            // Extrahiere relevante Informationen
+            final String fieldName = fieldData["identity"]?["name"] ??
+                "Unnamed Field"; // Will be localized later
+            final String fieldUID = fieldData["identity"]?["UID"] ?? "";
+            String geoId = "";
+
+            // Versuche geoID aus alternateIDs zu extrahieren
+            if (fieldData["identity"]?["alternateIDs"] != null) {
+              for (final altId in fieldData["identity"]["alternateIDs"]) {
+                if (altId["issuedBy"] == "Asset Registry") {
+                  geoId = altId["UID"];
+                  break;
+                }
               }
             }
+
+            // Extrahiere Fläche
+            String area =
+                getSpecificPropertyfromJSON(fieldData, "area")?.toString() ??
+                    "";
+
+            fields.add({
+              "name": fieldName,
+              "uid": fieldUID,
+              "geoId": geoId,
+              "area": area,
+              "methodHistoryRef": fieldData["methodHistoryRef"] ?? [],
+            });
           }
 
-          // Extrahiere Fläche
-          String area =
-              getSpecificPropertyfromJSON(fieldData, "area")?.toString() ?? "";
+          // Schließe den Stream nach dem ersten Datenempfang
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
+        },
+        onError: (error) {
+          debugPrint('Error in stream: $error');
+          if (!completer.isCompleted) {
+            completer.completeError(error);
+          }
+        },
+      );
 
-          fields.add({
-            "name": fieldName,
-            "uid": fieldUID,
-            "geoId": geoId,
-            "area": area,
-            "methodHistoryRef": fieldData["methodHistoryRef"] ?? [],
-          });
-        }
-      });
+      // Warte auf die ersten Daten oder Timeout
+      await Future.any([
+        completer.future,
+        Future.delayed(const Duration(seconds: 5)), // Timeout nach 5 Sekunden
+      ]);
 
-      // Warte kurz auf die ersten Daten und schließe dann den Stream
-      await Future.delayed(const Duration(seconds: 2));
+      // Stream sofort schließen
       await streamSubscription.cancel();
 
       // Für jedes Feld das Registrierungsdatum laden
@@ -1090,31 +1121,47 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                                       ],
                                     ),
                                     trailing: const Icon(Icons.copy),
-                                    onTap: () {
-                                      // Copy GeoID to clipboard for Flutter web
-                                      if (kIsWeb &&
-                                          field["geoId"]?.isNotEmpty == true) {
-                                        // // Use the web clipboard API
-                                        // final geoId = field["geoId"] as String;
-                                        // html.window.navigator.clipboard
-                                        //     ?.writeText(geoId)
-                                        //     .then((_) {
-                                        //   ScaffoldMessenger.of(context)
-                                        //       .showSnackBar(
-                                        //     SnackBar(
-                                        //       content: Text(
-                                        //           'GeoID copied to clipboard: $geoId'),
-                                        //     ),
-                                        //   );
-                                        // }).catchError((error) {
-                                        //   ScaffoldMessenger.of(context)
-                                        //       .showSnackBar(
-                                        //     SnackBar(
-                                        //       content: Text(
-                                        //           'Failed to copy GeoID to clipboard'),
-                                        //     ),
-                                        //   );
-                                        // });
+                                    onTap: () async {
+                                      // Copy GeoID to clipboard (works on all platforms)
+                                      if (field["geoId"]?.isNotEmpty == true) {
+                                        try {
+                                          String textToCopy;
+                                          String feedbackMessage;
+
+                                          if (kDebugMode) {
+                                            // In debug mode, copy the complete field JSON
+                                            textToCopy =  field["uid"] as String;
+                                            feedbackMessage =
+                                                'Field uid copied to clipboard';
+                                          } else {
+                                            // In production mode, copy only the GeoID
+                                            textToCopy =
+                                                field["geoId"] as String;
+                                            feedbackMessage =
+                                                'GeoID copied to clipboard: $textToCopy';
+                                          }
+
+                                          await Clipboard.setData(
+                                              ClipboardData(text: textToCopy));
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(feedbackMessage),
+                                              ),
+                                            );
+                                          }
+                                        } catch (error) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Failed to copy to clipboard'),
+                                              ),
+                                            );
+                                          }
+                                        }
                                       }
                                     },
                                   ),
