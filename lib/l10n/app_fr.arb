@@ -618,5 +618,19 @@
     }
   },
   "registeredOnLabel": "Enregistré le",
-  "specificDateLabel": "Date spécifique"
+  "specificDateLabel": "Date spécifique",
+  "archiveContainer": "Archiver le Conteneur",
+  "containerSuccessfullyArchived": "Le conteneur a été archivé avec succès.",
+  "showArchivedContainers": "Afficher aussi les conteneurs archivés",
+  "archivedContainersVisible": "Les conteneurs archivés sont affichés",
+  "archivedContainersHidden": "Les conteneurs archivés sont masqués",
+  "searchContainers": "Rechercher des conteneurs...",
+  "sort": "Trier",
+  "sortByNameAsc": "Nom (A-Z)",
+  "sortByNameDesc": "Nom (Z-A)",
+  "sortByIdAsc": "ID (croissant)",
+  "sortByIdDesc": "ID (décroissant)",
+  "sortByDateAsc": "Date (plus anciens d'abord)",
+  "sortByDateDesc": "Date (plus récents d'abord)",
+  "noSearchResults": "Aucun conteneur trouvé correspondant à \"{searchTerm}\""
 }

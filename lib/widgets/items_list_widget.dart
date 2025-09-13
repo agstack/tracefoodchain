@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/helpers/helpers.dart';
+import 'package:trace_foodchain_app/helpers/container_sort_filter_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/models/whisp_result_model.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
@@ -18,6 +19,7 @@ import 'package:trace_foodchain_app/services/whisp_api_service.dart';
 import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/widgets/coffe_actions_menu.dart';
 import 'package:trace_foodchain_app/widgets/container_actions_menu.dart';
+import 'package:trace_foodchain_app/widgets/container_search_filter_widget.dart';
 import 'package:trace_foodchain_app/widgets/debug_value_listenable_builder.dart';
 
 double convertToGreenBeanEquivalent(
@@ -184,6 +186,23 @@ class _ItemsListState extends State<ItemsList> {
   final ValueNotifier<bool> _selectionChanged = ValueNotifier<bool>(false);
   final DatabaseHelper _databaseHelper = DatabaseHelper();
 
+  // Search and sort state
+  String _searchTerm = '';
+  SortCriteria _sortCriteria = SortCriteria.dateDesc;
+
+  // Callback methods for search and sort
+  void _onSearchChanged(String searchTerm) {
+    setState(() {
+      _searchTerm = searchTerm;
+    });
+  }
+
+  void _onSortChanged(SortCriteria sortCriteria) {
+    setState(() {
+      _sortCriteria = sortCriteria;
+    });
+  }
+
   final WhispApiService _apiService = WhispApiService(
       baseUrl: 'https://whisp.openforis.org',
       apiKey: "379620da-05a2-40d7-8c20-15f840092e1d");
@@ -221,15 +240,31 @@ class _ItemsListState extends State<ItemsList> {
       final result = await _apiService.analyzeGeoIds(plotList);
 
       _result = result;
+
+      // Create a set to track which plots received results
+      Set<String> processedPlots = {};
+
       int plotcount = 0;
       for (final plot in result["data"]["features"]) {
         debugPrint("Processing plot: ${plot}}");
+        String currentPlotId = plotList[plotcount];
+        processedPlots.add(currentPlotId);
+
         rList.add({
-          "geoid": plotList[plotcount],
+          "geoid": currentPlotId,
           "deforestation_risk": plot["properties"]
               ["risk_pcrop"] //Was EUDR_risk before 31.05.2025
         });
         plotcount++;
+      }
+
+      // Add entries for plots that didn't receive results
+      for (String plotId in plotList) {
+        if (!processedPlots.contains(plotId)) {
+          debugPrint(
+              "Plot not found in results, adding default entry: $plotId");
+          rList.add({"geoid": plotId, "deforestation_risk": "plot not found"});
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -315,53 +350,110 @@ class _ItemsListState extends State<ItemsList> {
               debugName: "_selectionChanged in ItemsList",
               builder: (context, _, __) {
                 if (!mounted) return Container();
-                final List<Map<String, dynamic>> containers = _databaseHelper
-                    .getContainers(appUserDoc!["identity"]["UID"]);
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _databaseHelper
+                      .getContainers(appUserDoc!["identity"]["UID"]),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF35DB00),
+                        ),
+                      );
+                    }
 
-                dynamic deliveries = [];
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text('Error: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.red)),
+                      );
+                    }
 
-                //ToDo: Nur Container anzeigen, die nicht genested sind
-                for (final delivery in containers) {
-                  if (delivery["currentGeolocation"]["container"]["UID"] ==
-                          "unknown" ||
-                      delivery["currentGeolocation"]["container"]["UID"] ==
-                          "") {
-                    deliveries.add(delivery);
-                  }
-                }
+                    final containers = snapshot.data ?? [];
+                    dynamic deliveries = [];
 
-                if (deliveries.isEmpty) {
-                  return Center(
-                      child: Text(AppLocalizations.of(context)!.noActiveItems,
-                          style: const TextStyle(color: Colors.black)));
-                }
+                    //ToDo: Nur Container anzeigen, die nicht genested sind
+                    for (final delivery in containers) {
+                      if (delivery["currentGeolocation"]["container"]["UID"] ==
+                              "unknown" ||
+                          delivery["currentGeolocation"]["container"]["UID"] ==
+                              "") {
+                        deliveries.add(delivery);
+                      }
+                    }
 
-                if (deliveries.length > 1) {
-                  multiselectPossible = true;
-                } else {
-                  multiselectPossible = false;
-                }
+                    if (deliveries.isEmpty) {
+                      return Center(
+                          child: Text(
+                              AppLocalizations.of(context)!.noActiveItems,
+                              style: const TextStyle(color: Colors.black)));
+                    }
 
-                _allContainerUids.clear();
-                for (var container in deliveries) {
-                  _allContainerUids.add(container["identity"]["UID"]);
-                }
-                return CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _buildSelectAllCheckbox(deliveries.length),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final container = deliveries[index];
-                          dynamic results;
-                          return _buildContainerItem(container); //!results
-                        },
-                        childCount: deliveries.length,
-                      ),
-                    ),
-                  ],
+                    if (deliveries.length > 1) {
+                      multiselectPossible = true;
+                    } else {
+                      multiselectPossible = false;
+                    }
+
+                    _allContainerUids.clear();
+                    for (var container in deliveries) {
+                      _allContainerUids.add(container["identity"]["UID"]);
+                    }
+
+                    // Apply filtering and sorting
+                    final filteredAndSortedDeliveries =
+                        ContainerSortFilterHelper.filterAndSortContainers(
+                      List<Map<String, dynamic>>.from(deliveries),
+                      _searchTerm,
+                      _sortCriteria,
+                    );
+
+                    return CustomScrollView(
+                      slivers: [
+                        // Search and Filter Widget
+                        SliverToBoxAdapter(
+                          child: ContainerSearchFilterWidget(
+                            onSearchChanged: _onSearchChanged,
+                            onSortChanged: _onSortChanged,
+                            initialSearchTerm: _searchTerm,
+                            initialSortCriteria: _sortCriteria,
+                          ),
+                        ),
+                        // Show message if no containers match the search
+                        if (filteredAndSortedDeliveries.isEmpty &&
+                            _searchTerm.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Center(
+                                child: Text(
+                                  l10n.noSearchResults(_searchTerm),
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        // Select All Checkbox (only show if there are containers)
+                        if (filteredAndSortedDeliveries.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildSelectAllCheckbox(
+                                filteredAndSortedDeliveries.length),
+                          ),
+                        // Container List
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final container =
+                                  filteredAndSortedDeliveries[index];
+                              dynamic results;
+                              return _buildContainerItem(container); //!results
+                            },
+                            childCount: filteredAndSortedDeliveries.length,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               });
         });

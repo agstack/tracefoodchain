@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -24,6 +23,7 @@ import 'package:trace_foodchain_app/constants.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/scheduler.dart'; // Falls benötigt
 import '../services/get_device_id.dart';
+import '../widgets/safe_asset_widgets.dart';
 
 bool canResendEmail = true;
 
@@ -45,6 +45,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     debugPrint("🔍 SplashScreen initState() called");
+
+    // Debug: Asset-Verfügbarkeit prüfen
+    _checkAssetAvailability();
+
     _controller = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -55,6 +59,22 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _controller.forward();
     _initializeApp();
+  }
+
+  Future<void> _checkAssetAvailability() async {
+    try {
+      await rootBundle.load('assets/images/background.png');
+      debugPrint("✅ Background asset is available");
+    } catch (e) {
+      debugPrint("❌ Background asset not found: $e");
+    }
+
+    try {
+      await rootBundle.load('assets/images/diasca_logo.png');
+      debugPrint("✅ Logo asset is available");
+    } catch (e) {
+      debugPrint("❌ Logo asset not found: $e");
+    }
   }
 
   @override
@@ -301,7 +321,8 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
 
-  
+    // DEBUG: Anderen User für Testzwecke laden
+
 
     // Check if private key exists, if not generate new keypair
     final privateKey = await keyManager.getPrivateKey();
@@ -512,27 +533,33 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('assets/images/background.png'),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.5), // Adjust the opacity as needed
-                  BlendMode.dstATop,
-                ),
-              ),
-            ),
+          SafeBackgroundContainer(
+            backgroundAsset: 'assets/images/background.png',
+            fallbackColor: Colors.white,
+            opacity: 0.5,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   FadeTransition(
                     opacity: _animation,
-                    child: Image.asset(
-                      'assets/images/diasca_logo.png',
+                    child: SafeAssetImage(
+                      assetPath: 'assets/images/diasca_logo.png',
                       width: 200,
                       height: 200,
+                      fallbackWidget: Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.business,
+                          size: 100,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

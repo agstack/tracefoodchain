@@ -2369,6 +2369,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Specific Date'**
   String get specificDateLabel;
+
+  /// No description provided for @archiveContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive Container'**
+  String get archiveContainer;
+
+  /// No description provided for @containerSuccessfullyArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Container was successfully archived.'**
+  String get containerSuccessfullyArchived;
+
+  /// No description provided for @showArchivedContainers.
+  ///
+  /// In en, this message translates to:
+  /// **'Show also archived containers'**
+  String get showArchivedContainers;
+
+  /// No description provided for @archivedContainersVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived containers are shown'**
+  String get archivedContainersVisible;
+
+  /// No description provided for @archivedContainersHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived containers are hidden'**
+  String get archivedContainersHidden;
+
+  /// No description provided for @searchContainers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search containers...'**
+  String get searchContainers;
+
+  /// No description provided for @sort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sort;
+
+  /// No description provided for @sortByNameAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (A-Z)'**
+  String get sortByNameAsc;
+
+  /// No description provided for @sortByNameDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (Z-A)'**
+  String get sortByNameDesc;
+
+  /// No description provided for @sortByIdAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'ID (ascending)'**
+  String get sortByIdAsc;
+
+  /// No description provided for @sortByIdDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'ID (descending)'**
+  String get sortByIdDesc;
+
+  /// No description provided for @sortByDateAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Date (oldest first)'**
+  String get sortByDateAsc;
+
+  /// No description provided for @sortByDateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Date (newest first)'**
+  String get sortByDateDesc;
+
+  /// No description provided for @noSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No containers found matching \"{searchTerm}\"'**
+  String noSearchResults(Object searchTerm);
 }
 
 class _AppLocalizationsDelegate

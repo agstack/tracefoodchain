@@ -616,5 +616,19 @@
     }
   },
   "registeredOnLabel": "Registriert am",
-  "specificDateLabel": "Spezifisches Datum"
+  "specificDateLabel": "Spezifisches Datum",
+  "archiveContainer": "Container archivieren",
+  "containerSuccessfullyArchived": "Container wurde erfolgreich archiviert.",
+  "showArchivedContainers": "Zeige auch archivierte Container",
+  "archivedContainersVisible": "Archivierte Container werden angezeigt",
+  "archivedContainersHidden": "Archivierte Container sind ausgeblendet",
+  "searchContainers": "Container suchen...",
+  "sort": "Sortieren",
+  "sortByNameAsc": "Name (A-Z)",
+  "sortByNameDesc": "Name (Z-A)",
+  "sortByIdAsc": "ID (aufsteigend)",
+  "sortByIdDesc": "ID (absteigend)",
+  "sortByDateAsc": "Datum (älteste zuerst)",
+  "sortByDateDesc": "Datum (neueste zuerst)",
+  "noSearchResults": "Keine Container gefunden für \"{searchTerm}\""
 }

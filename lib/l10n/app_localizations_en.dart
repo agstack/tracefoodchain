@@ -1241,4 +1241,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get specificDateLabel => 'Specific Date';
+
+  @override
+  String get archiveContainer => 'Archive Container';
+
+  @override
+  String get containerSuccessfullyArchived =>
+      'Container was successfully archived.';
+
+  @override
+  String get showArchivedContainers => 'Show also archived containers';
+
+  @override
+  String get archivedContainersVisible => 'Archived containers are shown';
+
+  @override
+  String get archivedContainersHidden => 'Archived containers are hidden';
+
+  @override
+  String get searchContainers => 'Search containers...';
+
+  @override
+  String get sort => 'Sort';
+
+  @override
+  String get sortByNameAsc => 'Name (A-Z)';
+
+  @override
+  String get sortByNameDesc => 'Name (Z-A)';
+
+  @override
+  String get sortByIdAsc => 'ID (ascending)';
+
+  @override
+  String get sortByIdDesc => 'ID (descending)';
+
+  @override
+  String get sortByDateAsc => 'Date (oldest first)';
+
+  @override
+  String get sortByDateDesc => 'Date (newest first)';
+
+  @override
+  String noSearchResults(Object searchTerm) {
+    return 'No containers found matching \"$searchTerm\"';
+  }
 }

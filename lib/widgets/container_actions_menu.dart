@@ -144,6 +144,14 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
                 style: const TextStyle(color: Colors.black)),
           ),
         ),
+        PopupMenuItem<String>(
+          value: "archive_container",
+          child: ListTile(
+            leading: const Icon(Icons.archive, size: 20),
+            title: Text(l10n.archiveContainer,
+                style: const TextStyle(color: Colors.black)),
+          ),
+        ),
         if (kDebugMode)
           PopupMenuItem<String>(
             value: "delete_container",
@@ -175,6 +183,9 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
             break;
           case "export_excel":
             await _generateExcel();
+            break;
+          case "archive_container":
+            await _archiveContainer();
             break;
           case "delete_container":
             await _deleteContainer();
@@ -392,6 +403,18 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
       debugPrint("Failed to generate Excel file.");
       await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
     }
+  }
+
+  Future<void> _archiveContainer() async {
+    if (!mounted) return;
+
+    final l10n = AppLocalizations.of(context)!;
+
+    widget.container["objectState"] = "archived";
+    await changeObjectData(widget.container);
+    await fshowInfoDialog(context, l10n.containerSuccessfullyArchived);
+    // Call onRepaint to refresh the UI
+    widget.onRepaint();
   }
 
   Future<void> _deleteContainer() async {

@@ -17,6 +17,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Globale Variable zum Speichern des Modus
 bool isTestmode = false;
+bool showArchived = false;
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -43,6 +44,23 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (bool value) {
                   setState(() {
                     isTestmode = value;
+                  });
+                },
+              );
+            },
+          ),
+          // Neuer Switch zum Anzeigen archivierter Container
+          StatefulBuilder(
+            builder: (context, setState) {
+              return SwitchListTile(
+                title: Text(l10n.showArchivedContainers),
+                subtitle: Text(showArchived
+                    ? l10n.archivedContainersVisible
+                    : l10n.archivedContainersHidden),
+                value: showArchived,
+                onChanged: (bool value) {
+                  setState(() {
+                    showArchived = value;
                   });
                 },
               );

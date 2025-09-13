@@ -1257,4 +1257,52 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get specificDateLabel => 'Fecha específica';
+
+  @override
+  String get archiveContainer => 'Archivar Contenedor';
+
+  @override
+  String get containerSuccessfullyArchived =>
+      'El contenedor fue archivado exitosamente.';
+
+  @override
+  String get showArchivedContainers =>
+      'Mostrar también contenedores archivados';
+
+  @override
+  String get archivedContainersVisible =>
+      'Los contenedores archivados se muestran';
+
+  @override
+  String get archivedContainersHidden =>
+      'Los contenedores archivados están ocultos';
+
+  @override
+  String get searchContainers => 'Buscar contenedores...';
+
+  @override
+  String get sort => 'Ordenar';
+
+  @override
+  String get sortByNameAsc => 'Nombre (A-Z)';
+
+  @override
+  String get sortByNameDesc => 'Nombre (Z-A)';
+
+  @override
+  String get sortByIdAsc => 'ID (ascendente)';
+
+  @override
+  String get sortByIdDesc => 'ID (descendente)';
+
+  @override
+  String get sortByDateAsc => 'Fecha (más antiguos primero)';
+
+  @override
+  String get sortByDateDesc => 'Fecha (más recientes primero)';
+
+  @override
+  String noSearchResults(Object searchTerm) {
+    return 'No se encontraron contenedores que coincidan con \"$searchTerm\"';
+  }
 }

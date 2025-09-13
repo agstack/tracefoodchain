@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
@@ -107,10 +108,12 @@ class DatabaseHelper {
   }
 
 //This function looks for all containers (of all kinds) that are owned by the user and are not nested within other containers
-  List<Map<String, dynamic>> getContainers(String ownerUID) {
+  Future<List<Map<String, dynamic>>> getContainers(String ownerUID) async {
     // if (accountUID!="") ownerUID = accountUID; // TESTACCOUNT
     List<Map<String, dynamic>> rList = [];
     debugPrint("getting containers owned by $ownerUID");
+
+    // Get local containers
     for (var doc in localStorage!.values) {
       if (["bag", "container", "building", "transportVehicle"]
           .contains(doc["template"]["RALType"])) {
@@ -121,17 +124,75 @@ class DatabaseHelper {
             //Check if it is not nested within other containers!
             if ((doc["currentGeolocation"]["container"]["UID"] == "") ||
                 (doc["currentGeolocation"]["container"]["UID"] == "unknown")) {
-              debugPrint(
-                  "found ${doc["template"]["RALType"]} ${doc["identity"]["UID"]}");
+                debugPrint(
+                  "found local ${doc["template"]["RALType"]} ${doc["identity"]["UID"]}");
+
+              
+              bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "archived" && showArchived == true);
               Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
-              if ((isTestmode && doc2.containsKey("isTestmode")) ||
-                  (!isTestmode && !doc2.containsKey("isTestmode"))) {
+              if (((isTestmode && doc2.containsKey("isTestmode")) ||
+                  (!isTestmode && !doc2.containsKey("isTestmode"))) && archiveCheck) {
                 rList.add(doc2);
               }
               break;
             }
           }
         }
+      }
+    }
+
+    // In debug mode, also get cloud containers
+    if (kDebugMode) {
+      try {
+        final cloudContainers = await FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where('template.RALType', whereIn: [
+          "bag",
+          "container",
+          "building",
+          "transportVehicle"
+        ]).where(
+          'currentOwners',
+          arrayContains: {"UID": ownerUID, "role": "owner"},
+        ).get();
+        // final cloudContainers = await cloudSyncService.apiClient
+        //   .getContainersFromCloud("tracefoodchain.org", ownerUID);
+        debugPrint("found ${cloudContainers.docs.length} cloud containers");
+        for (var cloudDoc in cloudContainers.docs) {
+          if (["bag", "container", "building", "transportVehicle"]
+              .contains(cloudDoc["template"]["RALType"])) {
+            final currentOwners = cloudDoc["currentOwners"];
+            for (var owner in currentOwners) {
+              if (owner["UID"] == ownerUID) {
+                if ((cloudDoc["currentGeolocation"]["container"]["UID"] ==
+                        "") ||
+                    (cloudDoc["currentGeolocation"]["container"]["UID"] ==
+                        "unknown")) {
+                  debugPrint(
+                      "found cloud ${cloudDoc["template"]["RALType"]} ${cloudDoc["identity"]["UID"]}");
+
+bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
+                  // Check if not already in local list
+                  bool alreadyExists = rList.any((localDoc) =>
+                      localDoc["identity"]["UID"] ==
+                      cloudDoc["identity"]["UID"]);
+
+                  if (!alreadyExists && archiveCheck) {
+                    Map<String, dynamic> doc2 =
+                        Map<String, dynamic>.from(cloudDoc.data());
+                    if ((isTestmode && doc2.containsKey("isTestmode")) ||
+                        (!isTestmode && !doc2.containsKey("isTestmode"))) {
+                      rList.add(doc2);
+                    }
+                  }
+                  break;
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching cloud containers: $e");
       }
     }
 
@@ -200,14 +261,49 @@ class DatabaseHelper {
     for (var doc in localStorage!.values) {
       try {
         final containerUID2 = doc["currentGeolocation"]["container"]["UID"];
-
+        bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "archived" && showArchived == true);
         if (containerUID2 == containerUID) {
           Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
-          if ((isTestmode && doc2.containsKey("isTestmode")) ||
-              (!isTestmode && !doc2.containsKey("isTestmode"))) rList.add(doc2);
+          if (((isTestmode && doc2.containsKey("isTestmode")) ||
+              (!isTestmode && !doc2.containsKey("isTestmode"))) && archiveCheck) {
+            rList.add(doc2);
+          }
         }
       } catch (e) {}
     }
+
+    // In debug mode, also get cloud items
+    if (kDebugMode) {
+      try {
+        final cloudItems = await FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where('currentGeolocation.container.UID', isEqualTo: containerUID)
+            .get();
+
+        debugPrint(
+            "found ${cloudItems.docs.length} cloud items in container $containerUID");
+
+        for (var cloudDoc in cloudItems.docs) {
+          // Check if not already in local list
+          bool alreadyExists = rList.any((localDoc) =>
+              localDoc["identity"]["UID"] == cloudDoc["identity"]["UID"]);
+
+      
+          bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
+          if (!alreadyExists && archiveCheck) {
+            Map<String, dynamic> doc2 =
+                Map<String, dynamic>.from(cloudDoc.data());
+            if ((isTestmode && doc2.containsKey("isTestmode")) ||
+                (!isTestmode && !doc2.containsKey("isTestmode"))) {
+              rList.add(doc2);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching cloud contained items: $e");
+      }
+    }
+
     return rList;
   }
 

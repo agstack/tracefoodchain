@@ -617,5 +617,19 @@
     }
   },
   "registeredOnLabel": "Registered on",
-  "specificDateLabel": "Specific Date"
+  "specificDateLabel": "Specific Date",
+  "archiveContainer": "Archive Container",
+  "containerSuccessfullyArchived": "Container was successfully archived.",
+  "showArchivedContainers": "Show also archived containers",
+  "archivedContainersVisible": "Archived containers are shown",
+  "archivedContainersHidden": "Archived containers are hidden",
+  "searchContainers": "Search containers...",
+  "sort": "Sort",
+  "sortByNameAsc": "Name (A-Z)",
+  "sortByNameDesc": "Name (Z-A)",
+  "sortByIdAsc": "ID (ascending)",
+  "sortByIdDesc": "ID (descending)",
+  "sortByDateAsc": "Date (oldest first)",
+  "sortByDateDesc": "Date (newest first)",
+  "noSearchResults": "No containers found matching \"{searchTerm}\""
 }
