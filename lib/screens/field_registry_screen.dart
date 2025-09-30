@@ -479,6 +479,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       showProgressOverlay = true;
     });
 
+    UserRegistryService? userRegistryService;
+    AssetRegistryService? assetRegistryService;
+
     try {
       List<List<dynamic>> csvData =
           const CsvToListConverter().convert(csvContent);
@@ -486,6 +489,47 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       if (csvData.isEmpty) {
         throw Exception(l10n.invalidCsvFormat);
       }
+
+      // Sicherheitsprüfungen für globale Variablen
+      if (!localStorage!.isOpen) {
+        throw Exception("localStorage is not open");
+      }
+
+      // Einmalige User Registry Initialisierung und Anmeldung
+      setState(() {
+        currentProgressStep = l10n.progressStep1InitializingServices;
+      });
+
+      userRegistryService = UserRegistryService();
+      await userRegistryService.initialize();
+
+      // Anmeldedaten aus der .env-Datei lesen
+      final userEmail = dotenv.env['USER_REGISTRY_EMAIL'] ?? '';
+      final userPassword = dotenv.env['USER_REGISTRY_PASSWORD'] ?? '';
+
+      if (userEmail.isEmpty || userPassword.isEmpty) {
+        throw Exception(
+            "User Registry credentials not configured in .env file");
+      }
+
+      // Anmelden mit User Registry
+      setState(() {
+        currentProgressStep = l10n.progressStep1UserRegistryLogin;
+      });
+
+      final loginSuccess = await userRegistryService.login(
+        email: userEmail,
+        password: userPassword,
+      );
+
+      if (!loginSuccess) {
+        throw Exception('User Registry Login fehlgeschlagen');
+      }
+
+      // Asset Registry Service erstellen
+      assetRegistryService = await AssetRegistryService.withUserRegistry(
+        userRegistryService: userRegistryService,
+      );
 
       int successCount = 0;
       int alreadyExistsCount = 0;
@@ -495,6 +539,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       setState(() {
         currentProgressStep = l10n.processingCsvFile;
       });
+
       for (int i = 1; i < csvData.length; i++) {
         //Skip header row
         final row = csvData[i];
@@ -532,8 +577,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           setState(() {
             currentFieldName = fieldNameDNI;
           });
-          final returnCode =
-              await _registerSingleField(fieldNameDNI, coordinates);
+          final returnCode = await _registerSingleField(
+              fieldNameDNI, coordinates, assetRegistryService);
 
           if (returnCode == 'successfullyRegistered') {
             debugPrint('Field "$fieldNameDNI" successfully registered');
@@ -597,6 +642,15 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         SnackBar(content: Text('${l10n.csvUploadError}: $e')),
       );
     } finally {
+      // Abmelden (falls userRegistryService initialisiert wurde)
+      if (userRegistryService != null) {
+        try {
+          await userRegistryService.logout();
+        } catch (e) {
+          debugPrint('Error during logout: $e');
+        }
+      }
+
       setState(() {
         isRegistering = false;
         showProgressOverlay = false;
@@ -608,51 +662,13 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     }
   }
 
-  Future<String> _registerSingleField(
-      String fieldName, String coordinates) async {
+  Future<String> _registerSingleField(String fieldName, String coordinates,
+      AssetRegistryService assetRegistryService) async {
     final l10n = AppLocalizations.of(context)!;
     bool alreadyExists = false;
-    // Sicherheitsprüfungen für globale Variablen
-    if (!localStorage!.isOpen) {
-      return ("registrationError: localStorage is not open");
-    }
 
-    UserRegistryService? userRegistryService;
     try {
-      // Schritt 1: Asset Registry Services initialisieren
-      setState(() {
-        currentProgressStep = l10n.progressStep1InitializingServices;
-      });
-
-      userRegistryService = UserRegistryService();
-      await userRegistryService.initialize();
-
-      // Anmeldedaten aus der .env-Datei lesen
-      final userEmail = dotenv.env['USER_REGISTRY_EMAIL'] ?? '';
-      final userPassword = dotenv.env['USER_REGISTRY_PASSWORD'] ?? '';
-
-      if (userEmail.isEmpty || userPassword.isEmpty) {
-        return ("registrationError: User Registry credentials not configured in .env file");
-      }
-
-      // Anmelden mit User Registry
-      setState(() {
-        currentProgressStep = l10n.progressStep1UserRegistryLogin;
-      });
-
-      final loginSuccess = await userRegistryService.login(
-        email: userEmail,
-        password: userPassword,
-      );
-
-      if (!loginSuccess) {
-        return ('registrationError: User Registry Login fehlgeschlagen');
-      }
-
-      // Asset Registry Service erstellen
-      final assetRegistryService = await AssetRegistryService.withUserRegistry(
-        userRegistryService: userRegistryService,
-      ); // Schritt 2: Feld bei Asset Registry registrieren
+      // Schritt 2: Feld bei Asset Registry registrieren
       setState(() {
         currentProgressStep = l10n.progressStep2RegisteringField;
       });
@@ -816,15 +832,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       await _showRegistrationResult(
           l10n.fieldRegistrationErrorMessage(fieldName, e.toString()), false);
       rethrow;
-    } finally {
-      // Abmelden (falls userRegistryService initialisiert wurde)
-      if (userRegistryService != null) {
-        try {
-          await userRegistryService.logout();
-        } catch (e) {
-          debugPrint('Error during logout: $e');
-        }
-      }
     }
   }
 
@@ -1130,7 +1137,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
                                           if (kDebugMode) {
                                             // In debug mode, copy the complete field JSON
-                                            textToCopy =  field["uid"] as String;
+                                            textToCopy = field["uid"] as String;
                                             feedbackMessage =
                                                 'Field uid copied to clipboard';
                                           } else {
