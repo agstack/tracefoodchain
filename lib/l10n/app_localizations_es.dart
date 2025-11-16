@@ -140,7 +140,163 @@ class AppLocalizationsEs extends AppLocalizations {
   String get roleDiascaAdmin => 'Administrateur Diasca';
 
   @override
+  String get roleSuperAdmin => 'Super Administrator';
+
+  @override
+  String get roleTfcAdmin => 'TFC Administrator';
+
+  @override
+  String get roleRegistrarCoordinator => 'Registrar Coordinator';
+
+  @override
   String get roleVerificationAuthority => 'Autorité de Vérification';
+
+  @override
+  String get roleAssignedSuccessfully => 'Role assigned successfully';
+
+  @override
+  String get errorAssigningRole => 'Error assigning role';
+
+  @override
+  String get userManagement => 'Gestión de Usuarios';
+
+  @override
+  String get userManagementSubtitle => 'Manage and assign user roles';
+
+  @override
+  String get noPermissionForUserManagement =>
+      'No permission for user management';
+
+  @override
+  String get userManagementOnlineOnly =>
+      'User management is only available online';
+
+  @override
+  String get noUsersFound => 'No se encontraron usuarios';
+
+  @override
+  String get assignRole => 'Asignar Rol';
+
+  @override
+  String get currentRole => 'Rol Actual';
+
+  @override
+  String get newRole => 'Nuevo Rol';
+
+  @override
+  String get reason => 'Razón';
+
+  @override
+  String get enterReasonForRoleChange => 'Ingrese la razón del cambio de rol';
+
+  @override
+  String get enterReason => 'Enter reason for role change';
+
+  @override
+  String get cancel => 'Cancelar';
+
+  @override
+  String get assign => 'Assign';
+
+  @override
+  String get userDetails => 'Detalles del Usuario';
+
+  @override
+  String get name => 'Name';
+
+  @override
+  String get email => 'Correo electrónico';
+
+  @override
+  String get userID => 'User ID';
+
+  @override
+  String get manageable => 'Manageable';
+
+  @override
+  String get yes => 'Sí';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get retry => 'Reintentar';
+
+  @override
+  String get roleManagementDebugInfo =>
+      'Info de Depuración de Gestión de Roles';
+
+  @override
+  String get firestoreError => 'Error de Firestore';
+
+  @override
+  String get appUserDocRepairedSuccessfully =>
+      'appUserDoc reparado exitosamente';
+
+  @override
+  String get repairFailed => 'Reparación fallida';
+
+  @override
+  String get repairAppUserDoc => 'Reparar appUserDoc';
+
+  @override
+  String get notManageable => 'No administrable';
+
+  @override
+  String get possibleReasons =>
+      'Posibles razones:\n• No se encontraron usuarios administrables\n• Filtro muy restrictivo\n• Permisos faltantes';
+
+  @override
+  String get noAvailableRolesForPermission =>
+      'No hay roles disponibles para su permiso';
+
+  @override
+  String usersCount(int filtered, int total) {
+    return 'usuarios';
+  }
+
+  @override
+  String get showUserDetails => 'Mostrar detalles del usuario';
+
+  @override
+  String get editRole => 'Editar rol';
+
+  @override
+  String get superadminSecurityError =>
+      'ERROR DE SEGURIDAD: Los roles de SUPERADMIN no se pueden cambiar';
+
+  @override
+  String get superadminSecurityInfo =>
+      'Los usuarios SUPERADMIN están protegidos por políticas de seguridad';
+
+  @override
+  String get superadminCannotBeAssigned =>
+      'El rol de SUPERADMIN no se puede asignar';
+
+  @override
+  String get superadminCannotBeChanged =>
+      'El rol de SUPERADMIN no se puede cambiar';
+
+  @override
+  String get searchUsers => 'Buscar usuarios...';
+
+  @override
+  String get filterByRole => 'Filtrar por Rol';
+
+  @override
+  String get allRoles => 'Todos los Roles';
+
+  @override
+  String get roleSuccessfullyAssigned => 'Role successfully assigned';
+
+  @override
+  String get errorWhileAssigningRole => 'Error while assigning role';
+
+  @override
+  String get reasonForRoleChange => 'Reason for role change';
 
   @override
   String get enterNewFarmerID => 'Ingrese un nuevo ID de agricultor';
@@ -154,16 +310,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get cancel => 'Cancelar';
-
-  @override
   String get confirm => 'Confirmar';
-
-  @override
-  String get yes => 'Sí';
-
-  @override
-  String get no => 'No';
 
   @override
   String get errorIncorrectData =>
@@ -642,9 +789,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get signInMessage =>
       'Por favor, inicie sesión o regístrese para garantizar la seguridad e integridad de nuestro sistema de seguimiento de la cadena alimentaria.';
-
-  @override
-  String get email => 'Correo electrónico';
 
   @override
   String get password => 'Contraseña';

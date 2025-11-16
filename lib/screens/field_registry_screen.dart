@@ -740,18 +740,24 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           debugPrint('Field already exists, trying to extract geoID...');
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
-          debugPrint(registerResponse.body);
-          final matchedGeoIds =
-              responseData['matched geo ids'] as List<dynamic>?;
-          if (matchedGeoIds != null && matchedGeoIds.isNotEmpty) {
-            alreadyExists = true;
-            final extractedGeoId = matchedGeoIds.first as String;
-            geoId = extractedGeoId;
-            // Erfolgreiche GeoID-Extraktion für existierendes Feld anzeigen
-            await _showRegistrationResult(
-                l10n.fieldAlreadyExistsGeoIdExtracted(extractedGeoId), true);
-          } else {
-            return ('registrationError: No matched geo ids found in response');
+          debugPrint(registerResponse
+              .body); //This is important to see return of GeoID registry service
+          try {
+            final matchedGeoIds =
+                responseData['matched geo ids'] as List<dynamic>?;
+            if (matchedGeoIds != null && matchedGeoIds.isNotEmpty) {
+              alreadyExists = true;
+              final extractedGeoId = matchedGeoIds.first as String;
+              geoId = extractedGeoId;
+              // Show returned existing GeoIDs
+              await _showRegistrationResult(
+                  l10n.fieldAlreadyExistsGeoIdExtracted(extractedGeoId), true);
+            } else {
+              return ('registrationError: No matched geo ids found in response');
+            }
+          } catch (e) {
+            debugPrint('Error extracting matched geo ids: $e');
+            return ('registrationError: provider did not return geoIDs: $e');
           }
         } catch (e) {
           await _showRegistrationResult(

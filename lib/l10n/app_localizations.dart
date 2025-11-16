@@ -267,7 +267,7 @@ abstract class AppLocalizations {
   /// No description provided for @noRole.
   ///
   /// In en, this message translates to:
-  /// **'-no role-'**
+  /// **'No Role'**
   String get noRole;
 
   /// No description provided for @roleFarmer.
@@ -360,11 +360,299 @@ abstract class AppLocalizations {
   /// **'Diasca Admin'**
   String get roleDiascaAdmin;
 
+  /// No description provided for @roleSuperAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Super Administrator'**
+  String get roleSuperAdmin;
+
+  /// No description provided for @roleTfcAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'TFC Administrator'**
+  String get roleTfcAdmin;
+
+  /// No description provided for @roleRegistrarCoordinator.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrar Coordinator'**
+  String get roleRegistrarCoordinator;
+
   /// No description provided for @roleVerificationAuthority.
   ///
   /// In en, this message translates to:
   /// **'Verification Authority'**
   String get roleVerificationAuthority;
+
+  /// No description provided for @roleAssignedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Role assigned successfully'**
+  String get roleAssignedSuccessfully;
+
+  /// No description provided for @errorAssigningRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Error assigning role'**
+  String get errorAssigningRole;
+
+  /// No description provided for @userManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'User Management'**
+  String get userManagement;
+
+  /// No description provided for @userManagementSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage and assign user roles'**
+  String get userManagementSubtitle;
+
+  /// No description provided for @noPermissionForUserManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission for user management'**
+  String get noPermissionForUserManagement;
+
+  /// No description provided for @userManagementOnlineOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'User management is only available online'**
+  String get userManagementOnlineOnly;
+
+  /// No description provided for @noUsersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No users found'**
+  String get noUsersFound;
+
+  /// No description provided for @assignRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Role'**
+  String get assignRole;
+
+  /// No description provided for @currentRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Role'**
+  String get currentRole;
+
+  /// No description provided for @newRole.
+  ///
+  /// In en, this message translates to:
+  /// **'New Role'**
+  String get newRole;
+
+  /// No description provided for @reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get reason;
+
+  /// No description provided for @enterReasonForRoleChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter reason for role change'**
+  String get enterReasonForRoleChange;
+
+  /// No description provided for @enterReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter reason for role change'**
+  String get enterReason;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @assign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get assign;
+
+  /// No description provided for @userDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'User Details'**
+  String get userDetails;
+
+  /// No description provided for @name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get name;
+
+  /// No description provided for @email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
+
+  /// No description provided for @userID.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID'**
+  String get userID;
+
+  /// No description provided for @manageable.
+  ///
+  /// In en, this message translates to:
+  /// **'Manageable'**
+  String get manageable;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @roleManagementDebugInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Role Management Debug Info'**
+  String get roleManagementDebugInfo;
+
+  /// No description provided for @firestoreError.
+  ///
+  /// In en, this message translates to:
+  /// **'Firestore Error'**
+  String get firestoreError;
+
+  /// No description provided for @appUserDocRepairedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'appUserDoc successfully repaired'**
+  String get appUserDocRepairedSuccessfully;
+
+  /// No description provided for @repairFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair failed'**
+  String get repairFailed;
+
+  /// No description provided for @repairAppUserDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair appUserDoc'**
+  String get repairAppUserDoc;
+
+  /// No description provided for @notManageable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not manageable'**
+  String get notManageable;
+
+  /// No description provided for @possibleReasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible reasons:\n• No manageable users found\n• Filter too restrictive\n• Missing permissions'**
+  String get possibleReasons;
+
+  /// No description provided for @noAvailableRolesForPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'No available roles for your permission'**
+  String get noAvailableRolesForPermission;
+
+  /// No description provided for @usersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{filtered} of {total} users'**
+  String usersCount(int filtered, int total);
+
+  /// No description provided for @showUserDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Show user details'**
+  String get showUserDetails;
+
+  /// No description provided for @editRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit role'**
+  String get editRole;
+
+  /// No description provided for @superadminSecurityError.
+  ///
+  /// In en, this message translates to:
+  /// **'SECURITY ERROR: SUPERADMIN roles cannot be changed'**
+  String get superadminSecurityError;
+
+  /// No description provided for @superadminSecurityInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'SUPERADMIN users are protected by security policies'**
+  String get superadminSecurityInfo;
+
+  /// No description provided for @superadminCannotBeAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'SUPERADMIN role cannot be assigned'**
+  String get superadminCannotBeAssigned;
+
+  /// No description provided for @superadminCannotBeChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'SUPERADMIN role cannot be changed'**
+  String get superadminCannotBeChanged;
+
+  /// No description provided for @searchUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Users'**
+  String get searchUsers;
+
+  /// No description provided for @filterByRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Role'**
+  String get filterByRole;
+
+  /// No description provided for @allRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'All Roles'**
+  String get allRoles;
+
+  /// No description provided for @roleSuccessfullyAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Role successfully assigned'**
+  String get roleSuccessfullyAssigned;
+
+  /// No description provided for @errorWhileAssigningRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Error while assigning role'**
+  String get errorWhileAssigningRole;
+
+  /// No description provided for @reasonForRoleChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for role change'**
+  String get reasonForRoleChange;
 
   /// No description provided for @enterNewFarmerID.
   ///
@@ -384,29 +672,11 @@ abstract class AppLocalizations {
   /// **'Scanned Code: {code}'**
   String scannedCode(String code);
 
-  /// No description provided for @cancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get cancel;
-
   /// No description provided for @confirm.
   ///
   /// In en, this message translates to:
   /// **'Confirm'**
   String get confirm;
-
-  /// No description provided for @yes.
-  ///
-  /// In en, this message translates to:
-  /// **'Yes'**
-  String get yes;
-
-  /// No description provided for @no.
-  ///
-  /// In en, this message translates to:
-  /// **'No'**
-  String get no;
 
   /// No description provided for @errorIncorrectData.
   ///
@@ -1307,12 +1577,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please sign in or sign up to ensure the security and integrity of our food chain tracking system.'**
   String get signInMessage;
-
-  /// No description provided for @email.
-  ///
-  /// In en, this message translates to:
-  /// **'Email'**
-  String get email;
 
   /// No description provided for @password.
   ///

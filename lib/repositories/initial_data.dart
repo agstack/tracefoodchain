@@ -76,6 +76,7 @@ Map<String, dynamic> initialObjectTemplateHuman = {
   },
   "specificProperties": [
     {"key": "emailAddress", "value": "", "unit": "emailAddress"},
+    {"key": "userRole", "value": "", "unit": "String"},
     {"key": "streetName", "value": "", "unit": "String"},
     {"key": "streetNumber", "value": "", "unit": "String"},
     {"key": "cityName", "value": "", "unit": "String"},
@@ -550,7 +551,8 @@ Map<String, dynamic> initialMethodTemplateChangeProcessingState = {
 
 Map<String, dynamic> initialMethodTemplateGenerateDigitalSibling = {
   "definition": {
-    "definitionText": "A process that generates a new digital sibling of an existing real world object",
+    "definitionText":
+        "A process that generates a new digital sibling of an existing real world object",
     "definitionURL": ""
   },
   "existenceStarts": null,
@@ -606,6 +608,89 @@ Map<String, dynamic> initialMethodTemplateChangeObjectData = {
   "nestedMethods": [],
 };
 
+Map<String, dynamic> initialMethodTemplateChangeUserRole = {
+  "definition": {
+    "definitionText":
+        "A method to change the role of a user with proper audit logging through methodHistory.",
+    "definitionURL": "",
+  },
+  "existenceStarts": null,
+  "executor": {},
+  "duration": null,
+  "identity": {
+    "UID": "",
+    "name": "",
+    "siteTag": "",
+    "alternateIDs": [],
+    "alternateNames": [],
+  },
+  "methodState": "undefined",
+  "template": {
+    "RALType": "changeUserRole",
+    "version": "1",
+    "methodStateTemplates": "generalMethodState",
+  },
+  "specificProperties": [
+    {"key": "oldRole", "value": "", "unit": "String"},
+    {"key": "newRole", "value": "", "unit": "String"},
+    {"key": "roleChangeReason", "value": "", "unit": "String"},
+    {"key": "adminUID", "value": "", "unit": "String"}
+  ],
+  "inputObjects": [],
+  "inputObjectsRef": [],
+  "outputObjects": [],
+  "outputObjectsRef": [],
+  "nestedMethods": [],
+};
+
+Map<String, dynamic> initialObjectTemplateRoleTemplate = {
+  "identity": {
+    "UID": "",
+    "name": "",
+    "siteTag": "",
+    "alternateIDs": [],
+    "alternateNames": []
+  },
+  "currentOwners": [],
+  "definition": {
+    "definitionText":
+        "A role template defining permissions and capabilities for different user roles in the system.",
+    "definitionURL": ""
+  },
+  "objectState": "undefined",
+  "template": {
+    "RALType": "roleTemplate",
+    "version": "1",
+    "objectStateTemplates": "generalObjectState"
+  },
+  "specificProperties": [
+    {"key": "roleName", "value": "", "unit": "String"},
+    {"key": "roleLevel", "value": 0, "unit": "int"},
+    {"key": "permissions", "value": [], "unit": "stringlist"},
+    {"key": "canManageRoles", "value": [], "unit": "stringlist"},
+    {"key": "maxUsersCanManage", "value": 0, "unit": "int"},
+    {"key": "roleDescription", "value": "", "unit": "String"},
+    {"key": "isSystemRole", "value": false, "unit": "boolean"}
+  ],
+  "currentGeolocation": {
+    "container": {"UID": "unknown"},
+    "postalAddress": {
+      "country": "unknown",
+      "cityName": "unknown",
+      "cityNumber": "unknown",
+      "streetName": "unknown",
+      "streetNumber": "unknown"
+    },
+    "3WordCode": "unknown",
+    "geoCoordinates": {"longitude": 0, "latitude": 0},
+    "plusCode": "unknown"
+  },
+  "locationHistoryRef": [],
+  "ownerHistoryRef": [],
+  "methodHistoryRef": [],
+  "linkedObjectRef": []
+};
+
 List<Map<String, dynamic>> initialTemplates = [
   initialObjectTemplateFarm,
   initialObjectTemplateHuman,
@@ -621,7 +706,9 @@ List<Map<String, dynamic>> initialTemplates = [
   initialMethodTemplateChangeOwner,
   initialMethodTemplateChangeProcessingState,
   initialMethodTemplateGenerateDigitalSibling,
-  initialMethodTemplateChangeObjectData
+  initialMethodTemplateChangeObjectData,
+  initialMethodTemplateChangeUserRole,
+  initialObjectTemplateRoleTemplate
 ];
 
 //! 2. cloud connectors
@@ -886,7 +973,8 @@ Map<String, dynamic> initialCloudConnectorTraceFoodchain = {
           "key": "apiKey",
           "unit": "String",
           "value": dotenv.env['FIREBASE_API_KEY'] ?? ''
-        }, {
+        },
+        {
           "value": {
             "definition": "Endpoint to sync local methods to the cloud.",
             "url":
@@ -895,16 +983,18 @@ Map<String, dynamic> initialCloudConnectorTraceFoodchain = {
           "unit": "json",
           "key": "syncMethodToCloud"
         },
-        
+
         {
           "value": {
-            "definition": "Endpoint to get all relevant objects and methods from cloud.",
+            "definition":
+                "Endpoint to get all relevant objects and methods from cloud.",
             "url":
                 "https://europe-west3-tracefoodchain.cloudfunctions.net/syncFromCloud"
           },
           "unit": "json",
           "key": "syncFromCloud"
-        }, {
+        },
+        {
           "value": {
             "definition": "Endpoint to get a user doc by its email.",
             "url":
@@ -915,15 +1005,15 @@ Map<String, dynamic> initialCloudConnectorTraceFoodchain = {
         },
         {
           "value": {
-            "definition": "Endpoint that allows to retrieve a specific method by its UID. from cloud",
+            "definition":
+                "Endpoint that allows to retrieve a specific method by its UID. from cloud",
             "url":
                 "https://europe-west3-tracefoodchain.cloudfunctions.net/getRalMethodByUid"
           },
           "unit": "json",
           "key": "getRALMethodByUID"
         }
-      //  ?UID=
- 
+        //  ?UID=
       ],
       "locationHistoryRef": [],
       "currentOwners": [],

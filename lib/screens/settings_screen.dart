@@ -10,9 +10,11 @@ import '../l10n/app_localizations.dart';
 // import 'package:trace_foodchain_app/screens/geo_ids_view.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/screens/field_registry_screen.dart';
+import 'package:trace_foodchain_app/screens/user_management_screen.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
+import 'package:trace_foodchain_app/services/permission_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Globale Variable zum Speichern des Modus
@@ -80,6 +82,21 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
+          // User Management (nur für privilegierte Rollen)
+          if (PermissionService().hasPermission('user_management'))
+            ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: const Icon(Icons.people_outline),
+              title: Text(l10n.userManagement),
+              subtitle: Text(l10n.assignRole),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const UserManagementScreen(),
+                  ),
+                );
+              },
+            ),
           // Test Asset Registry with User Registry Button
           // ListTile(
           //   contentPadding: const EdgeInsets.all(12),

@@ -92,7 +92,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get statusUpdatedSuccessfully => 'erfolgreich aktualisiert';
 
   @override
-  String get noRole => '-keine Rolle-';
+  String get noRole => 'Keine Rolle';
 
   @override
   String get roleFarmer => 'Landwirt';
@@ -134,13 +134,168 @@ class AppLocalizationsDe extends AppLocalizations {
   String get roleBuyer => 'Käufer';
 
   @override
-  String get roleSystemAdministrator => 'Systemadministrator';
+  String get roleSystemAdministrator => 'System Administrator';
 
   @override
   String get roleDiascaAdmin => 'Diasca-Administrator';
 
   @override
+  String get roleSuperAdmin => 'Super Administrator';
+
+  @override
+  String get roleTfcAdmin => 'TFC Administrator';
+
+  @override
+  String get roleRegistrarCoordinator => 'Registrar Koordinator';
+
+  @override
   String get roleVerificationAuthority => 'Verifizierungsbehörde';
+
+  @override
+  String get roleAssignedSuccessfully => 'Rolle erfolgreich zugewiesen';
+
+  @override
+  String get errorAssigningRole => 'Fehler beim Zuweisen der Rolle';
+
+  @override
+  String get userManagement => 'Benutzerverwaltung';
+
+  @override
+  String get userManagementSubtitle => 'Benutzerrollen verwalten und zuweisen';
+
+  @override
+  String get noPermissionForUserManagement =>
+      'Keine Berechtigung für Benutzerverwaltung';
+
+  @override
+  String get userManagementOnlineOnly =>
+      'Benutzerverwaltung ist nur online verfügbar';
+
+  @override
+  String get noUsersFound => 'Keine Benutzer gefunden';
+
+  @override
+  String get assignRole => 'Rolle zuweisen';
+
+  @override
+  String get currentRole => 'Aktuelle Rolle';
+
+  @override
+  String get newRole => 'Neue Rolle';
+
+  @override
+  String get reason => 'Grund';
+
+  @override
+  String get enterReasonForRoleChange => 'Grund für Rollenänderung eingeben';
+
+  @override
+  String get enterReason => 'Grund für Rollenänderung eingeben';
+
+  @override
+  String get cancel => 'Abbrechen';
+
+  @override
+  String get assign => 'Zuweisen';
+
+  @override
+  String get userDetails => 'Benutzerdetails';
+
+  @override
+  String get name => 'Name';
+
+  @override
+  String get email => 'E-Mail';
+
+  @override
+  String get userID => 'Benutzer-ID';
+
+  @override
+  String get manageable => 'Verwaltbar';
+
+  @override
+  String get yes => 'Ja';
+
+  @override
+  String get no => 'Nein';
+
+  @override
+  String get close => 'Schließen';
+
+  @override
+  String get retry => 'Erneut versuchen';
+
+  @override
+  String get roleManagementDebugInfo => 'Rollenverwaltung Debug Info';
+
+  @override
+  String get firestoreError => 'Firestore Fehler';
+
+  @override
+  String get appUserDocRepairedSuccessfully =>
+      'appUserDoc erfolgreich repariert';
+
+  @override
+  String get repairFailed => 'Reparatur fehlgeschlagen';
+
+  @override
+  String get repairAppUserDoc => 'appUserDoc reparieren';
+
+  @override
+  String get notManageable => 'Nicht verwaltbar';
+
+  @override
+  String get possibleReasons =>
+      'Mögliche Gründe:\n• Keine verwaltbaren Benutzer gefunden\n• Filter zu restriktiv\n• Fehlende Berechtigungen';
+
+  @override
+  String get noAvailableRolesForPermission =>
+      'Keine verfügbaren Rollen für Ihre Berechtigung';
+
+  @override
+  String usersCount(int filtered, int total) {
+    return '$filtered von $total Benutzern';
+  }
+
+  @override
+  String get showUserDetails => 'User-Details anzeigen';
+
+  @override
+  String get editRole => 'Rolle bearbeiten';
+
+  @override
+  String get superadminSecurityError =>
+      'SICHERHEITSFEHLER: SUPERADMIN-Rollen können nicht geändert werden';
+
+  @override
+  String get superadminSecurityInfo =>
+      'SUPERADMIN-Benutzer sind durch Sicherheitsrichtlinien geschützt';
+
+  @override
+  String get superadminCannotBeAssigned =>
+      'SUPERADMIN-Rolle kann nicht zugewiesen werden';
+
+  @override
+  String get superadminCannotBeChanged =>
+      'SUPERADMIN-Rolle kann nicht geändert werden';
+
+  @override
+  String get searchUsers => 'Benutzer suchen';
+
+  @override
+  String get filterByRole => 'Nach Rolle filtern';
+
+  @override
+  String get allRoles => 'Alle Rollen';
+
+  @override
+  String get roleSuccessfullyAssigned => 'Rolle erfolgreich zugewiesen';
+
+  @override
+  String get errorWhileAssigningRole => 'Fehler beim Zuweisen der Rolle';
+
+  @override
+  String get reasonForRoleChange => 'Grund für Rollenänderung';
 
   @override
   String get enterNewFarmerID => 'Geben Sie Ihre Landwirt-ID ein';
@@ -154,16 +309,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get cancel => 'Abbrechen';
-
-  @override
   String get confirm => 'Bestätigen';
-
-  @override
-  String get yes => 'Ja';
-
-  @override
-  String get no => 'Nein';
 
   @override
   String get errorIncorrectData =>
@@ -643,9 +789,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get signInMessage =>
       'Bitte melden Sie sich an oder registrieren Sie sich, um die Sicherheit und Integrität unseres Lebensmittelketten-Tracking-Systems zu gewährleisten.';
-
-  @override
-  String get email => 'E-Mail';
 
   @override
   String get password => 'Passwort';

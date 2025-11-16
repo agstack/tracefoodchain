@@ -24,6 +24,8 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter/scheduler.dart'; // Falls benötigt
 import '../services/get_device_id.dart';
 import '../widgets/safe_asset_widgets.dart';
+import 'package:trace_foodchain_app/services/role_management_service.dart';
+import 'package:trace_foodchain_app/services/permission_service.dart';
 
 bool canResendEmail = true;
 
@@ -323,7 +325,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     // DEBUG: Anderen User für Testzwecke laden
 
-
     // Check if private key exists, if not generate new keypair
     final privateKey = await keyManager.getPrivateKey();
     if (privateKey == null) {
@@ -422,32 +423,66 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
 
-    //Schaun ob user role vorhanden ist
-    //! atm we skip role selection - everybody can do everything
-    //! Role is set to trader for all users
-    // final userRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
-    // if (userRole != "" && userRole != "-no data found-") {
-    appState.setUserRole("Trader");
-    // }
+    //Get user role - synchronize with cloud first if connected
+    String finalRole = '';
 
-    if (appState.userRole == null) {
-      //! atm we skip role selection - everybody can do everything
-      //! Role is set to trader for all users
-      // Navigator.of(context).pushReplacement(
-      //   FadeRoute(builder: (_) => const
-      // RoleSelectionScreen()),
-      // );
-      final appState = Provider.of<AppState>(context, listen: false);
-      appState.setUserRole('Trader');
-      appUserDoc = await getLocalObjectMethod(getObjectMethodUID(appUserDoc!));
-      appUserDoc =
-          setSpecificPropertyJSON(appUserDoc!, "userRole", 'Trader', "String");
+    if (appState.isConnected) {
+      try {
+        // Hole die aktuellste Rolle aus der Cloud
+        final roleService = RoleManagementService();
+        final cloudRole = await roleService.getCurrentUserRoleFromCloud();
 
-      //ToDo: addEditItem Method instead of just setObjectMethod
-      appUserDoc = await setObjectMethod(appUserDoc!, false, true);
+        if (cloudRole.isNotEmpty) {
+          finalRole = cloudRole;
+          debugPrint("User role loaded from cloud: $cloudRole");
+
+          // Aktualisiere das lokale appUserDoc mit der Cloud-Rolle
+          if (cloudRole !=
+              getSpecificPropertyfromJSON(appUserDoc!, "userRole")) {
+            appUserDoc = setSpecificPropertyJSON(
+                appUserDoc!, "userRole", cloudRole, "String");
+            debugPrint("Local appUserDoc updated with cloud role: $cloudRole");
+          }
+        } else {
+          // Fallback auf lokale Rolle
+          final localRole =
+              getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+          finalRole = (localRole != "" && localRole != "-no data found-")
+              ? localRole
+              : '';
+          debugPrint("User role loaded from local document: $finalRole");
+        }
+      } catch (e) {
+        debugPrint("Error loading role from cloud, falling back to local: $e");
+        final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+        finalRole = (localRole != "" && localRole != "-no data found-")
+            ? localRole
+            : '';
+      }
+    } else {
+      // Offline - nutze lokale Rolle
+      final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+      finalRole =
+          (localRole != "" && localRole != "-no data found-") ? localRole : '';
+      debugPrint("Offline - using local role: $finalRole");
     }
 
-    //  else {
+    if (finalRole.isNotEmpty) {
+      appState.setUserRole(finalRole);
+      debugPrint("Final user role set: $finalRole");
+    } else {
+      // Neuer User ohne Rolle - setze Standard-Rolle "Trader"
+      final newUser =
+          setSpecificPropertyJSON(appUserDoc!, "userRole", 'Trader', "String");
+      await changeObjectData(newUser); // Nutze changeObjectData für Logging
+      appState.setUserRole("Trader");
+      finalRole = "Trader";
+      debugPrint("New user - assigned default role: Trader");
+    }
+
+    // Invalidiere Permission-Cache nach Rollenupdate
+    final permissionService = PermissionService();
+    permissionService.invalidateRoleCache();
 
     if (secureCommunicationEnabled == false) {
       showDialog(
