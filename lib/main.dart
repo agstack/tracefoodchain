@@ -49,25 +49,19 @@ class DebugValueNotifier<T> extends ValueNotifier<T> {
 
   @override
   set value(T newValue) {
-
 // Check for listeners
     if (hasListeners) {
-      
-    } else {
-      
-    }
+    } else {}
 
     super.value = newValue;
   }
 
   @override
   void notifyListeners() {
-    
     try {
       super.notifyListeners();
     } catch (e, stackTrace) {
-
-rethrow;
+      rethrow;
     }
   }
 }
@@ -344,7 +338,6 @@ Future<void> initializeUserLocalStorage(String userId) async {
 
   // Lade cloudConnectors für diesen User
   cloudConnectors = await getCloudConnectors();
-
 }
 
 // Funktion zum Schließen des User LocalStorage (bei Logout)
@@ -353,7 +346,6 @@ Future<void> closeUserLocalStorage() async {
     await localStorage!.close();
     localStorage = null;
     cloudConnectors.clear();
-    
   }
 
   // KRITISCH: Alle globalen Variablen zurücksetzen, die Benutzerdaten enthalten
@@ -372,7 +364,6 @@ Future<void> closeUserLocalStorage() async {
   repaintContainerList.value = true;
   rebuildSpeedDial.value = true;
   rebuildDDS.value = true;
-
 }
 
 // Helper Funktion um sicherzustellen, dass localStorage verfügbar ist
@@ -385,29 +376,28 @@ Future<void> _initializeAppState(AppState appState) async {
   digitalSignature = DigitalSignature();
 
   // Check internet connectivity at startup
-  
+
   var connectivityResult = await (Connectivity().checkConnectivity());
   bool cr = false;
-  
+
   appState.setConnected(connectivityResult != [ConnectivityResult.none]);
 
   // Start the connectivity listener to see changes in connectivity
-  
+
   appState.startConnectivityListener();
 
   // Check camera availability
   // String userAgent = html.window.navigator.userAgent.toLowerCase();
 
-try {
+  try {
     if (1 == 1) {
       // if (!userAgent.contains('macintosh')) {
       final cameras = await availableCameras();
-      
+
       appState.setHasCamera(cameras.isNotEmpty);
-      
     } else {
       appState.setHasCamera(false);
-      
+
 //! Does not work in Flutter Web on MacOS!
     }
   } catch (_) {
@@ -415,28 +405,25 @@ try {
   }
 
   // Check NFC availability
-  
+
   bool hasNFC = false;
   NFCAvailability availability = await FlutterNfcKit.nfcAvailability;
   try {
     if (availability == NFCAvailability.available) {
       hasNFC = true;
-      
     } else {
       hasNFC = false;
-      
     }
   } catch (e) {
-    
     hasNFC = false;
   }
 
   appState.setHasNFC(hasNFC);
 
   // Check GPS availability
-  
+
   bool hasGPS = await Geolocator.isLocationServiceEnabled();
-  
+
   appState.setHasGPS(hasGPS);
 }
 

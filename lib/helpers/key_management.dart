@@ -14,8 +14,9 @@ class KeyManager {
       final privateKey = await keyPair.extractPrivateKeyBytes();
 
       // Public Key an Server senden und auf Erfolg prüfen
-      final success = await cloudSyncService.apiClient.sendPublicKeyToFirebase(publicKey.bytes);
-      
+      final success = await cloudSyncService.apiClient
+          .sendPublicKeyToFirebase(publicKey.bytes);
+
       if (success) {
         // Nur wenn Cloud-Speicherung erfolgreich war, privaten Schlüssel lokal speichern
         await savePrivateKey(privateKey);
@@ -43,5 +44,3 @@ class KeyManager {
     return base64Decode(encodedKey);
   }
 }
-
-

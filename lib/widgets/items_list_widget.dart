@@ -477,7 +477,6 @@ class _ItemsListState extends State<ItemsList> {
             children: [
               const SizedBox(height: 8),
               LayoutBuilder(builder: (context, constraints) {
-                
                 final tileWidth = constraints.maxWidth;
                 return _buildCardHeader(container, contents, tileWidth);
               }),
@@ -515,7 +514,7 @@ class _ItemsListState extends State<ItemsList> {
             builder: (context, constraints) {
               final tileWidth = constraints.maxWidth;
               // Now you can use tileWidth as needed
-              // 
+              //
 
               return ExpansionTile(
                 title: _buildCardHeader(container, nestedContents, tileWidth),
@@ -921,7 +920,6 @@ class _ItemsListState extends State<ItemsList> {
                     const SizedBox(height: 8),
                     // Animated progress bar for fill level
                     LayoutBuilder(builder: (context, constraints) {
-                      
                       double maxCapacity =
                           getSpecificPropertyfromJSON(container, "max capacity")
                                   is num

@@ -122,11 +122,12 @@ class DatabaseHelper {
             //Check if it is not nested within other containers!
             if ((doc["currentGeolocation"]["container"]["UID"] == "") ||
                 (doc["currentGeolocation"]["container"]["UID"] == "unknown")) {
-
-bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "archived" && showArchived == true);
+              bool archiveCheck = doc["objectState"] != "archived" ||
+                  (doc["objectState"] == "archived" && showArchived == true);
               Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
               if (((isTestmode && doc2.containsKey("isTestmode")) ||
-                  (!isTestmode && !doc2.containsKey("isTestmode"))) && archiveCheck) {
+                      (!isTestmode && !doc2.containsKey("isTestmode"))) &&
+                  archiveCheck) {
                 rList.add(doc2);
               }
               break;
@@ -152,7 +153,7 @@ bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "
         ).get();
         // final cloudContainers = await cloudSyncService.apiClient
         //   .getContainersFromCloud("tracefoodchain.org", ownerUID);
-        
+
         for (var cloudDoc in cloudContainers.docs) {
           if (["bag", "container", "building", "transportVehicle"]
               .contains(cloudDoc["template"]["RALType"])) {
@@ -163,8 +164,9 @@ bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "
                         "") ||
                     (cloudDoc["currentGeolocation"]["container"]["UID"] ==
                         "unknown")) {
-
-bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
+                  bool archiveCheck = cloudDoc["objectState"] != "archived" ||
+                      (cloudDoc["objectState"] == "archived" &&
+                          showArchived == true);
                   // Check if not already in local list
                   bool alreadyExists = rList.any((localDoc) =>
                       localDoc["identity"]["UID"] ==
@@ -184,9 +186,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
             }
           }
         }
-      } catch (e) {
-        
-      }
+      } catch (e) {}
     }
 
     return rList;
@@ -194,7 +194,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
 
   Future<List<Map<String, dynamic>>> getInboxItems(String ownerUID) async {
     List<Map<String, dynamic>> rList = [];
-    
+
     for (var doc in localStorage!.values) {
       if (doc["currentGeolocation"] != null) {
         final currentGeolocationIncomingUID =
@@ -208,7 +208,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
 
         if (isOwner && currentGeolocationIncomingUID == "inTransfer") {
           //if user is owner and container is empty => inbox
-          
+
           Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
           if ((isTestmode && doc2.containsKey("isTestmode")) ||
               (!isTestmode && !doc2.containsKey("isTestmode"))) rList.add(doc2);
@@ -253,11 +253,13 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
     for (var doc in localStorage!.values) {
       try {
         final containerUID2 = doc["currentGeolocation"]["container"]["UID"];
-        bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "archived" && showArchived == true);
+        bool archiveCheck = doc["objectState"] != "archived" ||
+            (doc["objectState"] == "archived" && showArchived == true);
         if (containerUID2 == containerUID) {
           Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
           if (((isTestmode && doc2.containsKey("isTestmode")) ||
-              (!isTestmode && !doc2.containsKey("isTestmode"))) && archiveCheck) {
+                  (!isTestmode && !doc2.containsKey("isTestmode"))) &&
+              archiveCheck) {
             rList.add(doc2);
           }
         }
@@ -272,12 +274,13 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
             .where('currentGeolocation.container.UID', isEqualTo: containerUID)
             .get();
 
-for (var cloudDoc in cloudItems.docs) {
+        for (var cloudDoc in cloudItems.docs) {
           // Check if not already in local list
           bool alreadyExists = rList.any((localDoc) =>
               localDoc["identity"]["UID"] == cloudDoc["identity"]["UID"]);
 
-bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
+          bool archiveCheck = cloudDoc["objectState"] != "archived" ||
+              (cloudDoc["objectState"] == "archived" && showArchived == true);
           if (!alreadyExists && archiveCheck) {
             Map<String, dynamic> doc2 =
                 Map<String, dynamic>.from(cloudDoc.data());
@@ -287,9 +290,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
             }
           }
         }
-      } catch (e) {
-        
-      }
+      } catch (e) {}
     }
 
     return rList;
@@ -371,7 +372,6 @@ String formatTimestamp(dynamic timestamp) {
   try {
     return DateFormat('yyyy-MM-dd HH:mm').format(timestamp);
   } catch (e) {
-    
     return 'Invalid Date';
   }
 }
@@ -411,17 +411,14 @@ dynamic convertToJson(dynamic firestoreObj) {
         try {
           if (value != null &&
               value.runtimeType.toString().contains('GeoPoint')) {
-            
             convertedObj[key] = {
               'latitude': value.latitude,
               'longitude': value.longitude,
             };
           } else {
-            
             convertedObj[key] = null; // Standardwert bei Fehlern
           }
         } catch (innerError) {
-          
           convertedObj[key] = null;
         }
       }
@@ -442,7 +439,6 @@ dynamic convertToJson(dynamic firestoreObj) {
         'longitude': firestoreObj.longitude,
       };
     } catch (e) {
-      
       return null;
     }
   } else {
@@ -466,7 +462,7 @@ dynamic convertToJson(dynamic firestoreObj) {
 //             (value.millisecondsSinceEpoch ~/ 1000) * 1000);
 //         String isoString =
 //             dateInSeconds.toIso8601String().split('.').first.trim();
-//         // 
+//         //
 //         convertedObj[key] = isoString;
 //       } else if (value is GeoPoint) {
 //         convertedObj[key] = {
@@ -482,7 +478,7 @@ dynamic convertToJson(dynamic firestoreObj) {
 //     final dateInSeconds = DateTime.fromMillisecondsSinceEpoch(
 //         (firestoreObj.millisecondsSinceEpoch ~/ 1000) * 1000);
 //     String isoString = dateInSeconds.toIso8601String().split('.').first.trim();
-//     // 
+//     //
 
 //     return isoString;
 //   } else {
