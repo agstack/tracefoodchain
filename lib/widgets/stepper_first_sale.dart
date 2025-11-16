@@ -1,5 +1,4 @@
 ﻿import 'dart:ui';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -721,7 +720,7 @@ Future<void> sellCoffee(SaleInfo saleInfo, String containerType) async {
     receivingContainer =
         await getLocalObjectMethod(getObjectMethodUID(receivingContainer));
   }
-  }");
+
 
   // 2. Check if field  (by GeoId) exists. If not generate new one. Also generate new Owner => geoID as tag for owner
   //look for a field that have geoId as alternateIDs
@@ -754,7 +753,7 @@ Future<void> sellCoffee(SaleInfo saleInfo, String containerType) async {
 
     field = await getLocalObjectMethod(getObjectMethodUID(field));
   }
-  }");
+
 
   //! due to project specifications, field and company are the same for Honduras atm
   seller = {};
@@ -786,7 +785,7 @@ Future<void> sellCoffee(SaleInfo saleInfo, String containerType) async {
 
     seller = await getLocalObjectMethod(getObjectMethodUID(seller));
   }
-  }");
+
 
   // 3. Generate process "coffee" and put information of the coffee into
   coffee = {};
@@ -826,7 +825,7 @@ Future<void> sellCoffee(SaleInfo saleInfo, String containerType) async {
   //Step 6: persist process
   await setObjectMethod(addItem, true, true); //sign it!
 
-  }");
+
 
   //********* B. Generate process "transfer_ownership" (selling process) *********
   transfer_ownership = {};

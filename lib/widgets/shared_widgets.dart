@@ -1,7 +1,5 @@
 // lib/widgets/shared_dialogs.dart
-
 import 'dart:ui';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +12,8 @@ import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/scanning_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/widgets/coffee_processing_state_selector.dart';
-import 'package:trace_foodchain_app/widgets/stepper_buy_coffee.dart';
-import 'package:trace_foodchain_app/widgets/stepper_first_sale.dart';
+import 'package:trace_foodchain_app/widgets/stepper_buy_coffee.dart' show StepperBuyCoffee;
+import 'package:trace_foodchain_app/widgets/stepper_first_sale.dart' show FirstSaleProcess;
 import '../l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 

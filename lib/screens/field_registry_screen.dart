@@ -736,6 +736,8 @@ try {
           
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
+debugPrint(registerResponse
+              .body);
            //This is important to see return of GeoID registry service
           try {
             final matchedGeoIds =
@@ -776,7 +778,7 @@ final existingFirebaseObjects =
           await getFirebaseObjectsByAlternateUID(finalGeoId);
 
       if (existingFirebaseObjects.isNotEmpty) {
-         - adding user as owner');
+        //  - adding user as owner');
         //Add the appuser UID as owner to currentOwners list
         final existingField = existingFirebaseObjects.first;
         //Check the currentOwners list and add the appUserDoc UID if not already present

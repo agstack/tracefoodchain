@@ -390,7 +390,6 @@ if (!roleManagementPermissions.containsKey(currentRole)) {
     // Füge NO_ROLE als Option hinzu (Admins können Rollen auch entfernen)
     availableRoles.add(NO_ROLE);
 
-    : $availableRoles');
     return availableRoles;
   }
 

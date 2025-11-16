@@ -569,7 +569,7 @@ String createSigningObject(
     try {
       jp = JsonPath(path);
     } catch (e) {
-      );
+      debugPrint(e.toString());
     }
     final matches = jp!.read(copy);
     if (matches.isNotEmpty) {
@@ -605,7 +605,7 @@ String createSigningObject(
     //ToDO: We need to convert DateTime to isostring and geopoint to a map before serializing
     final rstring = jsonEncode(partsToSign);
   } catch (e) {
-    );
+    debugPrint(e.toString());
   }
   return jsonEncode(partsToSign);
 }

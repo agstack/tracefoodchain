@@ -28,7 +28,6 @@ class TrackedValueNotifier<T> extends ValueNotifier<T> {
       super.notifyListeners();
     } catch (e, stackTrace) {
 
-);
       rethrow;
     }
   }

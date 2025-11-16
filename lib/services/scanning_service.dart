@@ -222,7 +222,8 @@ class ScanningService {
         await FlutterNfcKit.finish();
       }
     } catch (e) {
-      !.nfcScanError}: ${e.toString()}");
+      debugPrint(
+          "${AppLocalizations.of(context)!.nfcScanError}: ${e.toString()}");
     }
   }
 

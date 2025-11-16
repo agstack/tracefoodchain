@@ -347,7 +347,7 @@ Future<List<Map<String, dynamic>>> initBuyCoffee(
     receivingContainer =
         await getLocalObjectMethod(getObjectMethodUID(receivingContainer));
   }
-  }");
+
 
   transfer_ownership = await getOpenRALTemplate("changeOwner");
   setObjectMethodUID(transfer_ownership, const Uuid().v4());
