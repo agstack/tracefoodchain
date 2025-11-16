@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:trace_foodchain_app/main.dart';
@@ -49,7 +49,6 @@ class RoleManagementService {
       final connectivityResult = await Connectivity().checkConnectivity();
       return !connectivityResult.contains(ConnectivityResult.none);
     } catch (e) {
-      debugPrint('Error checking connectivity: $e');
       return false;
     }
   }
@@ -95,8 +94,6 @@ class RoleManagementService {
         final role = getSpecificPropertyfromJSON(userData, "userRole");
         final finalRole = (role != "" && role != "-no data found-") ? role : '';
 
-        debugPrint('🌐 Current user role from cloud: $finalRole');
-
         // Aktualisiere das lokale appUserDoc falls es nicht synchron ist
         if (appUserDoc != null) {
           final localRole =
@@ -107,8 +104,6 @@ class RoleManagementService {
                   : '';
 
           if (localRoleFinal != finalRole && finalRole.isNotEmpty) {
-            debugPrint(
-                '🔄 Updating local appUserDoc role from "$localRoleFinal" to "$finalRole"');
             appUserDoc = setSpecificPropertyJSON(
                 appUserDoc!, "userRole", finalRole, "String");
           }
@@ -116,12 +111,9 @@ class RoleManagementService {
 
         return finalRole;
       } else {
-        debugPrint(
-            '⚠️ User document not found in cloud for UID: $currentUserUID');
         return getCurrentUserRole(); // Fallback auf lokale Rolle
       }
     } catch (e) {
-      debugPrint('❌ Error loading user role from cloud: $e');
       return getCurrentUserRole(); // Fallback auf lokale Rolle
     }
   }
@@ -132,8 +124,6 @@ class RoleManagementService {
     if (cloudRole.isNotEmpty) {
       // Cache invalidieren wird über Callback gemacht um zirkuläre Abhängigkeiten zu vermeiden
       _invalidatePermissionCache();
-
-      debugPrint('✅ Role synchronized from cloud: $cloudRole');
     }
   }
 
@@ -141,7 +131,6 @@ class RoleManagementService {
   void _invalidatePermissionCache() {
     // Implementierung für Cache-Invalidierung ohne zirkuläre Abhängigkeit
     // Dies wird über ein StaticCallback oder Singleton Pattern gehandhabt
-    debugPrint('🗑️ Permission cache invalidated');
   }
 
   /// Aktualisiert die AppState des aktuellen Users mit einer neuen Rolle
@@ -155,39 +144,20 @@ class RoleManagementService {
 
         // Invalidiere Permission-Cache
         _invalidatePermissionCache();
-
-        debugPrint('🔄 Current user AppState updated with new role: $newRole');
       }
     } catch (e) {
-      debugPrint('Error updating current user AppState: $e');
+      // Fehler beim Aktualisieren der AppState
     }
   }
 
   /// Holt die aktuelle Rolle des eingeloggten Users
   String getCurrentUserRole() {
     if (appUserDoc == null) {
-      debugPrint(
-          '⚠️ appUserDoc is null - User might not be properly logged in');
-      debugPrint(
-          '⚠️ Firebase current user: ${FirebaseAuth.instance.currentUser?.uid}');
       return '';
     }
 
     final role = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
     final finalRole = (role != "" && role != "-no data found-") ? role : '';
-
-    debugPrint('🔍 Current user role from appUserDoc: $role');
-    debugPrint('🔍 Final processed role: $finalRole');
-    debugPrint(
-        '🔍 Current user UID: ${FirebaseAuth.instance.currentUser?.uid}');
-
-    // Zeige einen Ausschnitt des appUserDoc für Debugging
-    if (appUserDoc != null) {
-      debugPrint('🔍 appUserDoc keys: ${appUserDoc!.keys.toList()}');
-      if (appUserDoc!.containsKey('identity')) {
-        debugPrint('🔍 appUserDoc identity: ${appUserDoc!['identity']}');
-      }
-    }
 
     return finalRole;
   }
@@ -225,7 +195,6 @@ class RoleManagementService {
 
       return enrichedUsers;
     } catch (e) {
-      debugPrint('Error loading users: $e');
       throw Exception('Fehler beim Laden der Benutzer: $e');
     }
   }
@@ -237,8 +206,6 @@ class RoleManagementService {
       throw Exception('Keine gültige Benutzerrolle gefunden');
     }
 
-    debugPrint('🔑 Current admin role: $currentRole');
-
     final allUsers = await getAllUsers();
     final managedUsers = <Map<String, dynamic>>[];
 
@@ -249,37 +216,27 @@ class RoleManagementService {
           ? userRole
           : NO_ROLE;
 
-      debugPrint('👤 User $userUID has role: $effectiveRole');
-
       // SICHERHEIT: SUPERADMIN-Benutzer werden NIEMALS in der Verwaltung angezeigt
       // Das gilt für ALLE Administratoren (auch andere SUPERADMINs)
       if (effectiveRole == 'SUPERADMIN') {
-        debugPrint(
-            '🔒 SUPERADMIN user $userUID excluded from ALL management views');
         continue;
       }
 
       // SUPERADMIN kann alle anderen NON-SUPERADMIN Benutzer sehen (außer sich selbst)
       if (currentRole == 'SUPERADMIN' &&
           userUID != FirebaseAuth.instance.currentUser?.uid) {
-        debugPrint('✅ SUPERADMIN: Adding non-SUPERADMIN user $userUID');
         managedUsers.add(user);
       }
       // Andere Admins: Nur User deren Rollen sie verwalten können oder rollenlose User
       else if (currentRole != 'SUPERADMIN') {
         if (effectiveRole == NO_ROLE ||
             canManageRole(currentRole, effectiveRole)) {
-          debugPrint('✅ User $userUID can be managed (role: $effectiveRole)');
           managedUsers.add(user);
-        } else {
-          debugPrint(
-              '❌ User $userUID cannot be managed (role: $effectiveRole)');
         }
       }
     }
 
-    debugPrint('📊 Total managed users: ${managedUsers.length}');
-    return managedUsers;
+return managedUsers;
   }
 
   /// Ändert die Rolle eines Users über changeObjectData (mit automatischem Logging)
@@ -326,7 +283,6 @@ class RoleManagementService {
 
       targetUser = Map<String, dynamic>.from(userDoc.data()!);
     } catch (e) {
-      debugPrint('Error loading target user: $e');
       throw Exception('Fehler beim Laden des Benutzers: $e');
     }
 
@@ -363,10 +319,7 @@ class RoleManagementService {
         reason: reason,
       );
 
-      debugPrint(
-          'Successfully changed role for user $targetUserUID from $oldRoleStr to $newRole');
-    } catch (e) {
-      debugPrint('Error changing user role: $e');
+} catch (e) {
       throw Exception('Fehler beim Ändern der Benutzerrolle: $e');
     }
   }
@@ -414,7 +367,7 @@ class RoleManagementService {
         await _updateCurrentUserAppState(newRole);
       }
     } catch (e) {
-      debugPrint('Error creating changeUserRole method: $e');
+      
       // Nicht kritisch, da changeObjectData bereits das Logging übernommen hat
     }
   }
@@ -422,13 +375,9 @@ class RoleManagementService {
   /// Holt verfügbare Rollen für die aktuelle Administratorrolle
   List<String> getAvailableRoles() {
     final currentRole = getCurrentUserRole();
-    debugPrint('📝 getAvailableRoles - Current role: $currentRole');
-    debugPrint(
-        '📝 getAvailableRoles - Role management permissions: $roleManagementPermissions');
 
-    if (!roleManagementPermissions.containsKey(currentRole)) {
-      debugPrint(
-          '⚠️ Current role $currentRole not found in roleManagementPermissions');
+if (!roleManagementPermissions.containsKey(currentRole)) {
+      
       return [];
     }
 
@@ -441,8 +390,7 @@ class RoleManagementService {
     // Füge NO_ROLE als Option hinzu (Admins können Rollen auch entfernen)
     availableRoles.add(NO_ROLE);
 
-    debugPrint(
-        '📝 getAvailableRoles - Available roles (including NO_ROLE): $availableRoles');
+    : $availableRoles');
     return availableRoles;
   }
 
@@ -464,13 +412,12 @@ class RoleManagementService {
     }
 
     // Debug: Zeige die gefundenen Werte
-    // debugPrint('📋 User Debug - UID: $userUID');
-    // debugPrint('📋 User Debug - Name: $userName');
-    // debugPrint('📋 User Debug - Email: $email');
-    // debugPrint('📋 User Debug - Role from document: $userRole');
-    // debugPrint('📋 User Debug - Display role: $displayRole');
-    // debugPrint(
-    //     '📋 User Debug - Is current user: ${userUID == FirebaseAuth.instance.currentUser?.uid}');
+    // 
+    // 
+    // 
+    // 
+    // 
+    // 
 
     // Bestimme ob dieser User verwaltet werden kann
     final currentUserRole = await getCurrentUserRoleFromCloud();
@@ -501,13 +448,8 @@ class RoleManagementService {
     }
 
     // Debug: Zeige die Verwaltungslogik
-    debugPrint('🔐 canManage Debug - Current admin role: $currentUserRole');
-    debugPrint('🔐 canManage Debug - Target user role: $targetUserRole');
-    debugPrint(
-        '🔐 canManage Debug - Is self: ${userUID == FirebaseAuth.instance.currentUser?.uid}');
-    debugPrint('🔐 canManage Debug - Can manage: $canManageUser');
 
-    return {
+return {
       'uid': userUID,
       'name': userName,
       'email': email != "-no data found-" ? email : 'Keine E-Mail',
@@ -533,7 +475,7 @@ class RoleManagementService {
 
       return querySnapshot.docs.map((doc) => doc.data()).toList();
     } catch (e) {
-      debugPrint('Error loading role history: $e');
+      
       return [];
     }
   }

@@ -1,4 +1,4 @@
-/// User Registry Service
+﻿/// User Registry Service
 /// ------------------------------------------------------------
 /// A Dart service for interacting with the AgStack User Registry API
 /// based on the provided OpenAPI structure.
@@ -120,7 +120,7 @@ class UserRegistryService {
 
       return true;
     } else{
-      debugPrint('Login failed: ${response.statusCode} - ${response.body}');
+      
     }
 
     return false;
@@ -152,18 +152,16 @@ class UserRegistryService {
 
   /// Get List of allowed domains
   Future<List<String>> getDomains() async {
-  
 
-    final uri = Uri.parse('$baseUrl/domains');
+final uri = Uri.parse('$baseUrl/domains');
     final response = await http.get(
       uri,
       
     ).timeout(timeout);
 
     // Clear tokens regardless of the response
-   
 
-    if (response.statusCode == 200) {
+if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return (data['Domains'] as List<dynamic>).cast<String>();
     }

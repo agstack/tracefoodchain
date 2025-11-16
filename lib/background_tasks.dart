@@ -1,4 +1,4 @@
-import 'package:workmanager/workmanager.dart';
+﻿import 'package:workmanager/workmanager.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 
 const syncTaskName = "syncData";
@@ -10,10 +10,10 @@ void callbackDispatcher() {
         try {
           final databaseHelper = DatabaseHelper();
           //ToDo: 
-          print("Background sync completed successfully");
+          
           return true;
         } catch (e) {
-          print("Background sync failed: $e");
+          
           return false;
         }
       default:

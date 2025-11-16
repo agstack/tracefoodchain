@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -119,14 +119,13 @@ class _CoffeeSaleStepperState extends State<CoffeeSaleStepper> {
   void _nextStep() async {
     switch (_currentStep) {
       case 0:
-        debugPrint("scan information from buyer");
+        
         break;
       case 1:
-        debugPrint("Send finished sales process back to buyer");
 
-        break;
+break;
       // case 2:
-      //   debugPrint("if bidirectional - display tag for scanning by seller");
+      //   
 
       //   break;
 
@@ -840,7 +839,7 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
     Map<String, dynamic> rDoc2 = await getOpenRALTemplate(type);
     rDoc = rDoc2;
     rDoc["identity"]["UID"] = "";
-    debugPrint("generated new template for $type");
+    
   }
   return rDoc;
 }

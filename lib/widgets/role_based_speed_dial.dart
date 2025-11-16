@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/main.dart';
@@ -297,7 +297,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
 
   //                           // await fshowInfoDialog(
   //                           //     context, "Not implemented yet.");
-  //                           // print('Device-to-device selected');
+  //                           // 
   //                         },
   //                       ),
   //                     ),
@@ -311,7 +311,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
   //                 //   onTap: () {
   //                 //     Navigator.of(context).pop();
   //                 //     // TODO: Implement device-to-cloud process
-  //                 //     print('Device-to-cloud selected');
+  //                 //     
   //                 //   },
   //                 // ),
   //               ],
@@ -413,7 +413,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
         return AddEmptyItemDialog(
           onItemAdded: (Map<String, dynamic> newItem) {
             // Handle the newly added item
-            print("New item added: ${newItem["identity"]["UID"]}");
+            
             repaintContainerList.value = true;
           },
         );

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
@@ -90,7 +90,7 @@ class PermissionService {
   bool hasPermission(String permission) {
     final userRole = getCurrentUserRole();
     if (userRole.isEmpty) {
-      debugPrint('No user role found, denying permission: $permission');
+      
       return false;
     }
 
@@ -100,14 +100,14 @@ class PermissionService {
       final hasAccess = allowedRoles.contains(userRole);
 
       if (!hasAccess) {
-        debugPrint('Permission denied: $permission for role: $userRole');
+        
       }
 
       return hasAccess;
     }
 
     // Fallback: Nur SUPERADMIN hat Zugang zu unbekannten Permissions
-    debugPrint('Unknown permission: $permission, only allowing SUPERADMIN');
+    
     return userRole == 'SUPERADMIN';
   }
 
@@ -210,7 +210,7 @@ class PermissionService {
         return hasPermission('backup_data');
 
       default:
-        debugPrint('Unknown action: $action, defaulting to admin check');
+        
         return isAdmin();
     }
   }

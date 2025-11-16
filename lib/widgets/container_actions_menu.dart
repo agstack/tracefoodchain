@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
@@ -280,7 +280,7 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
       plotList.add(field["identity"]["alternateIDs"][0]["UID"].replaceAll(
           RegExp(r'\s+'),
           '')); //This is because some CIAT cards have a space in the UID
-      debugPrint(field["identity"]["alternateIDs"][0]["UID"]);
+      
       final convertedAmount = convertToGreenBeanEquivalent(
           Map<String, dynamic>.from(firstSale["outputObjects"][0]),
           reportingUnit); //Converts the amount to green bean equivalent and into the right unit for reporting
@@ -396,11 +396,11 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
         final file = File(filePath)
           ..createSync(recursive: true)
           ..writeAsBytesSync(fileBytes);
-        debugPrint("Excel file saved: $filePath");
+        
         await fshowInfoDialog(context, "${l10n.excelFileSavedAt}: $filePath");
       }
     } else {
-      debugPrint("Failed to generate Excel file.");
+      
       await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
     }
   }

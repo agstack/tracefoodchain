@@ -1,4 +1,4 @@
-import 'package:auto_size_text/auto_size_text.dart';
+﻿import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
@@ -85,7 +85,6 @@ double convertQuantity(double quantity, String fromUnit, String toUnit) {
     toKgFactorTo = weightUnits.firstWhere((uni) => uni["name"] == toUnit,
         orElse: () => {"factor": 1.0})["toKgFactor"];
   } catch (e) {
-    print("Error: $e");
     toKgFactorFrom = 1.0;
     toKgFactorTo = 1.0;
   }
@@ -235,7 +234,6 @@ class _ItemsListState extends State<ItemsList> {
     rebuildDDS.value = true;
 
     List<Map<String, dynamic>> rList = [];
-    debugPrint("calling WHISP to get deforestation risk");
     try {
       final result = await _apiService.analyzeGeoIds(plotList);
 
@@ -246,7 +244,6 @@ class _ItemsListState extends State<ItemsList> {
 
       int plotcount = 0;
       for (final plot in result["data"]["features"]) {
-        debugPrint("Processing plot: ${plot}}");
         String currentPlotId = plotList[plotcount];
         processedPlots.add(currentPlotId);
 
@@ -261,8 +258,6 @@ class _ItemsListState extends State<ItemsList> {
       // Add entries for plots that didn't receive results
       for (String plotId in plotList) {
         if (!processedPlots.contains(plotId)) {
-          debugPrint(
-              "Plot not found in results, adding default entry: $plotId");
           rList.add({"geoid": plotId, "deforestation_risk": "plot not found"});
         }
       }
@@ -316,7 +311,6 @@ class _ItemsListState extends State<ItemsList> {
         filename: 'due_diligence_statement.pdf',
       );
     } catch (e) {
-      print('Error generating or sharing PDF: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.pdfError(e.toString())),
@@ -483,7 +477,7 @@ class _ItemsListState extends State<ItemsList> {
             children: [
               const SizedBox(height: 8),
               LayoutBuilder(builder: (context, constraints) {
-                debugPrint("Layoutbilder 2");
+                
                 final tileWidth = constraints.maxWidth;
                 return _buildCardHeader(container, contents, tileWidth);
               }),
@@ -519,10 +513,9 @@ class _ItemsListState extends State<ItemsList> {
           final nestedContents = snapshot.data ?? [];
           return LayoutBuilder(
             builder: (context, constraints) {
-              debugPrint("Layoutbilder 1");
               final tileWidth = constraints.maxWidth;
               // Now you can use tileWidth as needed
-              // print("ExpansionTile width: $tileWidth");
+              // 
 
               return ExpansionTile(
                 title: _buildCardHeader(container, nestedContents, tileWidth),
@@ -928,7 +921,7 @@ class _ItemsListState extends State<ItemsList> {
                     const SizedBox(height: 8),
                     // Animated progress bar for fill level
                     LayoutBuilder(builder: (context, constraints) {
-                      debugPrint("Layoutbilder 1");
+                      
                       double maxCapacity =
                           getSpecificPropertyfromJSON(container, "max capacity")
                                   is num

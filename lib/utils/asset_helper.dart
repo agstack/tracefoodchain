@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AssetHelper {
@@ -7,7 +7,7 @@ class AssetHelper {
       await rootBundle.load(path);
       return true;
     } catch (e) {
-      debugPrint("❌ Asset $path does not exist: $e");
+      
       return false;
     }
   }
@@ -42,7 +42,7 @@ class AssetHelper {
                   BlendMode.dstATop,
                 ),
                 onError: (exception, stackTrace) {
-                  debugPrint("❌ Error loading background image: $exception");
+                  
                 },
               ),
             ),
@@ -86,7 +86,7 @@ class AssetHelper {
             width: width,
             height: height,
             errorBuilder: (context, error, stackTrace) {
-              debugPrint("❌ Error loading image $assetPath: $error");
+              
               return fallbackWidget ??
                   Icon(
                     Icons.image_not_supported,

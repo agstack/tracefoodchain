@@ -1,4 +1,4 @@
-// import 'package:flutter/material.dart';
+﻿// import 'package:flutter/material.dart';
 // import '../l10n/app_localizations.dart';
 // import 'package:trace_foodchain_app/screens/home_screen.dart';
 
@@ -39,7 +39,7 @@
 //       // Prüfen, ob AppLocalizations verfügbar ist
 //       final l10n = AppLocalizations.of(context);
 //       if (l10n == null) {
-//         debugPrint('AppLocalizations.of(context) ist null');
+//          ist null');
 //         return;
 //       }
 

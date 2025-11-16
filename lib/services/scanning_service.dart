@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -222,8 +222,7 @@ class ScanningService {
         await FlutterNfcKit.finish();
       }
     } catch (e) {
-      debugPrint(
-          "${AppLocalizations.of(context)!.nfcScanError}: ${e.toString()}");
+      !.nfcScanError}: ${e.toString()}");
     }
   }
 
@@ -265,7 +264,7 @@ class ScanningService {
                           builder: (_) => ContainerSelectionScreen(item: {})))
                       .then((container) {
                     //A container has been selected
-                    // debugPrint(getObjectMethodUID(container));
+                    // );
                     if (container != null) {
                       final uid = container["identity"]["alternateIDs"][0]
                           ["UID"]; // getObjectMethodUID(container);

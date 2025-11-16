@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -99,19 +99,17 @@ class DatabaseHelper {
     for (var key2 in localStorage!.keys) {
       if (key2 == key) {
         await box.delete(key);
-        debugPrint("Deleted $key");
         deleted = true;
         break;
       }
     }
-    if (!deleted) debugPrint("Could not delete $key");
+    if (!deleted) {}
   }
 
 //This function looks for all containers (of all kinds) that are owned by the user and are not nested within other containers
   Future<List<Map<String, dynamic>>> getContainers(String ownerUID) async {
     // if (accountUID!="") ownerUID = accountUID; // TESTACCOUNT
     List<Map<String, dynamic>> rList = [];
-    debugPrint("getting containers owned by $ownerUID");
 
     // Get local containers
     for (var doc in localStorage!.values) {
@@ -124,11 +122,8 @@ class DatabaseHelper {
             //Check if it is not nested within other containers!
             if ((doc["currentGeolocation"]["container"]["UID"] == "") ||
                 (doc["currentGeolocation"]["container"]["UID"] == "unknown")) {
-                debugPrint(
-                  "found local ${doc["template"]["RALType"]} ${doc["identity"]["UID"]}");
 
-              
-              bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "archived" && showArchived == true);
+bool archiveCheck = doc["objectState"] != "archived" || (doc["objectState"] == "archived" && showArchived == true);
               Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
               if (((isTestmode && doc2.containsKey("isTestmode")) ||
                   (!isTestmode && !doc2.containsKey("isTestmode"))) && archiveCheck) {
@@ -157,7 +152,7 @@ class DatabaseHelper {
         ).get();
         // final cloudContainers = await cloudSyncService.apiClient
         //   .getContainersFromCloud("tracefoodchain.org", ownerUID);
-        debugPrint("found ${cloudContainers.docs.length} cloud containers");
+        
         for (var cloudDoc in cloudContainers.docs) {
           if (["bag", "container", "building", "transportVehicle"]
               .contains(cloudDoc["template"]["RALType"])) {
@@ -168,8 +163,6 @@ class DatabaseHelper {
                         "") ||
                     (cloudDoc["currentGeolocation"]["container"]["UID"] ==
                         "unknown")) {
-                  debugPrint(
-                      "found cloud ${cloudDoc["template"]["RALType"]} ${cloudDoc["identity"]["UID"]}");
 
 bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
                   // Check if not already in local list
@@ -192,7 +185,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
           }
         }
       } catch (e) {
-        debugPrint("Error fetching cloud containers: $e");
+        
       }
     }
 
@@ -201,7 +194,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
 
   Future<List<Map<String, dynamic>>> getInboxItems(String ownerUID) async {
     List<Map<String, dynamic>> rList = [];
-    debugPrint("getting inbox items for $ownerUID");
+    
     for (var doc in localStorage!.values) {
       if (doc["currentGeolocation"] != null) {
         final currentGeolocationIncomingUID =
@@ -215,8 +208,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
 
         if (isOwner && currentGeolocationIncomingUID == "inTransfer") {
           //if user is owner and container is empty => inbox
-          debugPrint(
-              "found ${doc["template"]["RALType"]} ${doc["identity"]["UID"]}");
+          
           Map<String, dynamic> doc2 = Map<String, dynamic>.from(doc);
           if ((isTestmode && doc2.containsKey("isTestmode")) ||
               (!isTestmode && !doc2.containsKey("isTestmode"))) rList.add(doc2);
@@ -280,16 +272,12 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
             .where('currentGeolocation.container.UID', isEqualTo: containerUID)
             .get();
 
-        debugPrint(
-            "found ${cloudItems.docs.length} cloud items in container $containerUID");
-
-        for (var cloudDoc in cloudItems.docs) {
+for (var cloudDoc in cloudItems.docs) {
           // Check if not already in local list
           bool alreadyExists = rList.any((localDoc) =>
               localDoc["identity"]["UID"] == cloudDoc["identity"]["UID"]);
 
-      
-          bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
+bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectState"] == "archived" && showArchived == true);
           if (!alreadyExists && archiveCheck) {
             Map<String, dynamic> doc2 =
                 Map<String, dynamic>.from(cloudDoc.data());
@@ -300,7 +288,7 @@ bool archiveCheck = cloudDoc["objectState"] != "archived" || (cloudDoc["objectSt
           }
         }
       } catch (e) {
-        debugPrint("Error fetching cloud contained items: $e");
+        
       }
     }
 
@@ -383,7 +371,7 @@ String formatTimestamp(dynamic timestamp) {
   try {
     return DateFormat('yyyy-MM-dd HH:mm').format(timestamp);
   } catch (e) {
-    print('Error formatting timestamp: $e');
+    
     return 'Invalid Date';
   }
 }
@@ -423,19 +411,17 @@ dynamic convertToJson(dynamic firestoreObj) {
         try {
           if (value != null &&
               value.runtimeType.toString().contains('GeoPoint')) {
-            debugPrint("Spezielle GeoPoint-Konvertierung für $key");
+            
             convertedObj[key] = {
               'latitude': value.latitude,
               'longitude': value.longitude,
             };
           } else {
-            debugPrint(
-              "Konvertierungsfehler für Schlüssel $key: $e - Typ war: ${value?.runtimeType}",
-            );
+            
             convertedObj[key] = null; // Standardwert bei Fehlern
           }
         } catch (innerError) {
-          debugPrint("Innerer Fehler bei Konvertierung von $key: $innerError");
+          
           convertedObj[key] = null;
         }
       }
@@ -456,7 +442,7 @@ dynamic convertToJson(dynamic firestoreObj) {
         'longitude': firestoreObj.longitude,
       };
     } catch (e) {
-      debugPrint("Fehler bei direkter GeoPoint-Konvertierung: $e");
+      
       return null;
     }
   } else {
@@ -480,7 +466,7 @@ dynamic convertToJson(dynamic firestoreObj) {
 //             (value.millisecondsSinceEpoch ~/ 1000) * 1000);
 //         String isoString =
 //             dateInSeconds.toIso8601String().split('.').first.trim();
-//         // debugPrint("ISOSTRING: >>>" + isoString+"<<<");
+//         // 
 //         convertedObj[key] = isoString;
 //       } else if (value is GeoPoint) {
 //         convertedObj[key] = {
@@ -496,7 +482,7 @@ dynamic convertToJson(dynamic firestoreObj) {
 //     final dateInSeconds = DateTime.fromMillisecondsSinceEpoch(
 //         (firestoreObj.millisecondsSinceEpoch ~/ 1000) * 1000);
 //     String isoString = dateInSeconds.toIso8601String().split('.').first.trim();
-//     // debugPrint("ISOSTRING: >>>" + isoString+"<<<");
+//     // 
 
 //     return isoString;
 //   } else {

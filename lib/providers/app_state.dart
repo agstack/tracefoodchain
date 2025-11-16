@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,7 +83,7 @@ class AppState extends ChangeNotifier {
       } else if (result is ConnectivityResult) {
         _updateConnectionStatus([result]);
       } else {
-        print('Unexpected connectivity result type: ${result.runtimeType}');
+        
         setConnected(false);
       }
     });
@@ -100,13 +100,12 @@ class AppState extends ChangeNotifier {
           results.any((result) => result != ConnectivityResult.none);
       setConnected(hasConnection);
       if ((oldConnectionState == false) && (hasConnection == true)) {
-        debugPrint(
-            "connection state has changed to online - trying to sync to cloud");
+        
         //If state changes from offline to online, sync data to cloud!
         final databaseHelper = DatabaseHelper();
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
-            debugPrint("syncing $cloudKey");
+            
             await cloudSyncService.syncMethods(cloudKey);
           }
         }
@@ -127,10 +126,8 @@ class AppState extends ChangeNotifier {
     final String? userId = prefs.getString('userId');
     if (userId != null) {
       if (FirebaseAuth.instance.currentUser == null) {
-        debugPrint(
-            "ERROR: User ID found in shared preferences but user does not exist => CLOUDCHANGE?");
 
-        signOut();
+signOut();
         //In this case, we should make sure that old data is kept on the device and not deleted
         //However, all old processes will keep the old user as executor and owner and might need manual assignment later
       } else {

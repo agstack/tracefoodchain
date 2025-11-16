@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class DebugValueListenableBuilder<T> extends StatefulWidget {
@@ -29,8 +29,7 @@ class _DebugValueListenableBuilderState<T>
     super.initState();
     value = widget.valueListenable.value;
     widget.valueListenable.addListener(_valueChanged);
-    debugPrint(
-        "🎯 DebugValueListenableBuilder '${widget.debugName}' initialized");
+    
   }
 
   @override
@@ -40,26 +39,21 @@ class _DebugValueListenableBuilderState<T>
       oldWidget.valueListenable.removeListener(_valueChanged);
       value = widget.valueListenable.value;
       widget.valueListenable.addListener(_valueChanged);
-      debugPrint(
-          "🔄 DebugValueListenableBuilder '${widget.debugName}' updated");
+      
     }
   }
 
   @override
   void dispose() {
-    debugPrint(
-        "🗑️ DebugValueListenableBuilder '${widget.debugName}' disposing");
+    
     widget.valueListenable.removeListener(_valueChanged);
     super.dispose();
   }
 
   void _valueChanged() {
-    debugPrint(
-        "🔔 DebugValueListenableBuilder '${widget.debugName}' value changed, mounted: $mounted");
 
-    if (!mounted) {
-      debugPrint(
-          "❌ DebugValueListenableBuilder '${widget.debugName}' received value change but is not mounted!");
+if (!mounted) {
+      
       return;
     }
 
@@ -70,12 +64,9 @@ class _DebugValueListenableBuilderState<T>
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-        "🏗️ DebugValueListenableBuilder '${widget.debugName}' building, mounted: $mounted");
 
-    if (!mounted) {
-      debugPrint(
-          "❌ DebugValueListenableBuilder '${widget.debugName}' building but not mounted!");
+if (!mounted) {
+      
       return Container();
     }
 

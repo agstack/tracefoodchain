@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -46,7 +45,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    debugPrint("🔍 SplashScreen initState() called");
 
     // Debug: Asset-Verfügbarkeit prüfen
     _checkAssetAvailability();
@@ -66,16 +64,14 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _checkAssetAvailability() async {
     try {
       await rootBundle.load('assets/images/background.png');
-      debugPrint("✅ Background asset is available");
     } catch (e) {
-      debugPrint("❌ Background asset not found: $e");
+      // Asset nicht verfügbar
     }
 
     try {
       await rootBundle.load('assets/images/diasca_logo.png');
-      debugPrint("✅ Logo asset is available");
     } catch (e) {
-      debugPrint("❌ Logo asset not found: $e");
+      // Asset nicht verfügbar
     }
   }
 
@@ -125,12 +121,11 @@ class _SplashScreenState extends State<SplashScreen>
         // });
       });
     } catch (e) {
-      debugPrint(e.toString());
+      // Fehler aufgetreten
     }
   }
 
   void _showEmailVerificationOverlay() {
-    debugPrint("🔍 _showEmailVerificationOverlay() called");
     if (_disposed) return;
 
     _verificationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
@@ -141,11 +136,8 @@ class _SplashScreenState extends State<SplashScreen>
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        debugPrint("🔍 Email verification dialog builder called");
         final l10n = AppLocalizations.of(context);
         if (l10n == null) {
-          debugPrint(
-              "❌ CRITICAL: AppLocalizations is null in email verification dialog!");
           return AlertDialog(
             title: const Text("Email Verification"),
             content: const SizedBox(
@@ -225,10 +217,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future sendVerificationEmail() async {
-    debugPrint("🔍 sendVerificationEmail() called");
     final l10n = AppLocalizations.of(context);
     if (l10n == null) {
-      debugPrint("❌ AppLocalizations is null in sendVerificationEmail!");
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
               Text("Localization error - cannot send verification email")));
@@ -252,7 +242,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToNextScreen() async {
-    debugPrint("🔍 _navigateToNextScreen() called");
     AppLocalizations? l10n;
     int attempts = 0;
     while (l10n == null && attempts < 50) {
@@ -260,19 +249,11 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 100));
       l10n = AppLocalizations.of(context);
       attempts++;
-      if (attempts % 10 == 0) {
-        debugPrint("🔍 Waiting for AppLocalizations... attempt $attempts");
-      }
     }
 
     if (l10n == null) {
-      debugPrint(
-          "❌ CRITICAL: AppLocalizations still null after waiting 5 seconds!");
       return;
     }
-
-    debugPrint(
-        "✅ AppLocalizations loaded successfully in _navigateToNextScreen");
     //successful auth, initialize Hive
     await initializeUserLocalStorage(FirebaseAuth.instance.currentUser!.uid);
 
@@ -283,14 +264,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (appState.isConnected) {
       //ToDo: Display screenblocker "syncing data with cloud - please wait"
       // openRAL: Update Templates
-      debugPrint("syncing openRAL");
       snackbarMessageNotifier.value = "${l10n.syncingWith} open-ral.io";
       await cloudSyncService.syncOpenRALTemplates('open-ral.io');
 
       // sync all non-open-ral methods with it's clouds on startup
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
-          debugPrint("syncing $cloudKey");
           snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
           await cloudSyncService.syncMethods(cloudKey);
         }
@@ -325,20 +304,16 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if private key exists, if not generate new keypair
     final privateKey = await keyManager.getPrivateKey();
     if (privateKey == null) {
-      debugPrint("No private key found - generating new keypair...");
       snackbarMessageNotifier.value = l10n.newKeypairNeeded;
       "No private key found - generating new keypair...";
       final success = await keyManager.generateAndStoreKeys();
       if (!success) {
-        debugPrint("WARNING: Failed to initialize key management!");
         snackbarMessageNotifier.value = l10n.failedToInitializeKeyManagement;
         secureCommunicationEnabled = false;
       } else {
         secureCommunicationEnabled = true;
       }
     } else {
-      debugPrint("Found existing private key");
-
       secureCommunicationEnabled = true;
     }
 
@@ -362,8 +337,6 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
 
-      debugPrint(
-          "user profile not found in local database - creating new one...");
       snackbarMessageNotifier.value = l10n.newUserProfileNeeded;
       Map<String, dynamic> newUser = await getOpenRALTemplate("human");
       newUser["identity"]["UID"] = FirebaseAuth.instance.currentUser?.uid;
@@ -393,7 +366,6 @@ class _SplashScreenState extends State<SplashScreen>
       appUserDoc = await getLocalObjectMethod(getObjectMethodUID(newUser));
     } else {
       //User mit dieser deviceId schon vorhanden.
-      debugPrint("user profile found in local database");
     }
 
 //DEBUG CHANGE: CHECK IF THE APPUSERDOC CAN BE FOUND IN CLOUD DATABASE. IF NOT WRITE IT DIRECTLY TO THE CLOUD,IF ONLINE
@@ -406,17 +378,13 @@ class _SplashScreenState extends State<SplashScreen>
         final userDocSnapshot = await userDocRef.get();
 
         if (!userDocSnapshot.exists) {
-          debugPrint("User doc not found in cloud, uploading local doc...");
           snackbarMessageNotifier.value =
               "DEBUG: Uploading user profile to the cloud...";
 
           await userDocRef.set(appUserDoc!);
-          debugPrint("User doc successfully uploaded to cloud");
-        } else {
-          debugPrint("User doc already exists in cloud");
         }
       } catch (e) {
-        debugPrint("Error checking/uploading user doc to cloud: $e");
+        // Fehler beim Cloud-Upload
       }
     }
 
@@ -431,14 +399,12 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (cloudRole.isNotEmpty) {
           finalRole = cloudRole;
-          debugPrint("User role loaded from cloud: $cloudRole");
 
           // Aktualisiere das lokale appUserDoc mit der Cloud-Rolle
           if (cloudRole !=
               getSpecificPropertyfromJSON(appUserDoc!, "userRole")) {
             appUserDoc = setSpecificPropertyJSON(
                 appUserDoc!, "userRole", cloudRole, "String");
-            debugPrint("Local appUserDoc updated with cloud role: $cloudRole");
           }
         } else {
           // Fallback auf lokale Rolle
@@ -447,10 +413,8 @@ class _SplashScreenState extends State<SplashScreen>
           finalRole = (localRole != "" && localRole != "-no data found-")
               ? localRole
               : '';
-          debugPrint("User role loaded from local document: $finalRole");
         }
       } catch (e) {
-        debugPrint("Error loading role from cloud, falling back to local: $e");
         final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
         finalRole = (localRole != "" && localRole != "-no data found-")
             ? localRole
@@ -461,12 +425,10 @@ class _SplashScreenState extends State<SplashScreen>
       final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
       finalRole =
           (localRole != "" && localRole != "-no data found-") ? localRole : '';
-      debugPrint("Offline - using local role: $finalRole");
     }
 
     if (finalRole.isNotEmpty) {
       appState.setUserRole(finalRole);
-      debugPrint("Final user role set: $finalRole");
     } else {
       // Neuer User ohne Rolle - setze Standard-Rolle "Trader"
       final newUser =
@@ -474,7 +436,6 @@ class _SplashScreenState extends State<SplashScreen>
       await changeObjectData(newUser); // Nutze changeObjectData für Logging
       appState.setUserRole("Trader");
       finalRole = "Trader";
-      debugPrint("New user - assigned default role: Trader");
     }
 
     // Invalidiere Permission-Cache nach Rollenupdate
@@ -488,7 +449,6 @@ class _SplashScreenState extends State<SplashScreen>
         builder: (BuildContext context) {
           final l10n = AppLocalizations.of(context);
           if (l10n == null) {
-            debugPrint("❌ AppLocalizations is null in security error dialog!");
             return AlertDialog(
               title: const Text("Security Error"),
               content: const Text(
@@ -526,15 +486,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    debugPrint("🔍 SplashScreen build() called");
-
     // Sicherheitsprüfung für AppLocalizations
     final l10n = AppLocalizations.of(context);
     if (l10n == null) {
-      debugPrint(
-          "❌ CRITICAL ERROR: AppLocalizations.of(context) returned null!");
-      debugPrint(
-          "❌ This means AppLocalizations.delegate is missing from main.dart localizationsDelegates");
       return Scaffold(
         body: Center(
           child: Column(
@@ -561,7 +515,6 @@ class _SplashScreenState extends State<SplashScreen>
       );
     }
 
-    debugPrint("✅ AppLocalizations successfully loaded");
     return Scaffold(
       body: Stack(
         children: [

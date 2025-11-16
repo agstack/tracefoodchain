@@ -1,4 +1,4 @@
-//This is a collection of services for working with openRAL
+﻿//This is a collection of services for working with openRAL
 //It has to work online and offline, so we have to use Hive to store templates
 import 'dart:convert';
 
@@ -23,7 +23,7 @@ var uuid = const Uuid();
 //! 1. CloudConnectors
 
 Future<Map<String, Map<String, dynamic>>> getCloudConnectors() async {
-  debugPrint("loading cloud connectors from initial repo");
+  
   Map<String, Map<String, dynamic>> rList = {};
 
   //Always populate with cloudConnectors from initial repo
@@ -50,8 +50,7 @@ dynamic getCloudConnectionProperty(String domain, connectorType, property) {
     //read requested property
     rObject = getSpecificPropertyfromJSON(subConnector, property);
   } catch (e) {
-    debugPrint(
-        "The requested cloud function property $property does not exist!");
+    
     rObject = null;
   }
 
@@ -67,7 +66,7 @@ Future<Map<String, dynamic>> getOpenRALTemplate(String templateName) async {
         json.decode(json.encode(openRALTemplates.get(templateName)));
     rMap = Map<String, dynamic>.from(res);
   } catch (e) {
-    debugPrint("Problem");
+    
   }
   return rMap;
 }
@@ -88,10 +87,10 @@ Future<Map<String, dynamic>> getRALObjectMethodTemplateAsJSON(
       try {
         json = jsonDecode(response2.body);
       } catch (e) {
-        print("ERROR: Could not pars json from RAL!");
+        
       }
     } else {
-      print("Error requesting RAL template via REST");
+      
     }
 
     // _json = jsonDecode(jsonString);
@@ -231,10 +230,10 @@ Future<Map<String, dynamic>> setObjectMethod(Map<String, dynamic> objectMethod,
         if (kDebugMode) {
           // await Share.share(signingObject);
         }
-        // debugPrint("[SIGN] UID: ${objectMethod["identity"]["UID"]}");
-        // debugPrint("[SIGN] Paths to sign: $pathsToSign");
-        // debugPrint("[SIGN] Signing object: $signingObject");
-        // debugPrint("[SIGN] Signing object length: ${signingObject.length}");
+        // 
+        // 
+        // 
+        // 
 
         final signature =
             await digitalSignature.generateSignature(signingObject);
@@ -352,8 +351,7 @@ Map<String, dynamic> addInputobject(
     method['inputObjects'].add(objectCopy);
   } else {
     // If the object exists, replace it
-    debugPrint(
-        'An object with UID $newObjectUID already exists in inputObjects, replacing...');
+    
     objectCopy["role"] = role; // Ensure the role is updated
     method['inputObjects'][index] = objectCopy;
   }
@@ -366,8 +364,7 @@ Map<String, dynamic> addInputobject(
 //     objectCopy["role"] = role;
 //     method['inputObjects'].add(objectCopy);
 //   } else {
-//     debugPrint(
-//         'An object with UID $newObjectUID already exists in inputObjects.');
+//     
 //   }
 
   return method;
@@ -395,8 +392,7 @@ Map<String, dynamic> addOutputobject(
     method['outputObjects'].add(objectCopy);
   } else {
     // If the object exists, replace it
-    debugPrint(
-        'An object with UID $newObjectUID already exists in outputObjects, replacing...');
+    
     objectCopy["role"] = role; // Ensure the role is updated
     method['outputObjects'][index] = objectCopy;
   }
@@ -431,7 +427,7 @@ Future updateMethodHistories(Map<String, dynamic> jsonDoc) async {
     }
 
   for (final uid in ouidList) {
-    debugPrint("checking $uid");
+    
     final oDoc = await getLocalObjectMethod(uid);
     if (oDoc.isNotEmpty) {
       try {
@@ -440,18 +436,16 @@ Future updateMethodHistories(Map<String, dynamic> jsonDoc) async {
                 orElse: () => {})
             .isEmpty) {
           //Check if already in List
-          debugPrint(
-              "Eintrag $methodUID existiert noch nicht in Methodhistory - try to add!");
+          
           oDoc["methodHistoryRef"]
               .add({"UID": methodUID, "RALType": methodRALType});
 
           await setObjectMethod(oDoc, false, false);
         } else {
-          debugPrint(
-              "Eintrag $methodUID existiert schon in Methodhistory - not added");
+          
         }
       } catch (e) {
-        debugPrint("Knoten MethodHistory existiert noch nicht in $uid");
+        
         oDoc["methodHistoryRef"] = {"UID": methodUID, "RALType": methodRALType};
 
         await setObjectMethod(oDoc, false, false);
@@ -515,7 +509,7 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
     Map<String, dynamic> rDoc2 = await getOpenRALTemplate(types[0]);
     rDoc = rDoc2;
     rDoc["identity"]["UID"] = "";
-    debugPrint("generated new template for ${types[0]}");
+    
   }
   return rDoc;
 }
@@ -575,7 +569,7 @@ String createSigningObject(
     try {
       jp = JsonPath(path);
     } catch (e) {
-      debugPrint(e.toString());
+      );
     }
     final matches = jp!.read(copy);
     if (matches.isNotEmpty) {
@@ -611,7 +605,7 @@ String createSigningObject(
     //ToDO: We need to convert DateTime to isostring and geopoint to a map before serializing
     final rstring = jsonEncode(partsToSign);
   } catch (e) {
-    debugPrint(e.toString());
+    );
   }
   return jsonEncode(partsToSign);
 }

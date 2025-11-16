@@ -1,4 +1,4 @@
-/// Asset Registry Service
+﻿/// Asset Registry Service
 /// ------------------------------------------------------------
 /// A Dart service for interacting with the AgStack Asset Registry
 /// based on the provided OpenAPI structure: https://agstack.github.io/agstack-website/apis/asset_registry.json
@@ -96,9 +96,8 @@ class AssetRegistryService {
     });
 
     // Debug: Print payload to console
-    print('registerFieldBoundary Payload: $body');
 
-    return _post(
+return _post(
       '/register-field-boundary',
       query: {},
       body: body,
@@ -261,9 +260,9 @@ class AssetRegistryService {
     }
 
     // Debug: Print request details
-    // print('POST Request URL: $uri');
-    // print('POST Request Headers: $headers');
-    // print('POST Request Body: $body');
+    // 
+    // 
+    // 
 
     return http
         .post(
@@ -297,11 +296,7 @@ class AssetRegistryService {
       );
     }
 
-    print('GET Request URL: $uri');
-    print('GET Request Headers: $headers');
-    print('GET Request Query: $query');
-
-    return http.get(uri, headers: headers).timeout(timeout);
+return http.get(uri, headers: headers).timeout(timeout);
   }
 
   Future<void> _appendAuth(

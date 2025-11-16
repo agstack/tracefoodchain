@@ -1,4 +1,4 @@
-// This service syncs local hive database to/from the clouds
+﻿// This service syncs local hive database to/from the clouds
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -29,7 +29,7 @@ class CloudApiClient {
       urlString = getCloudConnectionProperty(
           domain, "cloudFunctionsConnector", "persistPublicKey")["url"];
     } catch (e) {
-      debugPrint("Error getting cloud connection properties: $e");
+      
       return false;
     }
 
@@ -58,7 +58,7 @@ class CloudApiClient {
           return true;
         }
       } catch (e) {
-        debugPrint("Error sending public key to Firebase: $e");
+        
         return false;
       }
     }
@@ -75,10 +75,8 @@ class CloudApiClient {
         "getRALMethodByUID",
       )["url"];
     } catch (e) {
-      debugPrint(
-          "Error getting cloud connection property 'syncObjectsMethodsFromCloud': $e");
 
-      return {};
+return {};
     }
     final apiKey = await FirebaseAuth.instance.currentUser?.getIdToken();
 
@@ -95,8 +93,7 @@ class CloudApiClient {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        debugPrint(
-            "Failed to get method $documentUID from cloud: ${response.statusCode}");
+        
         return {};
       }
     } else {
@@ -135,15 +132,13 @@ class CloudApiClient {
       );
 
       if (response.statusCode == 200) {
-        debugPrint("Sync of Method '$methodUid' successful");
 
-        // return jsonDecode(response.body);
+// return jsonDecode(response.body);
         return {"response": "success"};
       } else {
         //Response codes? 400: Bad Request, 401: Unauthorized, 403: Forbidden, 404: Not Found, 500: Internal Server Error
         //Merge Conflict: 409
-        debugPrint(
-            "Failed to sync method '$methodUid' to cloud: ${response.statusCode}");
+        
         return {
           "response": "${response.statusCode}",
           "responseDetails": jsonDecode(response.body),
@@ -167,10 +162,8 @@ class CloudApiClient {
         "syncFromCloud",
       )["url"];
     } catch (e) {
-      debugPrint(
-          "Error getting cloud connection property 'syncObjectsMethodsFromCloud': $e");
 
-      return {};
+return {};
     }
     String? apiKey = await FirebaseAuth.instance.currentUser?.getIdToken();
     if (urlString != null && apiKey != null) {
@@ -188,12 +181,11 @@ class CloudApiClient {
           Map<String, dynamic> jsonResponse = jsonDecode(response.body);
           return jsonResponse;
         } else {
-          debugPrint(
-              'Failed to sync objects and methods from cloud: ${response.statusCode}');
+          
           return {};
         }
       } catch (e) {
-        debugPrint('Error syncing from cloud: $e');
+        
         return {};
       }
     } else {
@@ -216,7 +208,7 @@ class CloudSyncService {
         // final cloudTemplate = await _apiClient.getRalObjectByUid(domain,templateName);
         // openRALTemplates.put(templateName, cloudTemplate);
       } catch (e) {
-        debugPrint('Error syncing template $templateName: $e');
+        
       }
     }
   }
@@ -226,7 +218,7 @@ class CloudSyncService {
   Future<bool> syncMethods(String domain) async {
     List<String> failedSyncedOutputObjects = [];
     if (_isSyncing) {
-      debugPrint("Sync bereits aktiv, überspringe $domain");
+      
       return false;
     }
     _isSyncing = true;
@@ -332,8 +324,7 @@ class CloudSyncService {
                   // missingParameters:
                   // invalidSignature => Flag method as invalid
                   // errorMessage
-                  debugPrint(
-                      "Error syncing method {$methodUid}: 400: ${syncresult["responseDetails"]}");
+                  
                   if (kDebugMode && 1 == 2) {
                     String signingObject = "";
                     List<String> pathsToSign = [];
@@ -380,7 +371,7 @@ class CloudSyncService {
           //   'text': "error syncing to cloud",
           //   'errorCode': "unknown error"
           // };
-          debugPrint('Error syncing method {$methodUid}: $e');
+          
         }
         if (syncSuccess) {
           snackbarMessageNotifier.value = "sync to cloud successful";
@@ -400,7 +391,7 @@ class CloudSyncService {
           await apiClient.syncObjectsMethodsFromCloud(domain, deviceHashes);
       // this will return an empty object in case there is an error.
       if (cloudData.isEmpty) {
-        debugPrint("Unknown error syncing from cloud!");
+        
         return false;
       }
 
@@ -408,17 +399,14 @@ class CloudSyncService {
       List<dynamic> mergedList = [];
       if (cloudData.containsKey("ralMethods") &&
           cloudData["ralMethods"] is List) {
-        debugPrint(
-            "Got ${cloudData["ralMethods"].length} updated methods from cloud");
 
-        mergedList.addAll(cloudData["ralMethods"]);
+mergedList.addAll(cloudData["ralMethods"]);
       }
       if (cloudData.containsKey("ralObjects") &&
           cloudData["ralObjects"] is List) {
-        debugPrint(
-            "Got ${cloudData["ralObjects"].length} updated objects from cloud");
+        
         for (final item in cloudData["ralObjects"]) {
-          // debugPrint(getObjectMethodUID(item));
+          // );
           //Check if the UID of this object is in the failedSyncedOutputObjects, only add if not
           String uid = getObjectMethodUID(item);
           if (!failedSyncedOutputObjects.contains(uid)) {
@@ -430,7 +418,7 @@ class CloudSyncService {
       for (final item in mergedList) {
         final docData = Map<String, dynamic>.from(item);
 
-        //debugPrint(jsonEncode(docData));
+        //);
         docData.remove("needsSync");
         await setObjectMethod(docData, false, false);
       }
@@ -454,7 +442,7 @@ class CloudSyncService {
       }
       //
     } catch (e) {
-      debugPrint("Error during syncing to cloud: $e !");
+      
       return false;
     } finally {
       _isSyncing = false;
@@ -479,16 +467,16 @@ String generateStableHash(Map<String, dynamic> docData) {
 
   final jsonString = jsonEncode(valueMap);
   // if (valueMap.keys.contains("methodHistoryRef")) {
-  //   debugPrint(jsonString);
+  //   
   // }
   final String uid = getObjectMethodUID(docData);
 
-  //debugPrint("JSON String for Hash: '$jsonString'");
+  //
 
   final bytes = utf8.encode(jsonString);
 
-  // debugPrint("Bytes Length: ${bytes.length}");
-  // debugPrint("First 10 Bytes: ${bytes.sublist(0, 10)}");
+  // 
+  // }");
 
   final hashStr = sha256.convert(bytes).toString();
 

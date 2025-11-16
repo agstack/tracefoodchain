@@ -39,9 +39,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
 
     final currentRole = _roleService.getCurrentUserRole();
-    print('🔍 Current user role in checkPermissionsAndLoad: $currentRole');
-    print(
-        '🔍 Has user_management permission: ${_permissionService.hasPermission('user_management')}');
 
     // Prüfe Grundberechtigung für User Management
     if (!_permissionService.hasPermission('user_management')) {
@@ -135,11 +132,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final availableRoles = _roleService.getAvailableRoles();
     final currentUserRole = _roleService.getCurrentUserRole();
 
-    // Debug-Ausgaben
-    print('🔍 Current user role: $currentUserRole');
-    print('🔍 Available roles: $availableRoles');
-    print('🔍 Can manage user: ${user['canManage']}');
-
     if (availableRoles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -227,8 +219,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   Future<void> _assignRole(
       String userUID, String newRole, String reason) async {
     final l10n = AppLocalizations.of(context)!;
-    print(
-        '🔄 Attempting to assign role $newRole to user $userUID with reason: $reason');
 
     try {
       // Zeige Loading-Indicator

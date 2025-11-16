@@ -1,4 +1,4 @@
-// Web-spezifische Implementierung
+﻿// Web-spezifische Implementierung
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 
@@ -10,5 +10,4 @@ Future<void> downloadFile(List<int> fileBytes, String fileName) async {
     ..click();
   html.Url.revokeObjectUrl(url);
 
-  debugPrint("File download initiated for web: $fileName");
 }

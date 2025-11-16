@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -347,8 +347,7 @@ Future<List<Map<String, dynamic>>> initBuyCoffee(
     receivingContainer =
         await getLocalObjectMethod(getObjectMethodUID(receivingContainer));
   }
-  debugPrint(
-      "generated/loaded container ${getObjectMethodUID(receivingContainer)}");
+  }");
 
   transfer_ownership = await getOpenRALTemplate("changeOwner");
   setObjectMethodUID(transfer_ownership, const Uuid().v4());

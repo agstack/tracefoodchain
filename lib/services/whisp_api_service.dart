@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:trace_foodchain_app/models/whisp_result_model.dart';
@@ -30,7 +30,7 @@ class WhispApiService {
       );
 
       if (response.statusCode == 200) {
-        debugPrint('Geo IDs analysis successful: ${response.body}');
+        
         return  jsonDecode(response.body);
       } else {
         throw Exception(
@@ -38,7 +38,7 @@ class WhispApiService {
       }
     } catch (e) {
       // Log the error
-      debugPrint('Error in analyzeGeoIds: $e');
+      
       throw Exception('An error occurred while analyzing Geo IDs');
     }
   }

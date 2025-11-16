@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -41,7 +41,7 @@ class _QRCodeReceiverState extends State<QRCodeReceiver> {
         _totalChunks = int.parse(header[1]);
 
         if (chunkIndex < 1 || chunkIndex > _totalChunks) {
-          debugPrint('Ungültiger Chunk-Index: $chunkIndex');
+          
           return;
         }
 
@@ -55,7 +55,7 @@ class _QRCodeReceiverState extends State<QRCodeReceiver> {
           }
         }
       } catch (e) {
-        debugPrint('Fehler beim Verarbeiten des Chunks: $e');
+        
       } finally {
         _isProcessing = false;
       }
@@ -131,7 +131,7 @@ class _QRCodeReceiverState extends State<QRCodeReceiver> {
         }
       });
     } catch (e) {
-      debugPrint('Fehler beim Assemblieren: $e');
+      
       fshowInfoDialog(context, AppLocalizations.of(context)!.noDataAvailable);
     }
   }

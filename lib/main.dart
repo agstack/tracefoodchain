@@ -1,4 +1,4 @@
-//! Generate new localisation: flutter gen-l10n
+﻿//! Generate new localisation: flutter gen-l10n
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -49,14 +49,12 @@ class DebugValueNotifier<T> extends ValueNotifier<T> {
 
   @override
   set value(T newValue) {
-    debugPrint(
-        "🔄 ValueNotifier '$name' value changed from $value to $newValue");
 
-    // Check for listeners
+// Check for listeners
     if (hasListeners) {
-      debugPrint("📢 ValueNotifier '$name' has listeners");
+      
     } else {
-      debugPrint("⚠️ ValueNotifier '$name' has no listeners");
+      
     }
 
     super.value = newValue;
@@ -64,13 +62,12 @@ class DebugValueNotifier<T> extends ValueNotifier<T> {
 
   @override
   void notifyListeners() {
-    debugPrint("🔔 ValueNotifier '$name' notifying listeners");
+    
     try {
       super.notifyListeners();
     } catch (e, stackTrace) {
-      debugPrint("❌ Error in ValueNotifier '$name' notifyListeners: $e");
-      debugPrint("Stack trace: $stackTrace");
-      rethrow;
+
+rethrow;
     }
   }
 }
@@ -282,8 +279,7 @@ void main() async {
   // Enable detailed stack traces for debugging
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    debugPrint("=== FULL STACK TRACE ===");
-    debugPrint(details.stack.toString());
+    // Stack trace information available for debugging
   };
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -349,7 +345,6 @@ Future<void> initializeUserLocalStorage(String userId) async {
   // Lade cloudConnectors für diesen User
   cloudConnectors = await getCloudConnectors();
 
-  debugPrint("LocalStorage für User $userId initialisiert");
 }
 
 // Funktion zum Schließen des User LocalStorage (bei Logout)
@@ -358,27 +353,26 @@ Future<void> closeUserLocalStorage() async {
     await localStorage!.close();
     localStorage = null;
     cloudConnectors.clear();
-    debugPrint("User LocalStorage geschlossen");
+    
   }
-  
+
   // KRITISCH: Alle globalen Variablen zurücksetzen, die Benutzerdaten enthalten
   appUserDoc = null;
   inbox.clear();
   inboxCount.value = 0;
-  
+
   // Cache des PermissionService invalidieren
   final permissionService = PermissionService();
   permissionService.invalidateRoleCache();
-  
+
   // Ausgewählte Items zurücksetzen (aus items_list_widget.dart)
   selectedItems.clear();
-  
+
   // UI-Update erzwingen
   repaintContainerList.value = true;
   rebuildSpeedDial.value = true;
   rebuildDDS.value = true;
-  
-  debugPrint("✅ Alle benutzerspezifischen globalen Variablen zurückgesetzt");
+
 }
 
 // Helper Funktion um sicherzustellen, dass localStorage verfügbar ist
@@ -391,30 +385,29 @@ Future<void> _initializeAppState(AppState appState) async {
   digitalSignature = DigitalSignature();
 
   // Check internet connectivity at startup
-  debugPrint("checking connectivity on startup...");
+  
   var connectivityResult = await (Connectivity().checkConnectivity());
   bool cr = false;
-  debugPrint("inital connection state is $cr");
+  
   appState.setConnected(connectivityResult != [ConnectivityResult.none]);
 
   // Start the connectivity listener to see changes in connectivity
-  debugPrint("starting connectivity listener...");
+  
   appState.startConnectivityListener();
 
   // Check camera availability
   // String userAgent = html.window.navigator.userAgent.toLowerCase();
 
-  debugPrint("checking camera availability...");
-  try {
+try {
     if (1 == 1) {
       // if (!userAgent.contains('macintosh')) {
       final cameras = await availableCameras();
-      debugPrint("camera state is ${cameras.isNotEmpty}");
+      
       appState.setHasCamera(cameras.isNotEmpty);
-      debugPrint("...done");
+      
     } else {
       appState.setHasCamera(false);
-      debugPrint("!!! camera access is not yet working on browser on Mac!");
+      
 //! Does not work in Flutter Web on MacOS!
     }
   } catch (_) {
@@ -422,28 +415,28 @@ Future<void> _initializeAppState(AppState appState) async {
   }
 
   // Check NFC availability
-  debugPrint("checking nfc availability...");
+  
   bool hasNFC = false;
   NFCAvailability availability = await FlutterNfcKit.nfcAvailability;
   try {
     if (availability == NFCAvailability.available) {
       hasNFC = true;
-      debugPrint("NFC available");
+      
     } else {
       hasNFC = false;
-      debugPrint("NFC not available");
+      
     }
   } catch (e) {
-    debugPrint("error checking for nfc");
+    
     hasNFC = false;
   }
 
   appState.setHasNFC(hasNFC);
 
   // Check GPS availability
-  debugPrint("checking geolocator availability");
+  
   bool hasGPS = await Geolocator.isLocationServiceEnabled();
-  debugPrint("geolocator state is $hasGPS");
+  
   appState.setHasGPS(hasGPS);
 }
 

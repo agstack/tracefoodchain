@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -70,7 +70,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     try {
       // Prüfe localStorage
       if (!localStorage!.isOpen) {
-        debugPrint('localStorage is not open');
+        
         return false;
       }
 
@@ -80,7 +80,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       // Weitere Prüfungen können hier hinzugefügt werden
       return true;
     } catch (e) {
-      debugPrint('Error checking app initialization: $e');
+      
       return false;
     }
   }
@@ -110,7 +110,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         _applyDateFilter(); // Wende den aktuellen Filter an
       });
     } catch (e) {
-      debugPrint('Error loading fields: $e');
+      
     } finally {
       if (mounted) {
         setState(() {
@@ -186,7 +186,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           }
         },
         onError: (error) {
-          debugPrint('Error in stream: $error');
+          
           if (!completer.isCompleted) {
             completer.completeError(error);
           }
@@ -221,7 +221,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         return dateB.compareTo(dateA); // Neueste zuerst
       });
     } catch (e) {
-      debugPrint('Error getting fields from stream: $e');
+      
     }
     return fields;
   }
@@ -242,14 +242,13 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       }
 
       if (generateDigitalSiblingRef == null) {
-        debugPrint(
-            'No generateDigitalSibling method found in methodHistoryRef');
+        
         return null;
       }
 
       final methodUID = generateDigitalSiblingRef["UID"];
       if (methodUID == null) {
-        debugPrint('No UID found in generateDigitalSibling method ref');
+        
         return null;
       }
 
@@ -272,7 +271,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error getting registration date: $e');
+      
     }
 
     return null;
@@ -364,7 +363,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     try {
-      debugPrint("Uploading CSV file...");
+      
       FilePickerResult? result = await FilePicker.platform
           .pickFiles(withReadStream: true, allowMultiple: false);
 
@@ -372,7 +371,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         String csvContent = "";
 
         if (kIsWeb) {
-          debugPrint("Reading CSV file in web...");
+          
           for (PlatformFile file in result.files) {
             csvContent = "";
             await file.readStream
@@ -429,7 +428,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         return 'POLYGON ((${wktCoordinates.join(', ')}))';
       }
     } catch (e) {
-      debugPrint('Error converting coordinates: $e');
+      
     }
 
     // Fallback: Gib die ursprünglichen Koordinaten zurück
@@ -464,7 +463,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         return switchedPoints;
       }
     } catch (e) {
-      debugPrint('Error converting WKT to GeoJSON: $e');
+      
     }
 
     // Fallback: Leere Koordinaten
@@ -581,10 +580,10 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               fieldNameDNI, coordinates, assetRegistryService);
 
           if (returnCode == 'successfullyRegistered') {
-            debugPrint('Field "$fieldNameDNI" successfully registered');
+            
             successCount++;
           } else if (returnCode == 'alreadyRegistered') {
-            debugPrint('Field "$fieldNameDNI" already exists');
+            
             alreadyExistsCount++;
           } else {
             errors.add(l10n.csvLineError((i + 1).toString(), returnCode));
@@ -647,7 +646,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         try {
           await userRegistryService.logout();
         } catch (e) {
-          debugPrint('Error during logout: $e');
+          
         }
       }
 
@@ -687,9 +686,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           currentProgressStep = l10n.progressStep2FieldRegisteredSuccessfully;
         });
 
-        debugPrint(
-            'New field successfully registered: ${registerResponse.body}');
-        try {
+try {
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
           final extractedGeoId = responseData['geoid'] as String?;
@@ -719,8 +716,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               }
             ];
             final newFieldUID = await generateDigitalSibling(newField);
-            debugPrint(
-                "New field with new GeoID registered in TFC with UID: $newFieldUID");
+            
           } else {
             // GeoID-Extraktion fehlgeschlagen
             return ('registrationError: Could not extract geoID from response: No geoID in response');
@@ -737,11 +733,10 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         });
 
         try {
-          debugPrint('Field already exists, trying to extract geoID...');
+          
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
-          debugPrint(registerResponse
-              .body); //This is important to see return of GeoID registry service
+           //This is important to see return of GeoID registry service
           try {
             final matchedGeoIds =
                 responseData['matched geo ids'] as List<dynamic>?;
@@ -756,7 +751,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               return ('registrationError: No matched geo ids found in response');
             }
           } catch (e) {
-            debugPrint('Error extracting matched geo ids: $e');
+            
             return ('registrationError: provider did not return geoIDs: $e');
           }
         } catch (e) {
@@ -777,15 +772,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             l10n.progressStep3CheckingCentralDatabase(finalGeoId);
       });
 
-      debugPrint(
-          'checking if GeoID $finalGeoId already exists in TFC database...');
-
-      final existingFirebaseObjects =
+final existingFirebaseObjects =
           await getFirebaseObjectsByAlternateUID(finalGeoId);
 
       if (existingFirebaseObjects.isNotEmpty) {
-        debugPrint(
-            'Field with GeoID $finalGeoId is already registered in the central database (${existingFirebaseObjects.first["identity"]["UID"]}) - adding user as owner');
+         - adding user as owner');
         //Add the appuser UID as owner to currentOwners list
         final existingField = existingFirebaseObjects.first;
         //Check the currentOwners list and add the appUserDoc UID if not already present
@@ -802,10 +793,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       setState(() {
         currentProgressStep = l10n.progressStep3FieldNotFoundInCentralDb;
       });
-      debugPrint(
-          'Field with GeoID $finalGeoId does not exist in the central database - proceeding with TFC registration');
 
-      Map<String, dynamic> newField = await getOpenRALTemplate("field");
+Map<String, dynamic> newField = await getOpenRALTemplate("field");
       //Name
       newField["identity"]["name"] = fieldName; //GeoID
       newField["identity"]["alternateIDs"] = [
@@ -825,7 +814,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         }
       ];
       final newFieldUID = await generateDigitalSibling(newField);
-      debugPrint("New field registered in TFC with UID: $newFieldUID");
+      
       if (!alreadyExists)
         await _showRegistrationResult(
             l10n.fieldRegistrationSuccessMessage(fieldName), true);
@@ -834,7 +823,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       return 'successfullyRegistered';
     } catch (e) {
       // Fehlerbehandlung
-      debugPrint('Error in _registerSingleField: $e');
+      
       await _showRegistrationResult(
           l10n.fieldRegistrationErrorMessage(fieldName, e.toString()), false);
       rethrow;
@@ -926,11 +915,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           await fshowInfoDialog(context, l10n.excelFileSavedAt);
         }
       } catch (e) {
-        debugPrint("Error downloading file: $e");
+        
         await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
       }
     } else {
-      debugPrint("Failed to generate Excel file.");
+      
       await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
     }
   }

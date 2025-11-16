@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Widget zum robusten Laden von Assets mit Fallback-Mechanismen
@@ -41,7 +41,7 @@ class _SafeAssetImageState extends State<SafeAssetImage> {
         });
       }
     } catch (e) {
-      debugPrint("❌ Asset ${widget.assetPath} konnte nicht geladen werden: $e");
+      
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -88,7 +88,7 @@ class _SafeAssetImageState extends State<SafeAssetImage> {
       height: widget.height,
       fit: widget.fit,
       errorBuilder: (context, error, stackTrace) {
-        debugPrint("❌ Fehler beim Laden von ${widget.assetPath}: $error");
+        
         return widget.fallbackWidget ??
             Container(
               width: widget.width,
@@ -154,8 +154,7 @@ class _SafeBackgroundContainerState extends State<SafeBackgroundContainer> {
         });
       }
     } catch (e) {
-      debugPrint(
-          "❌ Hintergrundbild ${widget.backgroundAsset} konnte nicht geladen werden: $e");
+      
       if (mounted) {
         setState(() {
           _hasBackgroundAsset = false;
@@ -185,8 +184,7 @@ class _SafeBackgroundContainerState extends State<SafeBackgroundContainer> {
               BlendMode.dstATop,
             ),
             onError: (exception, stackTrace) {
-              debugPrint(
-                  "❌ Fehler beim Laden des Hintergrundbilds: $exception");
+              
             },
           ),
         ),

@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (appState.isConnected && appState.isAuthenticated) {
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
-            debugPrint("syncing $cloudKey");
+            
             final l10n = AppLocalizations.of(context)!;
             snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
             await cloudSyncService.syncMethods(cloudKey);
@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (appState.isConnected && appState.isAuthenticated) {
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
-          debugPrint("manually syncing $cloudKey");
+          
           snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
           await cloudSyncService.syncMethods(cloudKey);
         }

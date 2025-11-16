@@ -1,4 +1,4 @@
-import 'package:auto_size_text/auto_size_text.dart';
+﻿import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
@@ -466,7 +466,7 @@ class _InboxScreenState extends State<InboxScreen> {
                       const SizedBox(height: 8),
                       // Animated progress bar for fill level
                       LayoutBuilder(builder: (context, constraints) {
-                        debugPrint("Layoutbilder 4");
+                        
                         double maxCapacity = getSpecificPropertyfromJSON(
                                 container, "max capacity") is num
                             ? getSpecificPropertyfromJSON(

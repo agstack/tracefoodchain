@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:trace_foodchain_app/main.dart';
@@ -72,7 +72,7 @@ class RoleDebugHelper {
   static Future<bool> repairAppUserDoc() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      debugPrint('❌ No Firebase user logged in');
+      
       return false;
     }
 
@@ -85,19 +85,17 @@ class RoleDebugHelper {
       if (userDoc.exists) {
         // Setze appUserDoc mit den Firestore-Daten
         appUserDoc = Map<String, dynamic>.from(userDoc.data()!);
-        debugPrint('✅ appUserDoc successfully repaired from Firestore');
 
-        // Debug: Zeige die reparierte Rolle
+// Debug: Zeige die reparierte Rolle
         final role = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
-        debugPrint('🔧 Repaired user role: $role');
 
-        return true;
+return true;
       } else {
-        debugPrint('❌ User document not found in Firestore');
+        
         return false;
       }
     } catch (e) {
-      debugPrint('❌ Error repairing appUserDoc: $e');
+      
       return false;
     }
   }
@@ -115,9 +113,8 @@ class RoleDebugHelper {
         'roleUpdateMethod': 'manual_debug_assignment',
       });
 
-      debugPrint('✅ Manual role assignment completed: $targetUID -> $newRole');
-    } catch (e) {
-      debugPrint('❌ Manual role assignment failed: $e');
+} catch (e) {
+      
       rethrow;
     }
   }
@@ -146,7 +143,7 @@ class RoleDebugHelper {
 
       return users;
     } catch (e) {
-      debugPrint('Error fetching all users: $e');
+      
       return [];
     }
   }

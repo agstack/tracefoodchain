@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -41,8 +41,7 @@ class _ContainerSelectionScreenState extends State<ContainerSelectionScreen> {
                     return Scaffold(
                       body: AddEmptyItemDialog(
                         onItemAdded: (Map<String, dynamic> newItem) {
-                          debugPrint(
-                              "New item added: ${newItem["identity"]["UID"]}");
+                          
                           setState(() {});
                         },
                       ),
