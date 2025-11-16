@@ -22,8 +22,10 @@ import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/splash_screen.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
+import 'package:trace_foodchain_app/services/permission_service.dart';
 
 import 'package:trace_foodchain_app/widgets/tracked_value_notifier.dart';
+import 'package:trace_foodchain_app/widgets/items_list_widget.dart';
 
 String country = "Honduras"; //TODO: enable other contries if needed;
 int cloudSyncFrequency =
@@ -358,6 +360,25 @@ Future<void> closeUserLocalStorage() async {
     cloudConnectors.clear();
     debugPrint("User LocalStorage geschlossen");
   }
+  
+  // KRITISCH: Alle globalen Variablen zurücksetzen, die Benutzerdaten enthalten
+  appUserDoc = null;
+  inbox.clear();
+  inboxCount.value = 0;
+  
+  // Cache des PermissionService invalidieren
+  final permissionService = PermissionService();
+  permissionService.invalidateRoleCache();
+  
+  // Ausgewählte Items zurücksetzen (aus items_list_widget.dart)
+  selectedItems.clear();
+  
+  // UI-Update erzwingen
+  repaintContainerList.value = true;
+  rebuildSpeedDial.value = true;
+  rebuildDDS.value = true;
+  
+  debugPrint("✅ Alle benutzerspezifischen globalen Variablen zurückgesetzt");
 }
 
 // Helper Funktion um sicherzustellen, dass localStorage verfügbar ist

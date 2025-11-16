@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trace_foodchain_app/helpers/fade_route.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
@@ -110,15 +108,11 @@ class SettingsScreen extends StatelessWidget {
             title: const Text("Log out"),
             onTap: appState.isConnected
                 ? () async {
-                    await FirebaseAuth.instance.signOut();
-
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.remove('userId');
-
+                    // Verwende die zentrale signOut-Methode aus AppState
+                    // Diese schließt automatisch die Hive-Datenbank
                     final appState =
                         Provider.of<AppState>(context, listen: false);
-                    appState.setAuthenticated(false);
-                    appState.setEmailVerified(false);
+                    await appState.signOut();
 
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(

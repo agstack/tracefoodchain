@@ -129,7 +129,7 @@ class AppState extends ChangeNotifier {
       if (FirebaseAuth.instance.currentUser == null) {
         debugPrint(
             "ERROR: User ID found in shared preferences but user does not exist => CLOUDCHANGE?");
-       
+
         signOut();
         //In this case, we should make sure that old data is kept on the device and not deleted
         //However, all old processes will keep the old user as executor and owner and might need manual assignment later
@@ -146,6 +146,10 @@ class AppState extends ChangeNotifier {
     await FirebaseAuth.instance.signOut();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('userId');
+
+    // KRITISCH: Schließe die benutzerspezifische Hive-Datenbank
+    await closeUserLocalStorage();
+
     _isAuthenticated = false;
     _isEmailVerified = false;
     notifyListeners();

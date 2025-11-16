@@ -201,14 +201,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _signOut() async {
     _verificationTimer?.cancel();
-    await FirebaseAuth.instance.signOut();
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
-
+    // Verwende die zentrale signOut-Methode aus AppState
+    // Diese schließt automatisch die Hive-Datenbank
     final appState = Provider.of<AppState>(context, listen: false);
-    appState.setAuthenticated(false);
-    appState.setEmailVerified(false);
+    await appState.signOut();
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const AuthScreen()),
