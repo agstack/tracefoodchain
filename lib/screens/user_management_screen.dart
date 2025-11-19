@@ -472,6 +472,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         return l10n.roleProcessor;
       case 'Importer':
         return l10n.roleImporter;
+      case 'registrar':
+        return l10n.roleRegistrar;
       case 'Transporter':
         return l10n.roleTransporter;
       case 'Seller':

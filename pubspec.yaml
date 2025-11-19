@@ -57,7 +57,11 @@ dependencies:
   excel: ^2.1.0
   file_picker: ^10.1.9
   csv: ^6.0.0
-  
+  firebase_storage: ^12.3.2
+  image_picker: ^1.0.7
+  image_cropper: ^8.0.2
+  country_picker: ^2.0.25
+  cached_network_image: ^3.3.1
 
 
   # flutter_test: any

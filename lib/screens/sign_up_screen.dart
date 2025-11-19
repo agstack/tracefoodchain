@@ -6,6 +6,8 @@ import 'package:trace_foodchain_app/widgets/status_bar.dart';
 import 'package:trace_foodchain_app/widgets/language_selector.dart'; // Neue Import
 import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../screens/user_profile_setup_screen.dart';
+import '../services/open_ral_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -57,7 +59,51 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _handleSuccessfulAuth(User user, String message) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', user.uid);
-    Navigator.of(context).pushReplacementNamed('/');
+
+    // Check if this is a new user (account was just created)
+    bool isNewUser = message.contains("Account created successfully");
+    isNewUser = true;
+
+    if (isNewUser) {
+      // For new users, check if they need to complete their profile
+      await _checkAndNavigateToProfileSetup(user);
+    } else {
+      // For existing users, navigate to main app
+      Navigator.of(context).pushReplacementNamed('/');
+    }
+  }
+
+  Future<void> _checkAndNavigateToProfileSetup(User user) async {
+    try {
+      // Check if user profile is already complete
+      final userProfile = await OpenRALService.getUserProfile();
+
+      final bool hasFirstName = userProfile.containsKey('firstName') &&
+          userProfile['firstName']!.isNotEmpty;
+      final bool hasLastName = userProfile.containsKey('lastName') &&
+          userProfile['lastName']!.isNotEmpty;
+      final bool hasRole = userProfile.containsKey('userRole') &&
+          userProfile['userRole']!.isNotEmpty;
+
+      if (!hasFirstName || !hasLastName || !hasRole) {
+        // Navigate to profile setup screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const UserProfileSetupScreen(),
+          ),
+        );
+      } else {
+        // Profile is already complete, navigate to main app
+        Navigator.of(context).pushReplacementNamed('/');
+      }
+    } catch (e) {
+      // On error, navigate to profile setup to be safe
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const UserProfileSetupScreen(),
+        ),
+      );
+    }
   }
 
   Future<void> _handleAuthError(FirebaseAuthException e) async {

@@ -15,7 +15,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get traceTheFoodchain => 'Trace the Foodchain';
 
   @override
-  String get selectRole => 'Please select your role!';
+  String get selectRole => 'Select Role';
 
   @override
   String welcomeMessage(String role) {
@@ -111,6 +111,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleImporter => 'EU Importer';
+
+  @override
+  String get roleRegistrar => 'Registrar';
 
   @override
   String get activeImports => 'Current Imports';
@@ -1427,4 +1430,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String noSearchResults(Object searchTerm) {
     return 'No containers found matching \"$searchTerm\"';
   }
+
+  @override
+  String get profileSetup => 'Complete Profile';
+
+  @override
+  String get welcomeCompleteProfile => 'Welcome! Complete your profile';
+
+  @override
+  String get profileSetupDescription =>
+      'Please provide some additional information to complete your profile.';
+
+  @override
+  String get profilePicture => 'Profile Picture';
+
+  @override
+  String get tapToAddPhoto => 'Tap here to add a photo';
+
+  @override
+  String get personalInformation => 'Personal Information';
+
+  @override
+  String get firstName => 'First Name';
+
+  @override
+  String get lastName => 'Last Name';
+
+  @override
+  String get nationality => 'Nationality';
+
+  @override
+  String get role => 'Role';
+
+  @override
+  String get pleaseEnterFirstName => 'Please enter your first name';
+
+  @override
+  String get pleaseEnterLastName => 'Please enter your last name';
+
+  @override
+  String get pleaseSelectRole => 'Please select a role';
+
+  @override
+  String get saving => 'Saving...';
+
+  @override
+  String get completeProfile => 'Complete Profile';
+
+  @override
+  String get skipForNow => 'Skip for now';
+
+  @override
+  String get saveChanges => 'Save Changes';
+
+  @override
+  String get userProfile => 'User Profile';
+
+  @override
+  String get viewAndEditProfile => 'View and edit profile';
+
+  @override
+  String get editProfile => 'Edit Profile';
+
+  @override
+  String get roleAndLocation => 'Role & Location';
+
+  @override
+  String get notSpecified => 'Not specified';
 }

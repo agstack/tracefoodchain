@@ -15,7 +15,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get traceTheFoodchain => 'Verfolge die Lebensmittelkette';
 
   @override
-  String get selectRole => 'Bitte wähle deine Rolle!';
+  String get selectRole => 'Rolle auswählen';
 
   @override
   String welcomeMessage(String role) {
@@ -111,6 +111,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get roleImporter => 'EU-Importeur';
+
+  @override
+  String get roleRegistrar => 'Registrar';
 
   @override
   String get activeImports => 'Aktuelle Importe';
@@ -1441,4 +1444,72 @@ class AppLocalizationsDe extends AppLocalizations {
   String noSearchResults(Object searchTerm) {
     return 'Keine Container gefunden für \"$searchTerm\"';
   }
+
+  @override
+  String get profileSetup => 'Profil vervollständigen';
+
+  @override
+  String get welcomeCompleteProfile =>
+      'Willkommen! Vervollständigen Sie Ihr Profil';
+
+  @override
+  String get profileSetupDescription =>
+      'Bitte geben Sie einige zusätzliche Informationen an, um Ihr Profil zu vervollständigen.';
+
+  @override
+  String get profilePicture => 'Profilbild';
+
+  @override
+  String get tapToAddPhoto => 'Tippen Sie hier, um ein Foto hinzuzufügen';
+
+  @override
+  String get personalInformation => 'Persönliche Informationen';
+
+  @override
+  String get firstName => 'Vorname';
+
+  @override
+  String get lastName => 'Nachname';
+
+  @override
+  String get nationality => 'Nationalität';
+
+  @override
+  String get role => 'Rolle';
+
+  @override
+  String get pleaseEnterFirstName => 'Bitte geben Sie Ihren Vornamen ein';
+
+  @override
+  String get pleaseEnterLastName => 'Bitte geben Sie Ihren Nachnamen ein';
+
+  @override
+  String get pleaseSelectRole => 'Bitte wählen Sie eine Rolle aus';
+
+  @override
+  String get saving => 'Wird gespeichert...';
+
+  @override
+  String get completeProfile => 'Profil vervollständigen';
+
+  @override
+  String get skipForNow => 'Später vervollständigen';
+
+  @override
+  String get saveChanges => 'Änderungen speichern';
+
+  @override
+  String get userProfile => 'Benutzerprofil';
+
+  @override
+  String get viewAndEditProfile => 'Profil anzeigen und bearbeiten';
+
+  @override
+  String get editProfile => 'Profil bearbeiten';
+
+  @override
+  String get roleAndLocation => 'Rolle & Standort';
+
+  @override
+  String get notSpecified => 'Nicht angegeben';
 }

@@ -23,7 +23,6 @@ var uuid = const Uuid();
 //! 1. CloudConnectors
 
 Future<Map<String, Map<String, dynamic>>> getCloudConnectors() async {
-  
   Map<String, Map<String, dynamic>> rList = {};
 
   //Always populate with cloudConnectors from initial repo
@@ -50,7 +49,6 @@ dynamic getCloudConnectionProperty(String domain, connectorType, property) {
     //read requested property
     rObject = getSpecificPropertyfromJSON(subConnector, property);
   } catch (e) {
-    
     rObject = null;
   }
 
@@ -65,9 +63,7 @@ Future<Map<String, dynamic>> getOpenRALTemplate(String templateName) async {
     Map<String, dynamic> res =
         json.decode(json.encode(openRALTemplates.get(templateName)));
     rMap = Map<String, dynamic>.from(res);
-  } catch (e) {
-    
-  }
+  } catch (e) {}
   return rMap;
 }
 
@@ -86,12 +82,8 @@ Future<Map<String, dynamic>> getRALObjectMethodTemplateAsJSON(
       //Valides Template kam zurück
       try {
         json = jsonDecode(response2.body);
-      } catch (e) {
-        
-      }
-    } else {
-      
-    }
+      } catch (e) {}
+    } else {}
 
     // _json = jsonDecode(jsonString);
   } catch (e) {
@@ -230,10 +222,10 @@ Future<Map<String, dynamic>> setObjectMethod(Map<String, dynamic> objectMethod,
         if (kDebugMode) {
           // await Share.share(signingObject);
         }
-        // 
-        // 
-        // 
-        // 
+        //
+        //
+        //
+        //
 
         final signature =
             await digitalSignature.generateSignature(signingObject);
@@ -351,7 +343,7 @@ Map<String, dynamic> addInputobject(
     method['inputObjects'].add(objectCopy);
   } else {
     // If the object exists, replace it
-    
+
     objectCopy["role"] = role; // Ensure the role is updated
     method['inputObjects'][index] = objectCopy;
   }
@@ -364,7 +356,7 @@ Map<String, dynamic> addInputobject(
 //     objectCopy["role"] = role;
 //     method['inputObjects'].add(objectCopy);
 //   } else {
-//     
+//
 //   }
 
   return method;
@@ -392,7 +384,7 @@ Map<String, dynamic> addOutputobject(
     method['outputObjects'].add(objectCopy);
   } else {
     // If the object exists, replace it
-    
+
     objectCopy["role"] = role; // Ensure the role is updated
     method['outputObjects'][index] = objectCopy;
   }
@@ -427,7 +419,6 @@ Future updateMethodHistories(Map<String, dynamic> jsonDoc) async {
     }
 
   for (final uid in ouidList) {
-    
     final oDoc = await getLocalObjectMethod(uid);
     if (oDoc.isNotEmpty) {
       try {
@@ -436,16 +427,13 @@ Future updateMethodHistories(Map<String, dynamic> jsonDoc) async {
                 orElse: () => {})
             .isEmpty) {
           //Check if already in List
-          
+
           oDoc["methodHistoryRef"]
               .add({"UID": methodUID, "RALType": methodRALType});
 
           await setObjectMethod(oDoc, false, false);
-        } else {
-          
-        }
+        } else {}
       } catch (e) {
-        
         oDoc["methodHistoryRef"] = {"UID": methodUID, "RALType": methodRALType};
 
         await setObjectMethod(oDoc, false, false);
@@ -509,7 +497,6 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
     Map<String, dynamic> rDoc2 = await getOpenRALTemplate(types[0]);
     rDoc = rDoc2;
     rDoc["identity"]["UID"] = "";
-    
   }
   return rDoc;
 }
@@ -762,4 +749,256 @@ Map<String, dynamic> addLinkedObjectRef(
     });
   }
   return object;
+}
+
+//! User Profile Management
+
+class OpenRALService {
+  /// Updates the user profile with additional information after sign-up
+  static Future<void> updateUserProfile({
+    required String firstName,
+    required String lastName,
+    required String role,
+    required String country,
+    String? avatarUrl,
+  }) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('No authenticated user found');
+      }
+
+      // Get existing user object or create new one
+      Map<String, dynamic>? userObject = await _getUserObject();
+
+      if (userObject == null) {
+        // Create new user object from template
+        userObject = Map<String, dynamic>.from(initialObjectTemplateHuman);
+        userObject["identity"]["UID"] = user.uid;
+      }
+
+      // Update specific properties
+      _updateSpecificProperty(userObject, "firstName", firstName);
+      _updateSpecificProperty(userObject, "lastName", lastName);
+      _updateSpecificProperty(userObject, "userRole", role);
+      _updateSpecificProperty(userObject, "emailAddress", user.email ?? "");
+
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+        _updateSpecificProperty(userObject, "downloadURL", avatarUrl);
+      }
+
+      // Update country in geolocation
+      if (userObject["currentGeolocation"]["postalAddress"] != null) {
+        userObject["currentGeolocation"]["postalAddress"]["country"] = country;
+      }
+
+      // Update identity name with full name
+      userObject["identity"]["name"] = "$firstName $lastName";
+
+      // Save to local storage
+      if (localStorage != null) {
+        await localStorage!.put(user.uid, userObject);
+      }
+
+      // Sync to cloud if online
+      await _syncUserObjectToCloud(userObject);
+
+      debugPrint('User profile updated successfully');
+    } catch (e) {
+      debugPrint('Error updating user profile: $e');
+      throw Exception('Failed to update user profile: $e');
+    }
+  }
+
+  /// Updates the user profile with role request (sets requestedUserRole instead of userRole)
+  static Future<void> updateUserProfileWithRoleRequest({
+    required String firstName,
+    required String lastName,
+    String? requestedRole, // Kann null sein wenn bereits eine Rolle existiert
+    required String country,
+    String? avatarUrl,
+  }) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('No authenticated user found');
+      }
+
+      // Get existing user object or create new one
+      Map<String, dynamic>? userObject = await _getUserObject();
+
+      if (userObject == null) {
+        // Create new user object from template
+        userObject = Map<String, dynamic>.from(initialObjectTemplateHuman);
+        userObject["identity"]["UID"] = user.uid;
+      }
+
+      // Update specific properties
+      _updateSpecificProperty(userObject, "firstName", firstName);
+      _updateSpecificProperty(userObject, "lastName", lastName);
+      _updateSpecificProperty(userObject, "emailAddress", user.email ?? "");
+
+      // Nur requestedUserRole setzen wenn eine Rolle angefragt wurde
+      if (requestedRole != null) {
+        _updateSpecificProperty(userObject, "requestedUserRole", requestedRole);
+      }
+
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+        _updateSpecificProperty(userObject, "downloadURL", avatarUrl);
+      }
+
+      // Update country in geolocation
+      if (userObject["currentGeolocation"]["postalAddress"] != null) {
+        userObject["currentGeolocation"]["postalAddress"]["country"] = country;
+      }
+
+      // Update identity name with full name
+      userObject["identity"]["name"] = "$firstName $lastName";
+
+      // Save to local storage
+      if (localStorage != null) {
+        await localStorage!.put(user.uid, userObject);
+      }
+
+      // Sync to cloud if online
+      await _syncUserObjectToCloud(userObject);
+
+      debugPrint(
+          'User profile updated successfully with role request: $requestedRole');
+    } catch (e) {
+      debugPrint('Error updating user profile: $e');
+      throw Exception('Failed to update user profile: $e');
+    }
+  }
+
+  /// Get the current user's openRAL object
+  static Future<Map<String, dynamic>?> _getUserObject() async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+
+      // Try to get from local storage first
+      if (localStorage != null) {
+        final localObject = localStorage!.get(user.uid);
+        if (localObject != null) {
+          return Map<String, dynamic>.from(localObject);
+        }
+      }
+
+      // Try to get from cloud
+      return await _getUserObjectFromCloud(user.uid);
+    } catch (e) {
+      debugPrint('Error getting user object: $e');
+      return null;
+    }
+  }
+
+  /// Get user object from cloud storage
+  static Future<Map<String, dynamic>?> _getUserObjectFromCloud(
+      String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .doc(uid)
+          .get();
+
+      if (doc.exists) {
+        return Map<String, dynamic>.from(doc.data() ?? {});
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting user object from cloud: $e');
+      return null;
+    }
+  }
+
+  /// Sync user object to cloud
+  static Future<void> _syncUserObjectToCloud(
+      Map<String, dynamic> userObject) async {
+    try {
+      // Check if online
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        debugPrint('No internet connection, skipping cloud sync');
+        return;
+      }
+
+      final uid = userObject["identity"]["UID"];
+      if (uid == null || uid.isEmpty) {
+        throw Exception('User UID is missing');
+      }
+
+      await FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .doc(uid)
+          .set(userObject, SetOptions(merge: true));
+
+      debugPrint('User object synced to cloud successfully');
+    } catch (e) {
+      debugPrint('Error syncing user object to cloud: $e');
+      // Don't throw error here, allow offline operation
+    }
+  }
+
+  /// Helper method to update or add a specific property
+  static void _updateSpecificProperty(
+      Map<String, dynamic> userObject, String key, String value) {
+    final properties = userObject["specificProperties"] as List<dynamic>;
+
+    // Find existing property
+    final existingPropertyIndex =
+        properties.indexWhere((prop) => prop["key"] == key);
+
+    if (existingPropertyIndex != -1) {
+      // Update existing property
+      properties[existingPropertyIndex]["value"] = value;
+    } else {
+      // Add new property
+      properties.add({
+        "key": key,
+        "value": value,
+        "unit": "String",
+      });
+    }
+  }
+
+  /// Get user profile information
+  static Future<Map<String, String>> getUserProfile() async {
+    try {
+      final userObject = await _getUserObject();
+      if (userObject == null) {
+        return {};
+      }
+
+      final properties = userObject["specificProperties"] as List<dynamic>;
+      final Map<String, String> profile = {};
+
+      // Extract specific properties
+      for (final prop in properties) {
+        final key = prop["key"] as String?;
+        final value = prop["value"] as String?;
+        if (key != null && value != null && value.isNotEmpty) {
+          profile[key] = value;
+        }
+      }
+
+      // Add country from geolocation
+      final country =
+          userObject["currentGeolocation"]?["postalAddress"]?["country"];
+      if (country != null && country != "unknown") {
+        profile["country"] = country;
+      }
+
+      // Add full name from identity
+      final fullName = userObject["identity"]?["name"];
+      if (fullName != null && fullName.isNotEmpty) {
+        profile["fullName"] = fullName;
+      }
+
+      return profile;
+    } catch (e) {
+      debugPrint('Error getting user profile: $e');
+      return {};
+    }
+  }
 }

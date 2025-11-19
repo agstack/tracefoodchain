@@ -80,7 +80,10 @@ Map<String, dynamic> initialObjectTemplateHuman = {
     {"key": "streetName", "value": "", "unit": "String"},
     {"key": "streetNumber", "value": "", "unit": "String"},
     {"key": "cityName", "value": "", "unit": "String"},
-    {"key": "cityNumber", "value": "", "unit": "String"}
+    {"key": "cityNumber", "value": "", "unit": "String"},
+    {"key": "firstName", "value": "", "unit": "String"},
+    {"key": "lastName", "value": "", "unit": "String"},
+    {"key": "downloadURL", "value": "", "unit": "String"}
   ],
   "currentGeolocation": {
     "container": {"UID": "unknown"},

@@ -21,6 +21,7 @@ class RoleManagementService {
     'Farmer': 100,
     'Processor': 100,
     'Importer': 100,
+    'registrar': 100,
   };
 
   /// Rollen die von bestimmten Rollen verwaltet werden können
@@ -31,16 +32,24 @@ class RoleManagementService {
       'Trader',
       'Farmer',
       'Processor',
-      'Importer'
+      'Importer',
+      'registrar'
     ],
     'tfcAdmin': [
       'registrarCoordinator',
       'Trader',
       'Farmer',
       'Processor',
-      'Importer'
+      'Importer',
+      'registrar'
     ],
-    'registrarCoordinator': ['Trader', 'Farmer', 'Processor', 'Importer'],
+    'registrarCoordinator': [
+      'Trader',
+      'Farmer',
+      'Processor',
+      'Importer',
+      'registrar'
+    ],
   };
 
   /// Prüft ob der aktuelle User online ist (erforderlich für Rollenverwaltung)
@@ -236,7 +245,7 @@ class RoleManagementService {
       }
     }
 
-return managedUsers;
+    return managedUsers;
   }
 
   /// Ändert die Rolle eines Users über changeObjectData (mit automatischem Logging)
@@ -318,8 +327,7 @@ return managedUsers;
         newRole: newRole,
         reason: reason,
       );
-
-} catch (e) {
+    } catch (e) {
       throw Exception('Fehler beim Ändern der Benutzerrolle: $e');
     }
   }
@@ -367,7 +375,6 @@ return managedUsers;
         await _updateCurrentUserAppState(newRole);
       }
     } catch (e) {
-      
       // Nicht kritisch, da changeObjectData bereits das Logging übernommen hat
     }
   }
@@ -376,8 +383,7 @@ return managedUsers;
   List<String> getAvailableRoles() {
     final currentRole = getCurrentUserRole();
 
-if (!roleManagementPermissions.containsKey(currentRole)) {
-      
+    if (!roleManagementPermissions.containsKey(currentRole)) {
       return [];
     }
 
@@ -411,12 +417,12 @@ if (!roleManagementPermissions.containsKey(currentRole)) {
     }
 
     // Debug: Zeige die gefundenen Werte
-    // 
-    // 
-    // 
-    // 
-    // 
-    // 
+    //
+    //
+    //
+    //
+    //
+    //
 
     // Bestimme ob dieser User verwaltet werden kann
     final currentUserRole = await getCurrentUserRoleFromCloud();
@@ -448,7 +454,7 @@ if (!roleManagementPermissions.containsKey(currentRole)) {
 
     // Debug: Zeige die Verwaltungslogik
 
-return {
+    return {
       'uid': userUID,
       'name': userName,
       'email': email != "-no data found-" ? email : 'Keine E-Mail',
@@ -474,7 +480,6 @@ return {
 
       return querySnapshot.docs.map((doc) => doc.data()).toList();
     } catch (e) {
-      
       return [];
     }
   }

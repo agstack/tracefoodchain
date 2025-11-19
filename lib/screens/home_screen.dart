@@ -12,6 +12,7 @@ import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/widgets/language_selector.dart';
 import 'package:trace_foodchain_app/widgets/role_based_speed_dial.dart';
 import 'package:trace_foodchain_app/widgets/status_bar.dart';
+import 'package:trace_foodchain_app/widgets/user_profile_widget.dart';
 import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
@@ -44,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (appState.isConnected && appState.isAuthenticated) {
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
-            
             final l10n = AppLocalizations.of(context)!;
             snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
             await cloudSyncService.syncMethods(cloudKey);
@@ -71,7 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (appState.isConnected && appState.isAuthenticated) {
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
-          
           snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
           await cloudSyncService.syncMethods(cloudKey);
         }
@@ -105,9 +104,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          leading: const LanguageSelector(),
+          leading: const UserProfileWidget(),
           title: const Text("TraceFoodChain"),
           actions: [
+            const LanguageSelector(),
             ValueListenableBuilder(
                 valueListenable: inboxCount,
                 builder: (context, int value, child) {

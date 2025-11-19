@@ -9,6 +9,7 @@ import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/screens/field_registry_screen.dart';
 import 'package:trace_foodchain_app/screens/user_management_screen.dart';
+import 'package:trace_foodchain_app/screens/user_profile_view_screen.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
@@ -63,6 +64,20 @@ class SettingsScreen extends StatelessWidget {
                     showArchived = value;
                   });
                 },
+              );
+            },
+          ),
+          // User Profile
+          ListTile(
+            contentPadding: const EdgeInsets.all(12),
+            leading: const Icon(Icons.account_circle),
+            title: Text(l10n.userProfile),
+            subtitle: Text(l10n.viewAndEditProfile),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const UserProfileViewScreen(),
+                ),
               );
             },
           ),

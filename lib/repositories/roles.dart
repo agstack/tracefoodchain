@@ -35,6 +35,11 @@ List<Role> roles = [
     getLocalizedName: (l10n) => l10n.roleImporter,
   ),
   Role(
+    key: 'registrar',
+    icon: Icons.assignment_ind,
+    getLocalizedName: (l10n) => l10n.roleRegistrar,
+  ),
+  Role(
     key: 'System Administrator',
     icon: Icons.admin_panel_settings,
     getLocalizedName: (l10n) => l10n.roleSystemAdministrator,

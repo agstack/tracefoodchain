@@ -117,7 +117,7 @@ abstract class AppLocalizations {
   /// No description provided for @selectRole.
   ///
   /// In en, this message translates to:
-  /// **'Please select your role!'**
+  /// **'Select Role'**
   String get selectRole;
 
   /// Welcome message with user role
@@ -305,6 +305,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'EU Importer'**
   String get roleImporter;
+
+  /// No description provided for @roleRegistrar.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrar'**
+  String get roleRegistrar;
 
   /// No description provided for @activeImports.
   ///
@@ -2717,6 +2723,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No containers found matching \"{searchTerm}\"'**
   String noSearchResults(Object searchTerm);
+
+  /// No description provided for @profileSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Profile'**
+  String get profileSetup;
+
+  /// No description provided for @welcomeCompleteProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome! Complete your profile'**
+  String get welcomeCompleteProfile;
+
+  /// No description provided for @profileSetupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Please provide some additional information to complete your profile.'**
+  String get profileSetupDescription;
+
+  /// No description provided for @profilePicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile Picture'**
+  String get profilePicture;
+
+  /// No description provided for @tapToAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap here to add a photo'**
+  String get tapToAddPhoto;
+
+  /// No description provided for @personalInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Information'**
+  String get personalInformation;
+
+  /// No description provided for @firstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First Name'**
+  String get firstName;
+
+  /// No description provided for @lastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Name'**
+  String get lastName;
+
+  /// No description provided for @nationality.
+  ///
+  /// In en, this message translates to:
+  /// **'Nationality'**
+  String get nationality;
+
+  /// No description provided for @role.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get role;
+
+  /// No description provided for @pleaseEnterFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your first name'**
+  String get pleaseEnterFirstName;
+
+  /// No description provided for @pleaseEnterLastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your last name'**
+  String get pleaseEnterLastName;
+
+  /// No description provided for @pleaseSelectRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a role'**
+  String get pleaseSelectRole;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get saving;
+
+  /// No description provided for @completeProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Profile'**
+  String get completeProfile;
+
+  /// No description provided for @skipForNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip for now'**
+  String get skipForNow;
+
+  /// No description provided for @saveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Changes'**
+  String get saveChanges;
+
+  /// No description provided for @userProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'User Profile'**
+  String get userProfile;
+
+  /// No description provided for @viewAndEditProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'View and edit profile'**
+  String get viewAndEditProfile;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfile;
+
+  /// No description provided for @roleAndLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Role & Location'**
+  String get roleAndLocation;
+
+  /// No description provided for @notSpecified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not specified'**
+  String get notSpecified;
 }
 
 class _AppLocalizationsDelegate
