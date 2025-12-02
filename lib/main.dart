@@ -20,6 +20,7 @@ import 'package:trace_foodchain_app/helpers/key_management.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
 import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/splash_screen.dart';
+import 'package:trace_foodchain_app/screens/registrar_screen.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
@@ -454,7 +455,19 @@ class MyApp extends StatelessWidget {
           ],
           title: 'TraceFoodChain App',
           theme: customTheme,
-          home: const SplashScreen());
+          initialRoute: '/',
+          onGenerateRoute: _generateRoute);
     });
+  }
+
+  Route<dynamic>? _generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
+      case '/registrar':
+        return MaterialPageRoute(builder: (_) => const RegistrarScreen());
+      default:
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
+    }
   }
 }

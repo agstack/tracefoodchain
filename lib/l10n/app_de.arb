@@ -719,5 +719,29 @@
   "viewAndEditProfile": "Profil anzeigen und bearbeiten",
   "editProfile": "Profil bearbeiten",
   "roleAndLocation": "Rolle & Standort",
-  "notSpecified": "Nicht angegeben"
+  "notSpecified": "Nicht angegeben",
+  "yourAssignedRole": "Ihre zugewiesene Rolle",
+  "roleRequestedWaitingApproval": "Rolle beantragt - wartet auf Admin-Freigabe",
+  "rolesLoading": "Rollen werden geladen...",
+  "requestDesiredRole": "Gewünschte Rolle beantragen",
+  "roleRequestMustBeApproved": "Ihre Rollenanfrage muss von einem Admin genehmigt werden",
+  "cropImage": "Bild zuschneiden",
+  "imageUploadError": "Fehler beim Hochladen des Bildes. Bitte versuchen Sie es erneut.",
+  "imageProcessingError": "Fehler beim Verarbeiten des Bildes: {error}",
+  "@imageProcessingError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pleaseSelectCountry": "Bitte wählen Sie Ihr Land aus.",
+  "profileSaveError": "Fehler beim Speichern des Profils: {error}",
+  "@profileSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

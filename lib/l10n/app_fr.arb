@@ -713,5 +713,29 @@
   "viewAndEditProfile": "Voir et modifier le profil",
   "editProfile": "Éditer le profil",
   "roleAndLocation": "Rôle et localisation",
-  "notSpecified": "Non spécifié"
+  "notSpecified": "Non spécifié",
+  "yourAssignedRole": "Votre rôle assigné",
+  "roleRequestedWaitingApproval": "Rôle demandé - en attente d'approbation admin",
+  "rolesLoading": "Chargement des rôles...",
+  "requestDesiredRole": "Demander le rôle souhaité",
+  "roleRequestMustBeApproved": "Votre demande de rôle doit être approuvée par un administrateur",
+  "cropImage": "Recadrer l'image",
+  "imageUploadError": "Erreur lors du téléchargement de l'image. Veuillez réessayer.",
+  "imageProcessingError": "Erreur lors du traitement de l'image : {error}",
+  "@imageProcessingError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pleaseSelectCountry": "Veuillez sélectionner votre pays.",
+  "profileSaveError": "Erreur lors de l'enregistrement du profil : {error}",
+  "@profileSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

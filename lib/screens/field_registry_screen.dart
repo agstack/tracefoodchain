@@ -70,7 +70,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     try {
       // Prüfe localStorage
       if (!localStorage!.isOpen) {
-        
         return false;
       }
 
@@ -80,7 +79,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       // Weitere Prüfungen können hier hinzugefügt werden
       return true;
     } catch (e) {
-      
       return false;
     }
   }
@@ -110,7 +108,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         _applyDateFilter(); // Wende den aktuellen Filter an
       });
     } catch (e) {
-      
     } finally {
       if (mounted) {
         setState(() {
@@ -186,7 +183,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           }
         },
         onError: (error) {
-          
           if (!completer.isCompleted) {
             completer.completeError(error);
           }
@@ -220,9 +216,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
         return dateB.compareTo(dateA); // Neueste zuerst
       });
-    } catch (e) {
-      
-    }
+    } catch (e) {}
     return fields;
   }
 
@@ -242,13 +236,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       }
 
       if (generateDigitalSiblingRef == null) {
-        
         return null;
       }
 
       final methodUID = generateDigitalSiblingRef["UID"];
       if (methodUID == null) {
-        
         return null;
       }
 
@@ -270,9 +262,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           }
         }
       }
-    } catch (e) {
-      
-    }
+    } catch (e) {}
 
     return null;
   }
@@ -363,35 +353,90 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     try {
-      
+      debugPrint('=== CSV Upload gestartet ===');
       FilePickerResult? result = await FilePicker.platform
           .pickFiles(withReadStream: true, allowMultiple: false);
 
       if (result != null) {
+        debugPrint('Datei ausgewählt: ${result.files.first.name}');
         String csvContent = "";
 
         if (kIsWeb) {
-          
+          debugPrint('Web-Plattform erkannt');
           for (PlatformFile file in result.files) {
-            csvContent = "";
-            await file.readStream
-                ?.transform(utf8.decoder)
-                .listen((chunk) {
-                  csvContent += chunk;
-                })
-                .asFuture()
-                .then((value) async {
-                  await _processCsvData(csvContent);
-                });
-            // csvContent = String.fromCharCodes(result.files.single.bytes!);
+            // Sammle die Bytes erst
+            List<int> bytes = [];
+            await file.readStream?.listen((chunk) {
+              bytes.addAll(chunk);
+            }, onError: (error) {
+              debugPrint('FEHLER beim Lesen des Streams: $error');
+              debugPrint('Error type: ${error.runtimeType}');
+            }).asFuture();
+
+            debugPrint('Bytes gelesen: ${bytes.length}');
+
+            // Versuche verschiedene Encodings
+            try {
+              // Erst UTF-8 versuchen
+              csvContent = utf8.decode(bytes);
+              debugPrint('UTF-8 Dekodierung erfolgreich');
+            } catch (e) {
+              debugPrint('UTF-8 fehlgeschlagen: $e');
+              try {
+                // Dann Latin1 (ISO-8859-1) versuchen
+                csvContent = latin1.decode(bytes);
+                debugPrint('Latin1 Dekodierung erfolgreich');
+              } catch (e2) {
+                debugPrint('Latin1 fehlgeschlagen: $e2');
+                // Fallback: UTF-8 mit allowMalformed
+                csvContent = utf8.decode(bytes, allowMalformed: true);
+                debugPrint(
+                    'UTF-8 (allowMalformed) Dekodierung als Fallback verwendet');
+              }
+            }
+
+            debugPrint(
+                'CSV-Inhalt erfolgreich gelesen (${csvContent.length} Zeichen)');
+            debugPrint(
+                'Erste 200 Zeichen: ${csvContent.substring(0, csvContent.length > 200 ? 200 : csvContent.length)}');
+            await _processCsvData(csvContent);
           }
         } else {
+          debugPrint('Mobile Plattform erkannt');
           // Für mobile Plattformen
           File file = File(result.files.single.path!);
-          csvContent = await file.readAsString();
+
+          // Lese Bytes und versuche verschiedene Encodings
+          List<int> bytes = await file.readAsBytes();
+          debugPrint('Bytes gelesen: ${bytes.length}');
+
+          try {
+            csvContent = utf8.decode(bytes);
+            debugPrint('UTF-8 Dekodierung erfolgreich');
+          } catch (e) {
+            debugPrint('UTF-8 fehlgeschlagen: $e');
+            try {
+              csvContent = latin1.decode(bytes);
+              debugPrint('Latin1 Dekodierung erfolgreich');
+            } catch (e2) {
+              debugPrint('Latin1 fehlgeschlagen: $e2');
+              csvContent = utf8.decode(bytes, allowMalformed: true);
+              debugPrint(
+                  'UTF-8 (allowMalformed) Dekodierung als Fallback verwendet');
+            }
+          }
+
+          debugPrint(
+              'CSV-Inhalt erfolgreich gelesen (${csvContent.length} Zeichen)');
         }
+      } else {
+        debugPrint('Keine Datei ausgewählt');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('=== FEHLER beim CSV-Upload ===');
+      debugPrint('Error: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      debugPrint('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${l10n.csvUploadError}: $e')),
       );
@@ -427,9 +472,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
         return 'POLYGON ((${wktCoordinates.join(', ')}))';
       }
-    } catch (e) {
-      
-    }
+    } catch (e) {}
 
     // Fallback: Gib die ursprünglichen Koordinaten zurück
     return csvCoordinates;
@@ -462,9 +505,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
         return switchedPoints;
       }
-    } catch (e) {
-      
-    }
+    } catch (e) {}
 
     // Fallback: Leere Koordinaten
     return <List<double>>[];
@@ -482,11 +523,86 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     AssetRegistryService? assetRegistryService;
 
     try {
-      List<List<dynamic>> csvData =
-          const CsvToListConverter().convert(csvContent);
+      debugPrint('=== CSV Verarbeitung gestartet ===');
+      debugPrint('CSV Content Länge: ${csvContent.length}');
+
+      // Erkenne das Trennzeichen automatisch (Semikolon oder Komma)
+      // Zähle nur Zeichen außerhalb von Anführungszeichen
+      String fieldDelimiter = ',';
+      final firstLine = csvContent.split('\n').first;
+
+      int semicolonCount = 0;
+      int commaCount = 0;
+      bool insideQuotes = false;
+
+      for (int i = 0; i < firstLine.length; i++) {
+        final char = firstLine[i];
+        if (char == '"') {
+          insideQuotes = !insideQuotes;
+        } else if (!insideQuotes) {
+          if (char == ';') {
+            semicolonCount++;
+          } else if (char == ',') {
+            commaCount++;
+          }
+        }
+      }
+
+      debugPrint('Semikola außerhalb von Quotes: $semicolonCount');
+      debugPrint('Kommas außerhalb von Quotes: $commaCount');
+
+      if (semicolonCount > commaCount) {
+        fieldDelimiter = ';';
+        debugPrint('Trennzeichen erkannt: Semikolon (;)');
+      } else {
+        debugPrint('Trennzeichen erkannt: Komma (,)');
+      }
+
+      List<List<dynamic>> csvData = CsvToListConverter(
+        fieldDelimiter: fieldDelimiter,
+        eol: '\n',
+      ).convert(csvContent);
+
+      debugPrint(
+          'CSV zu Liste konvertiert: ${csvData.length} Zeilen mit Trennzeichen "$fieldDelimiter"');
 
       if (csvData.isEmpty) {
+        debugPrint('FEHLER: CSV-Daten sind leer');
         throw Exception(l10n.invalidCsvFormat);
+      }
+
+      debugPrint('Erste Zeile (Header): ${csvData[0]}');
+      debugPrint('Anzahl Spalten: ${csvData[0].length}');
+
+      // Analysiere Header-Zeile und finde Spalten-Indizes
+      final headerRow = csvData[0];
+      Map<String, int> columnIndices = {};
+
+      for (int i = 0; i < headerRow.length; i++) {
+        final columnName = headerRow[i].toString().trim().toLowerCase();
+        columnIndices[columnName] = i;
+        debugPrint('Spalte $i: "$columnName"');
+      }
+
+      // Finde die benötigten Spalten (flexibel)
+      int? nameIndex = columnIndices['name'];
+      int? dniIndex = columnIndices['dni'] ??
+          columnIndices['fieldname'] ??
+          columnIndices['feldname'];
+      int? polygonIndex = columnIndices['polygon'] ??
+          columnIndices['coordinates'] ??
+          columnIndices['koordinaten'];
+
+      debugPrint('Spalten-Mapping:');
+      debugPrint('  Name-Spalte: $nameIndex');
+      debugPrint('  DNI/Feldname-Spalte: $dniIndex');
+      debugPrint('  Polygon/Koordinaten-Spalte: $polygonIndex');
+
+      if (nameIndex == null || dniIndex == null || polygonIndex == null) {
+        debugPrint('FEHLER: Erforderliche Spalten nicht gefunden');
+        debugPrint('Verfügbare Spalten: ${columnIndices.keys.toList()}');
+        throw Exception(
+            'CSV muss mindestens Spalten für Name, DNI/Feldname und Polygon/Koordinaten enthalten');
       }
 
       // Sicherheitsprüfungen für globale Variablen
@@ -543,30 +659,48 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         //Skip header row
         final row = csvData[i];
 
+        debugPrint('--- Zeile ${i + 1} wird verarbeitet ---');
+        debugPrint('Rohdaten: $row');
+
         // Update progress - set current field index
         setState(() {
           currentFieldIndex = i;
         });
 
-        // Erwarte mindestens 3 Spalten: Name, Beschreibung, Koordinaten
-        if (row.length < 3) {
+        // Prüfe ob die Zeile genug Spalten hat
+        if (row.length <= nameIndex! ||
+            row.length <= dniIndex! ||
+            row.length <= polygonIndex!) {
+          debugPrint(
+              'FEHLER: Zeile ${i + 1} hat nur ${row.length} Spalten, aber benötigt mindestens ${[
+                    nameIndex,
+                    dniIndex,
+                    polygonIndex
+                  ].reduce((a, b) => a > b ? a : b) + 1}');
           errors.add(
               l10n.csvLineError((i + 1).toString(), l10n.invalidCsvFormat));
           errorCount++;
           continue;
         }
-        final String registrar = row[0]?.toString().trim() ?? '';
-        final String fieldNameDNI = row[1]?.toString().trim() ?? '';
-        //Intermediary
-        //Municipality
-        //Community
-        //Logo
-        final String coordinatesRaw = row[6]?.toString().trim() ?? '';
+
+        // Extrahiere Werte basierend auf Header-Mapping
+        final String registrar = row[nameIndex]?.toString().trim() ?? '';
+        final String fieldNameDNI = row[dniIndex]?.toString().trim() ?? '';
+        final String coordinatesRaw =
+            row[polygonIndex]?.toString().trim() ?? '';
+
+        debugPrint('Registrar/Name: $registrar');
+        debugPrint('Feldname/DNI: $fieldNameDNI');
+        debugPrint('Koordinaten (roh): $coordinatesRaw');
 
         // Konvertiere Koordinaten vom CSV-Format zu WKT-Format
         final String coordinates = _convertCoordinatesToWKT(coordinatesRaw);
+        debugPrint(
+            'Koordinaten (WKT): ${coordinates.substring(0, coordinates.length > 100 ? 100 : coordinates.length)}...');
 
         if (fieldNameDNI.isEmpty || coordinatesRaw.isEmpty) {
+          debugPrint(
+              'FEHLER: Zeile ${i + 1} - Feldname oder Koordinaten fehlen');
           errors.add(l10n.csvLineNameCoordinatesRequired((i + 1).toString()));
           errorCount++;
           continue;
@@ -576,25 +710,36 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           setState(() {
             currentFieldName = fieldNameDNI;
           });
+          debugPrint('Registriere Feld: $fieldNameDNI');
           final returnCode = await _registerSingleField(
               fieldNameDNI, coordinates, assetRegistryService);
 
+          debugPrint('Registrierung returnCode: $returnCode');
+
           if (returnCode == 'successfullyRegistered') {
-            
             successCount++;
+            debugPrint('✅ Feld erfolgreich registriert');
           } else if (returnCode == 'alreadyRegistered') {
-            
             alreadyExistsCount++;
+            debugPrint('ℹ️ Feld existiert bereits');
           } else {
             errors.add(l10n.csvLineError((i + 1).toString(), returnCode));
             errorCount++;
+            debugPrint('❌ Fehler bei Registrierung: $returnCode');
           }
-        } catch (e) {
+        } catch (e, stackTrace) {
+          debugPrint('❌ EXCEPTION bei Zeile ${i + 1}: $e');
+          debugPrint('Stack trace: $stackTrace');
           errors.add(
               l10n.csvLineRegistrationError((i + 1).toString(), e.toString()));
           errorCount++;
         }
       }
+
+      debugPrint('=== CSV Verarbeitung abgeschlossen ===');
+      debugPrint('Erfolgreich: $successCount');
+      debugPrint('Existieren bereits: $alreadyExistsCount');
+      debugPrint('Fehler: $errorCount');
 
       // Zeige Ergebnisse in einem Dialog
       String title = l10n.csvProcessingComplete;
@@ -633,10 +778,15 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
       if (errors.isNotEmpty && errors.length <= 5) {
         // Zeige erste paar Fehler
+        debugPrint('Zeige Fehler-Dialog mit ${errors.length} Fehlern');
         _showErrorDialog(errors.take(5).join('\n'));
       } // Aktualisiere die Liste
       await _loadRegisteredFields();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('=== SCHWERWIEGENDER FEHLER in _processCsvData ===');
+      debugPrint('Error: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      debugPrint('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${l10n.csvUploadError}: $e')),
       );
@@ -645,9 +795,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       if (userRegistryService != null) {
         try {
           await userRegistryService.logout();
-        } catch (e) {
-          
-        }
+        } catch (e) {}
       }
 
       setState(() {
@@ -667,7 +815,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     bool alreadyExists = false;
 
     try {
-      // Schritt 2: Feld bei Asset Registry registrieren
+      // Step 2: Register field with Asset Registry
       setState(() {
         currentProgressStep = l10n.progressStep2RegisteringField;
       });
@@ -681,12 +829,14 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
       String? geoId;
       if (registerResponse.statusCode == 200) {
-        // Erfolgreiche Registrierung
+        //
+        //!   FIELD WAS REGISTERED SUCCESSFULLY IN ASSET REGISTRY - GENERATE OPENRAL OBJECT OF THE FIELD
+        //
         setState(() {
           currentProgressStep = l10n.progressStep2FieldRegisteredSuccessfully;
         });
 
-try {
+        try {
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
           final extractedGeoId = responseData['geoid'] as String?;
@@ -716,7 +866,6 @@ try {
               }
             ];
             final newFieldUID = await generateDigitalSibling(newField);
-            
           } else {
             // GeoID-Extraktion fehlgeschlagen
             return ('registrationError: Could not extract geoID from response: No geoID in response');
@@ -727,18 +876,18 @@ try {
           return ('registrationError: Could not extract geoID from response: $e');
         }
       } else if (registerResponse.statusCode == 400) {
-        // Feld existiert bereits
+        //
+        //!   FIELD HAS BEEN ALREADY REGISTERED IN ASSET REGISTRY BEFORE
+        //
         setState(() {
           currentProgressStep = l10n.progressStep2FieldAlreadyExists;
         });
 
         try {
-          
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
-debugPrint(registerResponse
-              .body);
-           //This is important to see return of GeoID registry service
+          debugPrint(registerResponse.body);
+          //This is important to see return of GeoID registry service
           try {
             final matchedGeoIds =
                 responseData['matched geo ids'] as List<dynamic>?;
@@ -753,7 +902,6 @@ debugPrint(registerResponse
               return ('registrationError: No matched geo ids found in response');
             }
           } catch (e) {
-            
             return ('registrationError: provider did not return geoIDs: $e');
           }
         } catch (e) {
@@ -763,18 +911,18 @@ debugPrint(registerResponse
         }
       } else {
         return ('registrationError: Asset Registry ERROR: ${registerResponse.statusCode} - ${registerResponse.body}');
-      } // An diesem Punkt sollte geoId immer gesetzt sein
+      }
 
       //! We got a finalGeoId, can be newly registered or already existing
       final finalGeoId = geoId;
 
-      // Schritt 3: Prüfen ob Feld mit dieser GeoID bereits in der zentralen Firebase-Datenbank existiert
+      // Step 3: Check if field with this GeoID already exists in the central Firebase database
       setState(() {
         currentProgressStep =
             l10n.progressStep3CheckingCentralDatabase(finalGeoId);
       });
 
-final existingFirebaseObjects =
+      final existingFirebaseObjects =
           await getFirebaseObjectsByAlternateUID(finalGeoId);
 
       if (existingFirebaseObjects.isNotEmpty) {
@@ -792,11 +940,13 @@ final existingFirebaseObjects =
         }
         return ('alreadyRegistered');
       }
+
+      //There is no openral object in the central database with this geoID, we need to create it now
       setState(() {
         currentProgressStep = l10n.progressStep3FieldNotFoundInCentralDb;
       });
 
-Map<String, dynamic> newField = await getOpenRALTemplate("field");
+      Map<String, dynamic> newField = await getOpenRALTemplate("field");
       //Name
       newField["identity"]["name"] = fieldName; //GeoID
       newField["identity"]["alternateIDs"] = [
@@ -816,7 +966,7 @@ Map<String, dynamic> newField = await getOpenRALTemplate("field");
         }
       ];
       final newFieldUID = await generateDigitalSibling(newField);
-      
+
       if (!alreadyExists)
         await _showRegistrationResult(
             l10n.fieldRegistrationSuccessMessage(fieldName), true);
@@ -825,7 +975,7 @@ Map<String, dynamic> newField = await getOpenRALTemplate("field");
       return 'successfullyRegistered';
     } catch (e) {
       // Fehlerbehandlung
-      
+
       await _showRegistrationResult(
           l10n.fieldRegistrationErrorMessage(fieldName, e.toString()), false);
       rethrow;
@@ -917,11 +1067,9 @@ Map<String, dynamic> newField = await getOpenRALTemplate("field");
           await fshowInfoDialog(context, l10n.excelFileSavedAt);
         }
       } catch (e) {
-        
         await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
       }
     } else {
-      
       await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
     }
   }

@@ -50,10 +50,8 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
     _loadCurrentUserRole();
     _loadAvailableRoles();
 
-    // Falls aus Settings aufgerufen, lade bestehende Profildaten
-    if (widget.isFromSettings) {
-      _loadExistingProfileData();
-    }
+    // Always load existing profile data, regardless of how the screen was called
+    _loadExistingProfileData();
   }
 
   @override
@@ -88,14 +86,17 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
   Future<void> _loadExistingProfileData() async {
     try {
       final profile = await OpenRALService.getUserProfile();
+      debugPrint('Loaded profile data: $profile');
 
       setState(() {
         // Namen laden
         if (profile.containsKey('firstName')) {
           _firstNameController.text = profile['firstName']!;
+          debugPrint('Set firstName: ${profile['firstName']}');
         }
         if (profile.containsKey('lastName')) {
           _lastNameController.text = profile['lastName']!;
+          debugPrint('Set lastName: ${profile['lastName']}');
         }
 
         // Land laden
@@ -103,16 +104,18 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           _selectedCountry = profile['country'];
           // TODO: Country name lookup
           _selectedCountryName = profile['country']; // Simplified
+          debugPrint('Set country: ${profile['country']}');
         }
 
         // Avatar URL laden
         if (profile.containsKey('downloadURL')) {
           _avatarUrl = profile['downloadURL'];
+          debugPrint('Set avatar URL: ${profile['downloadURL']}');
         }
       });
     } catch (e) {
       // Fehler beim Laden der Profildaten - nicht kritisch
-      debugPrint('Fehler beim Laden der Profildaten: $e');
+      debugPrint('Error loading profile data: $e');
     }
   }
 
@@ -499,7 +502,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                             ),
                           ),
                           Text(
-                            'Ihre zugewiesene Rolle',
+                            l10n.yourAssignedRole,
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 12,
@@ -537,7 +540,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                             ),
                           ),
                           Text(
-                            'Rolle beantragt - wartet auf Admin-Freigabe',
+                            l10n.roleRequestedWaitingApproval,
                             style: TextStyle(
                               color: Colors.orange[700],
                               fontSize: 12,
@@ -565,7 +568,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Rollen werden geladen...',
+                              l10n.rolesLoading,
                               style: TextStyle(color: Colors.grey[600]),
                             ),
                           ),
@@ -577,11 +580,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                         DropdownButtonFormField<String>(
                           value: _selectedRole,
                           decoration: InputDecoration(
-                            labelText: 'Gewünschte Rolle beantragen',
+                            labelText: l10n.requestDesiredRole,
                             prefixIcon: const Icon(Icons.work),
                             border: const OutlineInputBorder(),
-                            helperText:
-                                'Ihre Rollenanfrage muss von einem Admin genehmigt werden',
+                            helperText: l10n.roleRequestMustBeApproved,
                           ),
                           items: _availableRoles.map((role) {
                             final roleObject = roles.firstWhere(
@@ -608,7 +610,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                             if (_currentUserRole == null &&
                                 _requestedUserRole == null &&
                                 (value == null || value.isEmpty)) {
-                              return 'Bitte wählen Sie eine Rolle aus';
+                              return l10n.pleaseSelectRole;
                             }
                             return null;
                           },
@@ -622,6 +624,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
   }
 
   Future<void> _pickAndCropAvatar() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       // Pick image
       final XFile? pickedFile =
@@ -643,14 +646,14 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: 'Bild zuschneiden',
+              toolbarTitle: l10n.cropImage,
               toolbarColor: Theme.of(context).primaryColor,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.square,
               lockAspectRatio: true,
             ),
             IOSUiSettings(
-              title: 'Bild zuschneiden',
+              title: l10n.cropImage,
               aspectRatioLockEnabled: true,
               resetAspectRatioEnabled: false,
             ),
@@ -678,14 +681,13 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
       });
 
       if (downloadUrl == null) {
-        _showErrorSnackBar(
-            'Fehler beim Hochladen des Bildes. Bitte versuchen Sie es erneut.');
+        _showErrorSnackBar(l10n.imageUploadError);
       }
     } catch (e) {
       setState(() {
         _isUploading = false;
       });
-      _showErrorSnackBar('Fehler beim Verarbeiten des Bildes: $e');
+      _showErrorSnackBar(l10n.imageProcessingError(e.toString()));
     }
   }
 
@@ -716,12 +718,13 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
   }
 
   Future<void> _saveProfile() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (_selectedCountry == null) {
-      _showErrorSnackBar('Bitte wählen Sie Ihr Land aus.');
+      _showErrorSnackBar(l10n.pleaseSelectCountry);
       return;
     }
 
@@ -730,7 +733,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
     if (_currentUserRole == null &&
         _requestedUserRole == null &&
         _selectedRole == null) {
-      _showErrorSnackBar('Bitte wählen Sie eine Rolle aus.');
+      _showErrorSnackBar(l10n.pleaseSelectRole);
       return;
     }
 
@@ -763,7 +766,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
         }
       }
     } catch (e) {
-      _showErrorSnackBar('Fehler beim Speichern des Profils: $e');
+      _showErrorSnackBar(l10n.profileSaveError(e.toString()));
     } finally {
       if (mounted) {
         setState(() {

@@ -713,5 +713,29 @@
   "viewAndEditProfile": "Ver y editar perfil",
   "editProfile": "Editar perfil",
   "roleAndLocation": "Rol y ubicación",
-  "notSpecified": "No especificado"
+  "notSpecified": "No especificado",
+  "yourAssignedRole": "Tu rol asignado",
+  "roleRequestedWaitingApproval": "Rol solicitado - esperando aprobación del administrador",
+  "rolesLoading": "Cargando roles...",
+  "requestDesiredRole": "Solicitar rol deseado",
+  "roleRequestMustBeApproved": "Su solicitud de rol debe ser aprobada por un administrador",
+  "cropImage": "Recortar imagen",
+  "imageUploadError": "Error al subir la imagen. Por favor, inténtalo de nuevo.",
+  "imageProcessingError": "Error al procesar la imagen: {error}",
+  "@imageProcessingError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pleaseSelectCountry": "Por favor, selecciona tu país.",
+  "profileSaveError": "Error al guardar el perfil: {error}",
+  "@profileSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

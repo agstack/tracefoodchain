@@ -893,6 +893,25 @@ class OpenRALService {
     }
   }
 
+  /// Public method to get user object by UID
+  static Future<Map<String, dynamic>?> getUserObjectByUID(String uid) async {
+    try {
+      // Try to get from local storage first
+      if (localStorage != null) {
+        final localObject = localStorage!.get(uid);
+        if (localObject != null) {
+          return Map<String, dynamic>.from(localObject);
+        }
+      }
+
+      // Try to get from cloud
+      return await _getUserObjectFromCloud(uid);
+    } catch (e) {
+      debugPrint('Error getting user object by UID: $e');
+      return null;
+    }
+  }
+
   /// Get user object from cloud storage
   static Future<Map<String, dynamic>?> _getUserObjectFromCloud(
       String uid) async {

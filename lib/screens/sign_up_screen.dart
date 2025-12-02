@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../screens/user_profile_setup_screen.dart';
 import '../services/open_ral_service.dart';
+import '../main.dart'; // Für appUserDoc
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -60,16 +61,24 @@ class _AuthScreenState extends State<AuthScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', user.uid);
 
-    // Check if this is a new user (account was just created)
-    bool isNewUser = message.contains("Account created successfully");
-    isNewUser = true;
+    // Load the user's appUserDoc from cloud/local storage
+    await _loadAppUserDoc(user);
 
-    if (isNewUser) {
-      // For new users, check if they need to complete their profile
-      await _checkAndNavigateToProfileSetup(user);
-    } else {
-      // For existing users, navigate to main app
-      Navigator.of(context).pushReplacementNamed('/');
+    // Always check if user profile is complete, regardless of new or existing user
+    // This ensures we always have the userRole
+    await _checkAndNavigateToProfileSetup(user);
+  }
+
+  Future<void> _loadAppUserDoc(User user) async {
+    try {
+      // Try to get user object from OpenRAL service
+      final userObject = await OpenRALService.getUserObjectByUID(user.uid);
+      if (userObject != null) {
+        // Set the global appUserDoc variable from main.dart
+        appUserDoc = userObject;
+      }
+    } catch (e) {
+      debugPrint('Error loading appUserDoc: $e');
     }
   }
 
@@ -82,10 +91,12 @@ class _AuthScreenState extends State<AuthScreen> {
           userProfile['firstName']!.isNotEmpty;
       final bool hasLastName = userProfile.containsKey('lastName') &&
           userProfile['lastName']!.isNotEmpty;
-      final bool hasRole = userProfile.containsKey('userRole') &&
-          userProfile['userRole']!.isNotEmpty;
+      final bool hasCountry = userProfile.containsKey('country') &&
+          userProfile['country']!.isNotEmpty;
 
-      if (!hasFirstName || !hasLastName || !hasRole) {
+      // Required fields: firstName, lastName, and country
+      // userRole is optional and will default to "Trader" if not set
+      if (!hasFirstName || !hasLastName || !hasCountry) {
         // Navigate to profile setup screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
@@ -93,8 +104,8 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         );
       } else {
-        // Profile is already complete, navigate to main app
-        Navigator.of(context).pushReplacementNamed('/');
+        // Profile is complete, navigate based on user role
+        _navigateBasedOnRole(userProfile);
       }
     } catch (e) {
       // On error, navigate to profile setup to be safe
@@ -103,6 +114,20 @@ class _AuthScreenState extends State<AuthScreen> {
           builder: (context) => const UserProfileSetupScreen(),
         ),
       );
+    }
+  }
+
+  void _navigateBasedOnRole(Map<String, String> userProfile) {
+    final userRole = userProfile['userRole'] ?? 'Trader';
+
+    if (userRole.toLowerCase() == 'registrar' ||
+        userRole.toLowerCase() == 'superadmin') {
+      // Navigate to Registrar-specific screen
+      // SUPERADMIN gets registrar screen for debug purposes
+      Navigator.of(context).pushReplacementNamed('/registrar');
+    } else {
+      // All other roles (Trader, etc.) go to main screen
+      Navigator.of(context).pushReplacementNamed('/');
     }
   }
 

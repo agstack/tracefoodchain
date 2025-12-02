@@ -2855,6 +2855,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not specified'**
   String get notSpecified;
+
+  /// No description provided for @yourAssignedRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Your assigned role'**
+  String get yourAssignedRole;
+
+  /// No description provided for @roleRequestedWaitingApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Role requested - waiting for admin approval'**
+  String get roleRequestedWaitingApproval;
+
+  /// No description provided for @rolesLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading roles...'**
+  String get rolesLoading;
+
+  /// No description provided for @requestDesiredRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Request desired role'**
+  String get requestDesiredRole;
+
+  /// No description provided for @roleRequestMustBeApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Your role request must be approved by an admin'**
+  String get roleRequestMustBeApproved;
+
+  /// No description provided for @cropImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop Image'**
+  String get cropImage;
+
+  /// No description provided for @imageUploadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error uploading image. Please try again.'**
+  String get imageUploadError;
+
+  /// No description provided for @imageProcessingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error processing image: {error}'**
+  String imageProcessingError(String error);
+
+  /// No description provided for @pleaseSelectCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select your country.'**
+  String get pleaseSelectCountry;
+
+  /// No description provided for @profileSaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error saving profile: {error}'**
+  String profileSaveError(String error);
 }
 
 class _AppLocalizationsDelegate

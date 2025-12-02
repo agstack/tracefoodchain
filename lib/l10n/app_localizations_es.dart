@@ -1519,4 +1519,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notSpecified => 'No especificado';
+
+  @override
+  String get yourAssignedRole => 'Tu rol asignado';
+
+  @override
+  String get roleRequestedWaitingApproval =>
+      'Rol solicitado - esperando aprobación del administrador';
+
+  @override
+  String get rolesLoading => 'Cargando roles...';
+
+  @override
+  String get requestDesiredRole => 'Solicitar rol deseado';
+
+  @override
+  String get roleRequestMustBeApproved =>
+      'Su solicitud de rol debe ser aprobada por un administrador';
+
+  @override
+  String get cropImage => 'Recortar imagen';
+
+  @override
+  String get imageUploadError =>
+      'Error al subir la imagen. Por favor, inténtalo de nuevo.';
+
+  @override
+  String imageProcessingError(String error) {
+    return 'Error al procesar la imagen: $error';
+  }
+
+  @override
+  String get pleaseSelectCountry => 'Por favor, selecciona tu país.';
+
+  @override
+  String profileSaveError(String error) {
+    return 'Error al guardar el perfil: $error';
+  }
 }
