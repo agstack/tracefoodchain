@@ -151,6 +151,7 @@
   "activeItems": "Active Items",
   "pastItems": "Past Items",
   "changeFarmerId": "Change Farmer ID",
+  "changeFarm": "Change Farm",
   "associateWithDifferentFarm": "Associate with a Different Farm",
   "manageFarmEmployees": "Manage Farm Employees",
   "manageHarvests": "Manage Harvests",
@@ -441,6 +442,7 @@
   "nologoutpossible":"Logout only possible when connected to the internet",
   "manuallySyncingWith": "Manually syncing with",
   "syncingWith": "Syncing with",
+  "syncInProgress": "Synchronization in progress...",
   "newKeypairNeeded": "No private key found - generating new keypair...",
   "failedToInitializeKeyManagement": "WARNING: Failed to initialize key management!",
   "newUserProfileNeeded": "User profile not found in local database - creating new one...",
@@ -743,5 +745,150 @@
         "type": "String"
       }
     }
-  }
+  },
+  "plotRegistrationNotPossible": "Plot registration is not possible",
+  "deviceHasNoGps": "This device has no GPS, please use another device",
+  "gpsDisabledMessage": "Please switch on GPS and allow this device to access GPS data",
+  "enableGpsButton": "Enable GPS & Permissions",
+  "openSettingsButton": "Open Settings",
+  "registerFarmFarmer": "Register Farm/Farmer",
+  "registerFarm": "Register Farm",
+  "registerFarmer": "Register Farmer",
+  "registerField": "Register Field",
+  "recordFieldBoundary": "Record Field Boundary",
+  "fieldMustBeLinkedToFarm": "Field must be linked to a farm",
+  "noFarmsRegisteredYet": "No farms registered yet",
+  "startRecording": "Start Recording",
+  "stopRecording": "Stop Recording",
+  "addPoint": "Add Point",
+  "pointsRecorded": "{count} points recorded",
+  "@pointsRecorded": {
+    "description": "Number of GPS points recorded for polygon",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "estimatedArea": "Estimated area: {area} ha",
+  "@estimatedArea": {
+    "description": "Calculated field area in hectares",
+    "placeholders": {
+      "area": {
+        "type": "String",
+        "example": "4.5"
+      }
+    }
+  },
+  "qcPending": "Pending Approval",
+  "qcApproved": "Approved",
+  "qcRejected": "Rejected",
+  "approveRegistration": "Approve",
+  "rejectRegistration": "Reject",
+  "reviewRegistration": "Review Registration",
+  "reviewPendingRegistrations": "Review Pending Registrations",
+  "farmerDetails": "Farmer Details",
+  "farmDetails": "Farm Details",
+  "fieldDetails": "Field Details",
+  "nationalID": "National ID",
+  "phoneNumber": "Phone Number",
+  "fieldArea": "Field Area (ha)",
+  "polygonNotClosed": "Polygon is not closed",
+  "minimumPointsRequired": "At least 3 points required",
+  "farmerInformation": "Farmer Information",
+  "farmInformation": "Farm Information",
+  "fieldInformation": "Field Information",
+  "reviewAllData": "Review All Data",
+  "firstName": "First Name",
+  "lastName": "Last Name",
+  "farmName": "Farm Name",
+  "farmAddress": "Farm Address",
+  "fieldName": "Field Name",
+  "addAnotherField": "Add Another Field",
+  "completeRegistration": "Complete Registration",
+  "registrationSuccessful": "Registration successful",
+  "registrationFailed": "Registration failed",
+  "gpsRequired": "GPS must be enabled for registration",
+  "pleaseEnableGps": "Please enable GPS to continue",
+  "waitingForGps": "Waiting for GPS signal...",
+  "recordingInProgress": "Recording in progress...",
+  "cancelRegistration": "Leave Registration?",
+  "cancelRegistrationMessage": "Do you want to leave the field registration?",
+  "continueRegistration": "Continue",
+  "saveAndExit": "Save and Exit",
+  "discardData": "Discard",
+  "tapToAddPoint": "Tap button or walk to add points",
+  "minimumDistanceWarning": "Point too close to previous point (min {meters}m)",
+  "@minimumDistanceWarning": {
+    "description": "Warning when GPS point is too close",
+    "placeholders": {
+      "meters": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "clearPolygon": "Clear Polygon",
+  "undoLastPoint": "Undo Last Point",
+  "deletePoint": "Delete Point?",
+  "deletePointConfirmation": "Remove point {index} from polygon?",
+  "@deletePointConfirmation": {
+    "description": "Confirmation message for deleting a point",
+    "placeholders": {
+      "index": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "delete": "Delete",
+  "recordedPoints": "Recorded Points:",
+  "current": "Current",
+  "accuracy": "Accuracy",
+  "closeAutomatically": "Close automatically?",
+  "cityName": "City/Town",
+  "stateName": "State/Department",
+  "noPendingRegistrations": "No pending registrations",
+  "registrationApproved": "Registration approved",
+  "registrationRejected": "Registration rejected",
+  "rejectionReason": "Rejection Reason",
+  "approvalNotes": "Approval Notes",
+  "fieldsCount": "{count} field(s)",
+  "@fieldsCount": {
+    "description": "Number of fields",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "registeredBy": "Registered by",
+  "registrationDate": "Registration Date",
+  "pendingCount": "{count} pending",
+  "@pendingCount": {
+    "description": "Count of pending items",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "todaysRegistrations": "Today's Registrations",
+  "registrarDashboard": "Registrar Dashboard",
+  "welcome": "Welcome",
+  "quickActions": "Quick Actions",
+  "todaysStatistics": "Today's Statistics",
+  "registered": "Registered",
+  "verified": "Verified",
+  "pending": "Pending",
+  "continueOrStartNew": "Continue or start new?",
+  "unfinishedFieldRecordings": "There are unfinished field recordings:",
+  "points": "points",
+  "startNewField": "Start new field",
+  "pinchToZoom": "Pinch to zoom, long press to edit",
+  "point": "Point",
+  "cancel": "Cancel"
 }

@@ -17,7 +17,7 @@ Map<String, dynamic> initialObjectTemplateFarm = {
         "A 'farm' is a commercial entity containing of parcel(s) of land, including its buildings and other resources, that is used for the purpose of producing food, fiber, and other agricultural products. Farms can vary greatly in size and function, ranging from small family-owned operations to large industrial enterprises. The primary activities on a farm typically include the cultivation of crops (such as grains, fruits, vegetables, or legumes) and the raising of livestock (such as cattle, sheep, pigs, or poultry). Farms may also include additional facilities like barns, silos, storage sheds, greenhouses, and irrigation systems, all of which support the production process. Some farms may specialize in a single type of production, such as dairy farming or orcharding, while others may be diversified, growing a variety of crops and raising different types of animals. The management of a farm involves not only the physical labor of planting, tending, and harvesting but also the planning and decision-making necessary to ensure sustainable and profitable operation.",
     "definitionURL": " "
   },
-  "objectState": "undefined",
+  "objectState": "qcPending",
   "template": {
     "RALType": "farm",
     "version": "1",
@@ -68,7 +68,7 @@ Map<String, dynamic> initialObjectTemplateHuman = {
   },
   "currentOwners": [],
   "definition": {"definitionText": "A human being.", "definitionURL": ""},
-  "objectState": "undefined",
+  "objectState": "qcPending",
   "template": {
     "RALType": "human",
     "version": "1",
@@ -118,7 +118,7 @@ Map<String, dynamic> initialObjectTemplatePlot = {
         "In an agricultural context, a 'field' refers to a specific area of land designated for the cultivation of crops or the grazing of livestock. Fields are typically delineated by natural boundaries like hedgerows, fences, or other markers, and they are managed by farmers to optimize the production of agricultural products. The size, shape, and use of a field can vary widely depending on the type of farming, the landscape, and the agricultural practices employed. Fields are fundamental units in farming operations, and they may be used for growing a single crop (monoculture) or multiple crops (polyculture), or for rotational grazing in the case of livestock farming. Soil preparation, irrigation, planting, and harvesting are all activities that take place within these fields.",
     "definitionURL": " "
   },
-  "objectState": "undefined",
+  "objectState": "qcPending",
   "template": {
     "RALType": "field",
     "version": "1",

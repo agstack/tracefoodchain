@@ -373,6 +373,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get changeFarmerId => 'Cambiar ID del Agricultor';
 
   @override
+  String get changeFarm => 'Cambiar Finca';
+
+  @override
   String get associateWithDifferentFarm => 'Asociar con Otra Granja';
 
   @override
@@ -1086,6 +1089,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get syncingWith => 'Sincronizando con';
 
   @override
+  String get syncInProgress => 'Sincronización en curso...';
+
+  @override
   String get newKeypairNeeded =>
       'No se encontró clave privada - generando nuevo par de claves...';
 
@@ -1176,7 +1182,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get fieldRegistryTitle => 'Campos Registrados';
 
   @override
-  String get fieldName => 'Nombre del Campo';
+  String get fieldName => 'Nombre de la Parcela';
 
   @override
   String get geoId => 'ID Geográfico';
@@ -1556,4 +1562,282 @@ class AppLocalizationsEs extends AppLocalizations {
   String profileSaveError(String error) {
     return 'Error al guardar el perfil: $error';
   }
+
+  @override
+  String get plotRegistrationNotPossible =>
+      'El registro de la parcela no es posible';
+
+  @override
+  String get deviceHasNoGps =>
+      'Este dispositivo no tiene GPS, utiliza otro dispositivo';
+
+  @override
+  String get gpsDisabledMessage =>
+      'Por favor, activa el GPS y permite que este dispositivo acceda a los datos de GPS';
+
+  @override
+  String get enableGpsButton => 'Activar GPS y permisos';
+
+  @override
+  String get openSettingsButton => 'Abrir configuración';
+
+  @override
+  String get registerFarmFarmer => 'Registrar Finca/Agricultor';
+
+  @override
+  String get registerFarm => 'Registrar Finca';
+
+  @override
+  String get registerFarmer => 'Registrar Agricultor';
+
+  @override
+  String get registerField => 'Registrar Parcela';
+
+  @override
+  String get recordFieldBoundary => 'Grabar Límites de Parcela';
+
+  @override
+  String get fieldMustBeLinkedToFarm =>
+      'El campo debe estar vinculado a una finca';
+
+  @override
+  String get noFarmsRegisteredYet => 'Aún no hay fincas registradas';
+
+  @override
+  String get startRecording => 'Iniciar Grabación';
+
+  @override
+  String get stopRecording => 'Detener Grabación';
+
+  @override
+  String get addPoint => 'Agregar Punto';
+
+  @override
+  String pointsRecorded(int count) {
+    return '$count puntos grabados';
+  }
+
+  @override
+  String estimatedArea(String area) {
+    return 'Área estimada: $area ha';
+  }
+
+  @override
+  String get qcPending => 'Pendiente de Aprobación';
+
+  @override
+  String get qcApproved => 'Aprobado';
+
+  @override
+  String get qcRejected => 'Rechazado';
+
+  @override
+  String get approveRegistration => 'Aprobar';
+
+  @override
+  String get rejectRegistration => 'Rechazar';
+
+  @override
+  String get reviewRegistration => 'Revisar Registro';
+
+  @override
+  String get reviewPendingRegistrations => 'Revisar Registros Pendientes';
+
+  @override
+  String get farmerDetails => 'Detalles del Agricultor';
+
+  @override
+  String get farmDetails => 'Detalles de la Finca';
+
+  @override
+  String get fieldDetails => 'Detalles de la Parcela';
+
+  @override
+  String get nationalID => 'Cédula de Identidad';
+
+  @override
+  String get phoneNumber => 'Número de Teléfono';
+
+  @override
+  String get fieldArea => 'Área de Parcela (ha)';
+
+  @override
+  String get polygonNotClosed => 'El polígono no está cerrado';
+
+  @override
+  String get minimumPointsRequired => 'Se requieren al menos 3 puntos';
+
+  @override
+  String get farmerInformation => 'Información del Agricultor';
+
+  @override
+  String get farmInformation => 'Información de la Finca';
+
+  @override
+  String get fieldInformation => 'Información de la Parcela';
+
+  @override
+  String get reviewAllData => 'Revisar Todos los Datos';
+
+  @override
+  String get farmName => 'Nombre de la Finca';
+
+  @override
+  String get farmAddress => 'Dirección de la Finca';
+
+  @override
+  String get addAnotherField => 'Agregar Otra Parcela';
+
+  @override
+  String get completeRegistration => 'Completar Registro';
+
+  @override
+  String get registrationSuccessful => 'Registro exitoso';
+
+  @override
+  String get registrationFailed => 'Registro fallido';
+
+  @override
+  String get gpsRequired => 'El GPS debe estar activado para el registro';
+
+  @override
+  String get pleaseEnableGps => 'Por favor activa el GPS para continuar';
+
+  @override
+  String get waitingForGps => 'Esperando señal GPS...';
+
+  @override
+  String get recordingInProgress => 'Grabación en progreso...';
+
+  @override
+  String get cancelRegistration => '¿Salir del Registro?';
+
+  @override
+  String get cancelRegistrationMessage => '¿Desea salir del registro de campo?';
+
+  @override
+  String get continueRegistration => 'Continuar';
+
+  @override
+  String get saveAndExit => 'Guardar y Salir';
+
+  @override
+  String get discardData => 'Descartar';
+
+  @override
+  String get tapToAddPoint => 'Presiona el botón o camina para agregar puntos';
+
+  @override
+  String minimumDistanceWarning(int meters) {
+    return 'Punto demasiado cerca del punto anterior (mín ${meters}m)';
+  }
+
+  @override
+  String get clearPolygon => 'Borrar Polígono';
+
+  @override
+  String get undoLastPoint => 'Deshacer Último Punto';
+
+  @override
+  String get deletePoint => '¿Eliminar Punto?';
+
+  @override
+  String deletePointConfirmation(int index) {
+    return '¿Eliminar punto $index del polígono?';
+  }
+
+  @override
+  String get delete => 'Eliminar';
+
+  @override
+  String get recordedPoints => 'Puntos Registrados:';
+
+  @override
+  String get current => 'Actual';
+
+  @override
+  String get accuracy => 'Precisión';
+
+  @override
+  String get closeAutomatically => '¿Cerrar automáticamente?';
+
+  @override
+  String get cityName => 'Ciudad/Pueblo';
+
+  @override
+  String get stateName => 'Estado/Departamento';
+
+  @override
+  String get noPendingRegistrations => 'No hay registros pendientes';
+
+  @override
+  String get registrationApproved => 'Registro aprobado';
+
+  @override
+  String get registrationRejected => 'Registro rechazado';
+
+  @override
+  String get rejectionReason => 'Motivo del Rechazo';
+
+  @override
+  String get approvalNotes => 'Notas de Aprobación';
+
+  @override
+  String fieldsCount(int count) {
+    return '$count parcela(s)';
+  }
+
+  @override
+  String get registeredBy => 'Registrado por';
+
+  @override
+  String get registrationDate => 'Fecha de Registro';
+
+  @override
+  String pendingCount(int count) {
+    return '$count pendiente(s)';
+  }
+
+  @override
+  String get todaysRegistrations => 'Registros de Hoy';
+
+  @override
+  String get registrarDashboard => 'Panel de Registro';
+
+  @override
+  String get welcome => 'Bienvenido';
+
+  @override
+  String get quickActions => 'Acciones Rápidas';
+
+  @override
+  String get todaysStatistics => 'Estadísticas de Hoy';
+
+  @override
+  String get registered => 'Registrado';
+
+  @override
+  String get verified => 'Verificado';
+
+  @override
+  String get pending => 'Pendiente';
+
+  @override
+  String get continueOrStartNew => '¿Continuar o empezar nuevo?';
+
+  @override
+  String get unfinishedFieldRecordings =>
+      'Hay grabaciones de campo sin terminar:';
+
+  @override
+  String get points => 'puntos';
+
+  @override
+  String get startNewField => 'Comenzar nuevo campo';
+
+  @override
+  String get pinchToZoom => 'Pellizca para zoom, mantén presionado para editar';
+
+  @override
+  String get point => 'Punto';
 }

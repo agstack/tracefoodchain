@@ -43,10 +43,12 @@ class _HomeScreenState extends State<HomeScreen> {
         Timer.periodic(Duration(seconds: cloudSyncFrequency), (_) async {
       final appState = Provider.of<AppState>(context, listen: false);
       if (appState.isConnected && appState.isAuthenticated) {
+        isSyncing.value = true;
+
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
             final l10n = AppLocalizations.of(context)!;
-            snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
+            syncStatusNotifier.value = "${l10n.syncingWith} $cloudKey";
             await cloudSyncService.syncMethods(cloudKey);
           }
         }
@@ -60,6 +62,9 @@ class _HomeScreenState extends State<HomeScreen> {
           inbox = await databaseHelper.getInboxItems(ownerUID);
           inboxCount.value = inbox.length;
         }
+
+        isSyncing.value = false;
+        syncStatusNotifier.value = null;
       }
     });
   }
@@ -69,9 +74,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
     if (appState.isConnected && appState.isAuthenticated) {
+      isSyncing.value = true;
+
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
-          snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
+          syncStatusNotifier.value = "${l10n.manuallySyncingWith} $cloudKey";
           await cloudSyncService.syncMethods(cloudKey);
         }
       }
@@ -85,6 +92,9 @@ class _HomeScreenState extends State<HomeScreen> {
         inbox = await databaseHelper.getInboxItems(ownerUID);
         inboxCount.value = inbox.length;
       }
+
+      isSyncing.value = false;
+      syncStatusNotifier.value = null;
     }
   }
 
@@ -158,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(12),
                 child: Center(
                   child: Text(
-                    l10n.testModeActive, // Lokalisierter Text, z. B. "Testmodus aktiv"
+                    l10n.testModeActive, // Lokalisierter Text, z. B. "Testmodus aktiv"
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -167,6 +177,52 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+            // Persistentes Banner für Synchronisierung
+            ValueListenableBuilder<bool>(
+              valueListenable: isSyncing,
+              builder: (context, syncing, child) {
+                if (!syncing) return const SizedBox.shrink();
+
+                return Container(
+                  width: double.infinity,
+                  color:  const Color(0xFF35DB00),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 12.0,
+                  ),
+                  child: ValueListenableBuilder<String?>(
+                    valueListenable: syncStatusNotifier,
+                    builder: (context, message, _) {
+                      return Row(
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              message ?? l10n.syncInProgress,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
             const StatusBar(isSmallScreen: true),
             Expanded(
               child: Row(
@@ -218,13 +274,11 @@ class _HomeScreenState extends State<HomeScreen> {
               valueListenable: snackbarMessageNotifier,
               builder: (context, message, child) {
                 if (!mounted) return Container();
-                if (message != null && message.isNotEmpty) {
+                if (message != null && message.isNotEmpty && !isSyncing.value) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(message),
-                      duration: const Duration(
-                          seconds:
-                              1), // Snackbar will auto-dismiss after 3 seconds
+                      duration: const Duration(seconds: 2),
                     ));
                     snackbarMessageNotifier.value = "";
                   });

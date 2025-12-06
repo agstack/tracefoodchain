@@ -151,6 +151,7 @@
   "activeItems": "Aktive Artikel",
   "pastItems": "Vergangene Artikel",
   "changeFarmerId": "Landwirt-ID ändern",
+  "changeFarm": "Farm ändern",
   "associateWithDifferentFarm": "Mit anderem Hof verknüpfen",
   "manageFarmEmployees": "Hofmitarbeiter verwalten",
   "manageHarvests": "Ernten verwalten",
@@ -435,6 +436,7 @@
   "nologoutpossible": "Abmelden ist nur möglich, wenn eine Internetverbindung besteht",
   "manuallySyncingWith": "Synchronisiere manuell mit",
   "syncingWith": "Synchronisiere mit",
+  "syncInProgress": "Synchronisierung läuft...",
   "newKeypairNeeded": "Kein privater Schlüssel gefunden - Erzeuge neues Schlüsselpaar...",
   "failedToInitializeKeyManagement": "WARNUNG: Fehler bei der Initialisierung der Schlüsselverwaltung!",
   "newUserProfileNeeded": "Kein Benutzerprofil in der lokalen Datenbank gefunden - erstelle ein neues Profil...",
@@ -743,5 +745,150 @@
         "type": "String"
       }
     }
-  }
+  },
+  "plotRegistrationNotPossible": "Feldregistrierung ist nicht möglich",
+  "deviceHasNoGps": "Dieses Gerät hat kein GPS, bitte verwenden Sie ein anderes Gerät",
+  "gpsDisabledMessage": "Bitte schalten Sie GPS ein und erlauben Sie diesem Gerät den Zugriff auf GPS-Daten",
+  "enableGpsButton": "GPS & Berechtigungen aktivieren",
+  "openSettingsButton": "Einstellungen öffnen",
+  "registerFarmFarmer": "Farm/Landwirt registrieren",
+  "registerFarm": "Farm registrieren",
+  "registerFarmer": "Landwirt registrieren",
+  "registerField": "Feld registrieren",
+  "recordFieldBoundary": "Feldgrenzen aufzeichnen",
+  "fieldMustBeLinkedToFarm": "Feld muss mit einer Farm verknüpft sein",
+  "noFarmsRegisteredYet": "Noch keine Farmen registriert",
+  "startRecording": "Aufzeichnung starten",
+  "stopRecording": "Aufzeichnung stoppen",
+  "addPoint": "Punkt hinzufügen",
+  "pointsRecorded": "{count} Punkte aufgezeichnet",
+  "@pointsRecorded": {
+    "description": "Anzahl der aufgezeichneten GPS-Punkte für Polygon",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "estimatedArea": "Geschätzte Fläche: {area} ha",
+  "@estimatedArea": {
+    "description": "Berechnete Feldfläche in Hektar",
+    "placeholders": {
+      "area": {
+        "type": "String",
+        "example": "4.5"
+      }
+    }
+  },
+  "qcPending": "Genehmigung ausstehend",
+  "qcApproved": "Genehmigt",
+  "qcRejected": "Abgelehnt",
+  "approveRegistration": "Genehmigen",
+  "rejectRegistration": "Ablehnen",
+  "reviewRegistration": "Registrierung prüfen",
+  "reviewPendingRegistrations": "Ausstehende Registrierungen prüfen",
+  "farmerDetails": "Landwirt-Details",
+  "farmDetails": "Farm-Details",
+  "fieldDetails": "Feld-Details",
+  "nationalID": "Personalausweis",
+  "phoneNumber": "Telefonnummer",
+  "fieldArea": "Feldfläche (ha)",
+  "polygonNotClosed": "Polygon ist nicht geschlossen",
+  "minimumPointsRequired": "Mindestens 3 Punkte erforderlich",
+  "farmerInformation": "Landwirt-Informationen",
+  "farmInformation": "Farm-Informationen",
+  "fieldInformation": "Feld-Informationen",
+  "reviewAllData": "Alle Daten überprüfen",
+  "firstName": "Vorname",
+  "lastName": "Nachname",
+  "farmName": "Farm-Name",
+  "farmAddress": "Farm-Adresse",
+  "fieldName": "Feld-Name",
+  "addAnotherField": "Weiteres Feld hinzufügen",
+  "completeRegistration": "Registrierung abschließen",
+  "registrationSuccessful": "Registrierung erfolgreich",
+  "registrationFailed": "Registrierung fehlgeschlagen",
+  "gpsRequired": "GPS muss für Registrierung aktiviert sein",
+  "pleaseEnableGps": "Bitte GPS aktivieren, um fortzufahren",
+  "waitingForGps": "Warte auf GPS-Signal...",
+  "recordingInProgress": "Aufzeichnung läuft...",
+  "cancelRegistration": "Registrierung verlassen?",
+  "cancelRegistrationMessage": "Möchten Sie die Feldregistrierung verlassen?",
+  "continueRegistration": "Fortfahren",
+  "saveAndExit": "Verlassen und speichern",
+  "discardData": "Verwerfen",
+  "tapToAddPoint": "Button drücken oder laufen, um Punkte hinzuzufügen",
+  "minimumDistanceWarning": "Punkt zu nahe am vorherigen Punkt (mind. {meters}m)",
+  "@minimumDistanceWarning": {
+    "description": "Warnung wenn GPS-Punkt zu nahe ist",
+    "placeholders": {
+      "meters": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "clearPolygon": "Polygon löschen",
+  "undoLastPoint": "Letzten Punkt rückgängig",
+  "deletePoint": "Punkt löschen?",
+  "deletePointConfirmation": "Punkt {index} aus dem Polygon entfernen?",
+  "@deletePointConfirmation": {
+    "description": "Bestätigungsnachricht zum Löschen eines Punktes",
+    "placeholders": {
+      "index": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "delete": "Löschen",
+  "recordedPoints": "Aufgezeichnete Punkte:",
+  "current": "Aktuell",
+  "accuracy": "Genauigkeit",
+  "closeAutomatically": "Automatisch schließen?",
+  "cityName": "Stadt/Ort",
+  "stateName": "Bundesland/Departamento",
+  "noPendingRegistrations": "Keine ausstehenden Registrierungen",
+  "registrationApproved": "Registrierung genehmigt",
+  "registrationRejected": "Registrierung abgelehnt",
+  "rejectionReason": "Ablehnungsgrund",
+  "approvalNotes": "Genehmigungsnotizen",
+  "fieldsCount": "{count} Feld(er)",
+  "@fieldsCount": {
+    "description": "Anzahl der Felder",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "registeredBy": "Registriert von",
+  "registrationDate": "Registrierungsdatum",
+  "pendingCount": "{count} ausstehend",
+  "@pendingCount": {
+    "description": "Anzahl ausstehender Elemente",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "todaysRegistrations": "Heutige Registrierungen",
+  "registrarDashboard": "Registrar Dashboard",
+  "welcome": "Willkommen",
+  "quickActions": "Schnellaktionen",
+  "todaysStatistics": "Heutige Statistiken",
+  "registered": "Registriert",
+  "verified": "Verifiziert",
+  "pending": "Ausstehend",
+  "continueOrStartNew": "Fortsetzen oder neu starten?",
+  "unfinishedFieldRecordings": "Es gibt unfertige Feldaufzeichnungen:",
+  "points": "Punkte",
+  "startNewField": "Neues Feld beginnen",
+  "pinchToZoom": "Pinch zum Zoomen, lange drücken zum Bearbeiten",
+  "point": "Punkt",
+  "cancel": "Abbrechen"
 }

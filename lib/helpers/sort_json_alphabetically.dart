@@ -1,3 +1,5 @@
+import 'deep_copy_map.dart';
+
 dynamic sortJsonAlphabetically(dynamic json) {
   // Primitive type or null
   if (json == null || (json is! Map && json is! List)) {
@@ -9,11 +11,20 @@ dynamic sortJsonAlphabetically(dynamic json) {
     return json.map((item) => sortJsonAlphabetically(item)).toList();
   }
 
-  // Object
-  Map<String, dynamic> sortedMap = Map.fromEntries((json as Map<String, dynamic>).entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
+  // Object - use deepCopyMap to ensure proper type casting
+  Map<String, dynamic> typedMap = deepCopyMap(json);
 
-  return Map.fromEntries(
-    sortedMap.entries.map(
+  // Sort entries alphabetically
+  final sortedEntries = typedMap.entries.toList()
+    ..sort((a, b) {
+      // Ensure keys are strings for comparison
+      final keyA = a.key.toString();
+      final keyB = b.key.toString();
+      return keyA.compareTo(keyB);
+    });
+
+  return Map<String, dynamic>.fromEntries(
+    sortedEntries.map(
       (entry) => MapEntry(entry.key, sortJsonAlphabetically(entry.value)),
     ),
   );

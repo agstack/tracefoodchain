@@ -344,6 +344,8 @@ class _ItemsListState extends State<ItemsList> {
               debugName: "_selectionChanged in ItemsList",
               builder: (context, _, __) {
                 if (!mounted) return Container();
+                // Check if user is signed out
+                if (appUserDoc == null) return Container();
                 return FutureBuilder<List<Map<String, dynamic>>>(
                   future: _databaseHelper
                       .getContainers(appUserDoc!["identity"]["UID"]),

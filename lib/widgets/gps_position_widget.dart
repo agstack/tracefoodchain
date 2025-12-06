@@ -17,6 +17,7 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
   bool _isServiceEnabled = false;
   LocationPermission? _permission;
   Timer? _updateTimer;
+  bool _hasGpsHardware = true;
 
   @override
   void initState() {
@@ -47,7 +48,7 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
       _isServiceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!_isServiceEnabled) {
         setState(() {
-          _errorMessage = 'Location services are disabled';
+          _errorMessage = 'gps_disabled';
           _isLoading = false;
         });
         return;
@@ -59,7 +60,7 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
         _permission = await Geolocator.requestPermission();
         if (_permission == LocationPermission.denied) {
           setState(() {
-            _errorMessage = 'Location permissions are denied';
+            _errorMessage = 'permission_denied';
             _isLoading = false;
           });
           return;
@@ -68,7 +69,7 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
 
       if (_permission == LocationPermission.deniedForever) {
         setState(() {
-          _errorMessage = 'Location permissions are permanently denied';
+          _errorMessage = 'permission_denied_forever';
           _isLoading = false;
         });
         return;
@@ -77,14 +78,31 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
       // Get current position
       await _updatePosition();
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error initializing GPS: $e';
-        _isLoading = false;
-      });
+      // Check if the error indicates no GPS hardware
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('location') &&
+          (errorString.contains('unavailable') ||
+              errorString.contains('not available') ||
+              errorString.contains('not supported'))) {
+        setState(() {
+          _hasGpsHardware = false;
+          _errorMessage = 'no_gps_hardware';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Error initializing GPS: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _updatePosition() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -173,18 +191,46 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
                     color: Colors.red,
                     size: 48,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
-                    _errorMessage!,
-                    style: TextStyle(color: Colors.red),
+                    l10n.plotRegistrationNotPossible,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _getErrorMessageText(l10n),
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 14,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _initializeGps,
-                    icon: const Icon(Icons.settings),
-                    label: const Text('Open Settings'),
-                  ),
+                  if (_errorMessage == 'no_gps_hardware')
+                    const SizedBox.shrink()
+                  else
+                    ElevatedButton.icon(
+                      onPressed: _requestGpsAccess,
+                      icon: const Icon(Icons.settings),
+                      label: Text(
+                        _errorMessage == 'permission_denied_forever'
+                            ? l10n.openSettingsButton
+                            : l10n.enableGpsButton,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
                 ],
               )
             else if (_currentPosition != null)
@@ -377,6 +423,35 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
       return '${timestamp.hour.toString().padLeft(2, '0')}:'
           '${timestamp.minute.toString().padLeft(2, '0')}:'
           '${timestamp.second.toString().padLeft(2, '0')}';
+    }
+  }
+
+  String _getErrorMessageText(AppLocalizations l10n) {
+    switch (_errorMessage) {
+      case 'no_gps_hardware':
+        return l10n.deviceHasNoGps;
+      case 'gps_disabled':
+      case 'permission_denied':
+      case 'permission_denied_forever':
+        return l10n.gpsDisabledMessage;
+      default:
+        return _errorMessage ?? 'Unknown error';
+    }
+  }
+
+  Future<void> _requestGpsAccess() async {
+    if (_errorMessage == 'permission_denied_forever') {
+      // Open app settings for permission denied forever
+      await Geolocator.openAppSettings();
+    } else if (_errorMessage == 'gps_disabled') {
+      // Try to open location settings
+      await Geolocator.openLocationSettings();
+      // Wait a bit then retry
+      await Future.delayed(const Duration(seconds: 1));
+      await _initializeGps();
+    } else if (_errorMessage == 'permission_denied') {
+      // Retry initialization which will request permission again
+      await _initializeGps();
     }
   }
 }

@@ -368,6 +368,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeFarmerId => 'Change Farmer ID';
 
   @override
+  String get changeFarm => 'Change Farm';
+
+  @override
   String get associateWithDifferentFarm => 'Associate with a Different Farm';
 
   @override
@@ -1070,6 +1073,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncingWith => 'Syncing with';
 
   @override
+  String get syncInProgress => 'Synchronization in progress...';
+
+  @override
   String get newKeypairNeeded =>
       'No private key found - generating new keypair...';
 
@@ -1533,4 +1539,281 @@ class AppLocalizationsEn extends AppLocalizations {
   String profileSaveError(String error) {
     return 'Error saving profile: $error';
   }
+
+  @override
+  String get plotRegistrationNotPossible => 'Plot registration is not possible';
+
+  @override
+  String get deviceHasNoGps =>
+      'This device has no GPS, please use another device';
+
+  @override
+  String get gpsDisabledMessage =>
+      'Please switch on GPS and allow this device to access GPS data';
+
+  @override
+  String get enableGpsButton => 'Enable GPS & Permissions';
+
+  @override
+  String get openSettingsButton => 'Open Settings';
+
+  @override
+  String get registerFarmFarmer => 'Register Farm/Farmer';
+
+  @override
+  String get registerFarm => 'Register Farm';
+
+  @override
+  String get registerFarmer => 'Register Farmer';
+
+  @override
+  String get registerField => 'Register Field';
+
+  @override
+  String get recordFieldBoundary => 'Record Field Boundary';
+
+  @override
+  String get fieldMustBeLinkedToFarm => 'Field must be linked to a farm';
+
+  @override
+  String get noFarmsRegisteredYet => 'No farms registered yet';
+
+  @override
+  String get startRecording => 'Start Recording';
+
+  @override
+  String get stopRecording => 'Stop Recording';
+
+  @override
+  String get addPoint => 'Add Point';
+
+  @override
+  String pointsRecorded(int count) {
+    return '$count points recorded';
+  }
+
+  @override
+  String estimatedArea(String area) {
+    return 'Estimated area: $area ha';
+  }
+
+  @override
+  String get qcPending => 'Pending Approval';
+
+  @override
+  String get qcApproved => 'Approved';
+
+  @override
+  String get qcRejected => 'Rejected';
+
+  @override
+  String get approveRegistration => 'Approve';
+
+  @override
+  String get rejectRegistration => 'Reject';
+
+  @override
+  String get reviewRegistration => 'Review Registration';
+
+  @override
+  String get reviewPendingRegistrations => 'Review Pending Registrations';
+
+  @override
+  String get farmerDetails => 'Farmer Details';
+
+  @override
+  String get farmDetails => 'Farm Details';
+
+  @override
+  String get fieldDetails => 'Field Details';
+
+  @override
+  String get nationalID => 'National ID';
+
+  @override
+  String get phoneNumber => 'Phone Number';
+
+  @override
+  String get fieldArea => 'Field Area (ha)';
+
+  @override
+  String get polygonNotClosed => 'Polygon is not closed';
+
+  @override
+  String get minimumPointsRequired => 'At least 3 points required';
+
+  @override
+  String get farmerInformation => 'Farmer Information';
+
+  @override
+  String get farmInformation => 'Farm Information';
+
+  @override
+  String get fieldInformation => 'Field Information';
+
+  @override
+  String get reviewAllData => 'Review All Data';
+
+  @override
+  String get farmName => 'Farm Name';
+
+  @override
+  String get farmAddress => 'Farm Address';
+
+  @override
+  String get addAnotherField => 'Add Another Field';
+
+  @override
+  String get completeRegistration => 'Complete Registration';
+
+  @override
+  String get registrationSuccessful => 'Registration successful';
+
+  @override
+  String get registrationFailed => 'Registration failed';
+
+  @override
+  String get gpsRequired => 'GPS must be enabled for registration';
+
+  @override
+  String get pleaseEnableGps => 'Please enable GPS to continue';
+
+  @override
+  String get waitingForGps => 'Waiting for GPS signal...';
+
+  @override
+  String get recordingInProgress => 'Recording in progress...';
+
+  @override
+  String get cancelRegistration => 'Leave Registration?';
+
+  @override
+  String get cancelRegistrationMessage =>
+      'Do you want to leave the field registration?';
+
+  @override
+  String get continueRegistration => 'Continue';
+
+  @override
+  String get saveAndExit => 'Save and Exit';
+
+  @override
+  String get discardData => 'Discard';
+
+  @override
+  String get tapToAddPoint => 'Tap button or walk to add points';
+
+  @override
+  String minimumDistanceWarning(int meters) {
+    return 'Point too close to previous point (min ${meters}m)';
+  }
+
+  @override
+  String get clearPolygon => 'Clear Polygon';
+
+  @override
+  String get undoLastPoint => 'Undo Last Point';
+
+  @override
+  String get deletePoint => 'Delete Point?';
+
+  @override
+  String deletePointConfirmation(int index) {
+    return 'Remove point $index from polygon?';
+  }
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get recordedPoints => 'Recorded Points:';
+
+  @override
+  String get current => 'Current';
+
+  @override
+  String get accuracy => 'Accuracy';
+
+  @override
+  String get closeAutomatically => 'Close automatically?';
+
+  @override
+  String get cityName => 'City/Town';
+
+  @override
+  String get stateName => 'State/Department';
+
+  @override
+  String get noPendingRegistrations => 'No pending registrations';
+
+  @override
+  String get registrationApproved => 'Registration approved';
+
+  @override
+  String get registrationRejected => 'Registration rejected';
+
+  @override
+  String get rejectionReason => 'Rejection Reason';
+
+  @override
+  String get approvalNotes => 'Approval Notes';
+
+  @override
+  String fieldsCount(int count) {
+    return '$count field(s)';
+  }
+
+  @override
+  String get registeredBy => 'Registered by';
+
+  @override
+  String get registrationDate => 'Registration Date';
+
+  @override
+  String pendingCount(int count) {
+    return '$count pending';
+  }
+
+  @override
+  String get todaysRegistrations => 'Today\'s Registrations';
+
+  @override
+  String get registrarDashboard => 'Registrar Dashboard';
+
+  @override
+  String get welcome => 'Welcome';
+
+  @override
+  String get quickActions => 'Quick Actions';
+
+  @override
+  String get todaysStatistics => 'Today\'s Statistics';
+
+  @override
+  String get registered => 'Registered';
+
+  @override
+  String get verified => 'Verified';
+
+  @override
+  String get pending => 'Pending';
+
+  @override
+  String get continueOrStartNew => 'Continue or start new?';
+
+  @override
+  String get unfinishedFieldRecordings =>
+      'There are unfinished field recordings:';
+
+  @override
+  String get points => 'points';
+
+  @override
+  String get startNewField => 'Start new field';
+
+  @override
+  String get pinchToZoom => 'Pinch to zoom, long press to edit';
+
+  @override
+  String get point => 'Point';
 }

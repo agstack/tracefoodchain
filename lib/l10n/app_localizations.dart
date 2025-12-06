@@ -792,6 +792,12 @@ abstract class AppLocalizations {
   /// **'Change Farmer ID'**
   String get changeFarmerId;
 
+  /// No description provided for @changeFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Farm'**
+  String get changeFarm;
+
   /// No description provided for @associateWithDifferentFarm.
   ///
   /// In en, this message translates to:
@@ -2112,6 +2118,12 @@ abstract class AppLocalizations {
   /// **'Syncing with'**
   String get syncingWith;
 
+  /// No description provided for @syncInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Synchronization in progress...'**
+  String get syncInProgress;
+
   /// No description provided for @newKeypairNeeded.
   ///
   /// In en, this message translates to:
@@ -2915,6 +2927,528 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error saving profile: {error}'**
   String profileSaveError(String error);
+
+  /// No description provided for @plotRegistrationNotPossible.
+  ///
+  /// In en, this message translates to:
+  /// **'Plot registration is not possible'**
+  String get plotRegistrationNotPossible;
+
+  /// No description provided for @deviceHasNoGps.
+  ///
+  /// In en, this message translates to:
+  /// **'This device has no GPS, please use another device'**
+  String get deviceHasNoGps;
+
+  /// No description provided for @gpsDisabledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Please switch on GPS and allow this device to access GPS data'**
+  String get gpsDisabledMessage;
+
+  /// No description provided for @enableGpsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable GPS & Permissions'**
+  String get enableGpsButton;
+
+  /// No description provided for @openSettingsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSettingsButton;
+
+  /// No description provided for @registerFarmFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Register Farm/Farmer'**
+  String get registerFarmFarmer;
+
+  /// No description provided for @registerFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Register Farm'**
+  String get registerFarm;
+
+  /// No description provided for @registerFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Register Farmer'**
+  String get registerFarmer;
+
+  /// No description provided for @registerField.
+  ///
+  /// In en, this message translates to:
+  /// **'Register Field'**
+  String get registerField;
+
+  /// No description provided for @recordFieldBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Field Boundary'**
+  String get recordFieldBoundary;
+
+  /// No description provided for @fieldMustBeLinkedToFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Field must be linked to a farm'**
+  String get fieldMustBeLinkedToFarm;
+
+  /// No description provided for @noFarmsRegisteredYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No farms registered yet'**
+  String get noFarmsRegisteredYet;
+
+  /// No description provided for @startRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Recording'**
+  String get startRecording;
+
+  /// No description provided for @stopRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Recording'**
+  String get stopRecording;
+
+  /// No description provided for @addPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Point'**
+  String get addPoint;
+
+  /// Number of GPS points recorded for polygon
+  ///
+  /// In en, this message translates to:
+  /// **'{count} points recorded'**
+  String pointsRecorded(int count);
+
+  /// Calculated field area in hectares
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated area: {area} ha'**
+  String estimatedArea(String area);
+
+  /// No description provided for @qcPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending Approval'**
+  String get qcPending;
+
+  /// No description provided for @qcApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get qcApproved;
+
+  /// No description provided for @qcRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get qcRejected;
+
+  /// No description provided for @approveRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get approveRegistration;
+
+  /// No description provided for @rejectRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get rejectRegistration;
+
+  /// No description provided for @reviewRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Review Registration'**
+  String get reviewRegistration;
+
+  /// No description provided for @reviewPendingRegistrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Review Pending Registrations'**
+  String get reviewPendingRegistrations;
+
+  /// No description provided for @farmerDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer Details'**
+  String get farmerDetails;
+
+  /// No description provided for @farmDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm Details'**
+  String get farmDetails;
+
+  /// No description provided for @fieldDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Field Details'**
+  String get fieldDetails;
+
+  /// No description provided for @nationalID.
+  ///
+  /// In en, this message translates to:
+  /// **'National ID'**
+  String get nationalID;
+
+  /// No description provided for @phoneNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone Number'**
+  String get phoneNumber;
+
+  /// No description provided for @fieldArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Field Area (ha)'**
+  String get fieldArea;
+
+  /// No description provided for @polygonNotClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygon is not closed'**
+  String get polygonNotClosed;
+
+  /// No description provided for @minimumPointsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 3 points required'**
+  String get minimumPointsRequired;
+
+  /// No description provided for @farmerInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer Information'**
+  String get farmerInformation;
+
+  /// No description provided for @farmInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm Information'**
+  String get farmInformation;
+
+  /// No description provided for @fieldInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Field Information'**
+  String get fieldInformation;
+
+  /// No description provided for @reviewAllData.
+  ///
+  /// In en, this message translates to:
+  /// **'Review All Data'**
+  String get reviewAllData;
+
+  /// No description provided for @farmName.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm Name'**
+  String get farmName;
+
+  /// No description provided for @farmAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm Address'**
+  String get farmAddress;
+
+  /// No description provided for @addAnotherField.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Another Field'**
+  String get addAnotherField;
+
+  /// No description provided for @completeRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Registration'**
+  String get completeRegistration;
+
+  /// No description provided for @registrationSuccessful.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration successful'**
+  String get registrationSuccessful;
+
+  /// No description provided for @registrationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration failed'**
+  String get registrationFailed;
+
+  /// No description provided for @gpsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS must be enabled for registration'**
+  String get gpsRequired;
+
+  /// No description provided for @pleaseEnableGps.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enable GPS to continue'**
+  String get pleaseEnableGps;
+
+  /// No description provided for @waitingForGps.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for GPS signal...'**
+  String get waitingForGps;
+
+  /// No description provided for @recordingInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording in progress...'**
+  String get recordingInProgress;
+
+  /// No description provided for @cancelRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Registration?'**
+  String get cancelRegistration;
+
+  /// No description provided for @cancelRegistrationMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to leave the field registration?'**
+  String get cancelRegistrationMessage;
+
+  /// No description provided for @continueRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueRegistration;
+
+  /// No description provided for @saveAndExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and Exit'**
+  String get saveAndExit;
+
+  /// No description provided for @discardData.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discardData;
+
+  /// No description provided for @tapToAddPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap button or walk to add points'**
+  String get tapToAddPoint;
+
+  /// Warning when GPS point is too close
+  ///
+  /// In en, this message translates to:
+  /// **'Point too close to previous point (min {meters}m)'**
+  String minimumDistanceWarning(int meters);
+
+  /// No description provided for @clearPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Polygon'**
+  String get clearPolygon;
+
+  /// No description provided for @undoLastPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo Last Point'**
+  String get undoLastPoint;
+
+  /// No description provided for @deletePoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Point?'**
+  String get deletePoint;
+
+  /// Confirmation message for deleting a point
+  ///
+  /// In en, this message translates to:
+  /// **'Remove point {index} from polygon?'**
+  String deletePointConfirmation(int index);
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @recordedPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded Points:'**
+  String get recordedPoints;
+
+  /// No description provided for @current.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get current;
+
+  /// No description provided for @accuracy.
+  ///
+  /// In en, this message translates to:
+  /// **'Accuracy'**
+  String get accuracy;
+
+  /// No description provided for @closeAutomatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Close automatically?'**
+  String get closeAutomatically;
+
+  /// No description provided for @cityName.
+  ///
+  /// In en, this message translates to:
+  /// **'City/Town'**
+  String get cityName;
+
+  /// No description provided for @stateName.
+  ///
+  /// In en, this message translates to:
+  /// **'State/Department'**
+  String get stateName;
+
+  /// No description provided for @noPendingRegistrations.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending registrations'**
+  String get noPendingRegistrations;
+
+  /// No description provided for @registrationApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration approved'**
+  String get registrationApproved;
+
+  /// No description provided for @registrationRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration rejected'**
+  String get registrationRejected;
+
+  /// No description provided for @rejectionReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejection Reason'**
+  String get rejectionReason;
+
+  /// No description provided for @approvalNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval Notes'**
+  String get approvalNotes;
+
+  /// Number of fields
+  ///
+  /// In en, this message translates to:
+  /// **'{count} field(s)'**
+  String fieldsCount(int count);
+
+  /// No description provided for @registeredBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered by'**
+  String get registeredBy;
+
+  /// No description provided for @registrationDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration Date'**
+  String get registrationDate;
+
+  /// Count of pending items
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pending'**
+  String pendingCount(int count);
+
+  /// No description provided for @todaysRegistrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s Registrations'**
+  String get todaysRegistrations;
+
+  /// No description provided for @registrarDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrar Dashboard'**
+  String get registrarDashboard;
+
+  /// No description provided for @welcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get welcome;
+
+  /// No description provided for @quickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
+  String get quickActions;
+
+  /// No description provided for @todaysStatistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s Statistics'**
+  String get todaysStatistics;
+
+  /// No description provided for @registered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get registered;
+
+  /// No description provided for @verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get verified;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @continueOrStartNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue or start new?'**
+  String get continueOrStartNew;
+
+  /// No description provided for @unfinishedFieldRecordings.
+  ///
+  /// In en, this message translates to:
+  /// **'There are unfinished field recordings:'**
+  String get unfinishedFieldRecordings;
+
+  /// No description provided for @points.
+  ///
+  /// In en, this message translates to:
+  /// **'points'**
+  String get points;
+
+  /// No description provided for @startNewField.
+  ///
+  /// In en, this message translates to:
+  /// **'Start new field'**
+  String get startNewField;
+
+  /// No description provided for @pinchToZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinch to zoom, long press to edit'**
+  String get pinchToZoom;
+
+  /// No description provided for @point.
+  ///
+  /// In en, this message translates to:
+  /// **'Point'**
+  String get point;
 }
 
 class _AppLocalizationsDelegate

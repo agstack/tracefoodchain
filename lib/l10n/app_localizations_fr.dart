@@ -376,6 +376,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get changeFarmerId => 'Changer l\'ID de l\'Agriculteur';
 
   @override
+  String get changeFarm => 'Changer la Ferme';
+
+  @override
   String get associateWithDifferentFarm => 'Associer à une Autre Ferme';
 
   @override
@@ -1086,6 +1089,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get syncingWith => 'Synchronisation avec';
 
   @override
+  String get syncInProgress => 'Synchronisation en cours...';
+
+  @override
   String get newKeypairNeeded =>
       'Aucune clé privée trouvée - génération d\'une nouvelle paire de clés...';
 
@@ -1178,7 +1184,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get fieldRegistryTitle => 'Champs Enregistrés';
 
   @override
-  String get fieldName => 'Nom du Champ';
+  String get fieldName => 'Nom de la parcelle';
 
   @override
   String get geoId => 'ID Géographique';
@@ -1557,4 +1563,284 @@ class AppLocalizationsFr extends AppLocalizations {
   String profileSaveError(String error) {
     return 'Erreur lors de l\'enregistrement du profil : $error';
   }
+
+  @override
+  String get plotRegistrationNotPossible =>
+      'L\'enregistrement de la parcelle n\'est pas possible';
+
+  @override
+  String get deviceHasNoGps =>
+      'Cet appareil n\'a pas de GPS, veuillez utiliser un autre appareil';
+
+  @override
+  String get gpsDisabledMessage =>
+      'Veuillez activer le GPS et permettre à cet appareil d\'accéder aux données GPS';
+
+  @override
+  String get enableGpsButton => 'Activer le GPS et les autorisations';
+
+  @override
+  String get openSettingsButton => 'Ouvrir les paramètres';
+
+  @override
+  String get registerFarmFarmer => 'Enregistrer Ferme/Agriculteur';
+
+  @override
+  String get registerFarm => 'Enregistrer Ferme';
+
+  @override
+  String get registerFarmer => 'Enregistrer Agriculteur';
+
+  @override
+  String get registerField => 'Enregistrer Parcelle';
+
+  @override
+  String get recordFieldBoundary => 'Enregistrer Limites de Parcelle';
+
+  @override
+  String get fieldMustBeLinkedToFarm => 'Le champ doit être lié à une ferme';
+
+  @override
+  String get noFarmsRegisteredYet => 'Aucune ferme enregistrée pour le moment';
+
+  @override
+  String get startRecording => 'Démarrer l\'enregistrement';
+
+  @override
+  String get stopRecording => 'Arrêter l\'enregistrement';
+
+  @override
+  String get addPoint => 'Ajouter un point';
+
+  @override
+  String pointsRecorded(int count) {
+    return '$count points enregistrés';
+  }
+
+  @override
+  String estimatedArea(String area) {
+    return 'Surface estimée: $area ha';
+  }
+
+  @override
+  String get qcPending => 'En attente d\'approbation';
+
+  @override
+  String get qcApproved => 'Approuvé';
+
+  @override
+  String get qcRejected => 'Rejeté';
+
+  @override
+  String get approveRegistration => 'Approuver';
+
+  @override
+  String get rejectRegistration => 'Rejeter';
+
+  @override
+  String get reviewRegistration => 'Examiner l\'enregistrement';
+
+  @override
+  String get reviewPendingRegistrations =>
+      'Examiner les enregistrements en attente';
+
+  @override
+  String get farmerDetails => 'Détails de l\'agriculteur';
+
+  @override
+  String get farmDetails => 'Détails de la ferme';
+
+  @override
+  String get fieldDetails => 'Détails de la parcelle';
+
+  @override
+  String get nationalID => 'Carte d\'identité nationale';
+
+  @override
+  String get phoneNumber => 'Numéro de téléphone';
+
+  @override
+  String get fieldArea => 'Surface de la parcelle (ha)';
+
+  @override
+  String get polygonNotClosed => 'Le polygone n\'est pas fermé';
+
+  @override
+  String get minimumPointsRequired => 'Au moins 3 points requis';
+
+  @override
+  String get farmerInformation => 'Informations sur l\'agriculteur';
+
+  @override
+  String get farmInformation => 'Informations sur la ferme';
+
+  @override
+  String get fieldInformation => 'Informations sur la parcelle';
+
+  @override
+  String get reviewAllData => 'Examiner toutes les données';
+
+  @override
+  String get farmName => 'Nom de la ferme';
+
+  @override
+  String get farmAddress => 'Adresse de la ferme';
+
+  @override
+  String get addAnotherField => 'Ajouter une autre parcelle';
+
+  @override
+  String get completeRegistration => 'Terminer l\'enregistrement';
+
+  @override
+  String get registrationSuccessful => 'Enregistrement réussi';
+
+  @override
+  String get registrationFailed => 'Échec de l\'enregistrement';
+
+  @override
+  String get gpsRequired => 'Le GPS doit être activé pour l\'enregistrement';
+
+  @override
+  String get pleaseEnableGps => 'Veuillez activer le GPS pour continuer';
+
+  @override
+  String get waitingForGps => 'En attente du signal GPS...';
+
+  @override
+  String get recordingInProgress => 'Enregistrement en cours...';
+
+  @override
+  String get cancelRegistration => 'Quitter l\'enregistrement?';
+
+  @override
+  String get cancelRegistrationMessage =>
+      'Voulez-vous quitter l\'enregistrement de champ?';
+
+  @override
+  String get continueRegistration => 'Continuer';
+
+  @override
+  String get saveAndExit => 'Enregistrer et Quitter';
+
+  @override
+  String get discardData => 'Abandonner';
+
+  @override
+  String get tapToAddPoint =>
+      'Appuyez sur le bouton ou marchez pour ajouter des points';
+
+  @override
+  String minimumDistanceWarning(int meters) {
+    return 'Point trop proche du point précédent (min ${meters}m)';
+  }
+
+  @override
+  String get clearPolygon => 'Effacer le polygone';
+
+  @override
+  String get undoLastPoint => 'Annuler le dernier point';
+
+  @override
+  String get deletePoint => 'Supprimer le point?';
+
+  @override
+  String deletePointConfirmation(int index) {
+    return 'Supprimer le point $index du polygone?';
+  }
+
+  @override
+  String get delete => 'Supprimer';
+
+  @override
+  String get recordedPoints => 'Points Enregistrés:';
+
+  @override
+  String get current => 'Actuel';
+
+  @override
+  String get accuracy => 'Précision';
+
+  @override
+  String get closeAutomatically => 'Fermer automatiquement?';
+
+  @override
+  String get cityName => 'Ville';
+
+  @override
+  String get stateName => 'État/Département';
+
+  @override
+  String get noPendingRegistrations => 'Aucun enregistrement en attente';
+
+  @override
+  String get registrationApproved => 'Enregistrement approuvé';
+
+  @override
+  String get registrationRejected => 'Enregistrement rejeté';
+
+  @override
+  String get rejectionReason => 'Motif du rejet';
+
+  @override
+  String get approvalNotes => 'Notes d\'approbation';
+
+  @override
+  String fieldsCount(int count) {
+    return '$count parcelle(s)';
+  }
+
+  @override
+  String get registeredBy => 'Enregistré par';
+
+  @override
+  String get registrationDate => 'Date d\'enregistrement';
+
+  @override
+  String pendingCount(int count) {
+    return '$count en attente';
+  }
+
+  @override
+  String get todaysRegistrations => 'Enregistrements d\'aujourd\'hui';
+
+  @override
+  String get registrarDashboard => 'Tableau de bord de l\'enregistreur';
+
+  @override
+  String get welcome => 'Bienvenue';
+
+  @override
+  String get quickActions => 'Actions Rapides';
+
+  @override
+  String get todaysStatistics => 'Statistiques d\'aujourd\'hui';
+
+  @override
+  String get registered => 'Enregistré';
+
+  @override
+  String get verified => 'Vérifié';
+
+  @override
+  String get pending => 'En attente';
+
+  @override
+  String get continueOrStartNew => 'Continuer ou recommencer?';
+
+  @override
+  String get unfinishedFieldRecordings =>
+      'Il y a des enregistrements de champs inachevés:';
+
+  @override
+  String get points => 'points';
+
+  @override
+  String get startNewField => 'Commencer nouveau champ';
+
+  @override
+  String get pinchToZoom => 'Pincez pour zoomer, appui long pour éditer';
+
+  @override
+  String get point => 'Point';
 }

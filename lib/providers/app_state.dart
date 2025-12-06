@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/services/open_ral_service.dart';
+import 'package:trace_foodchain_app/services/role_management_service.dart';
 
 class AppState extends ChangeNotifier {
   String? _userRole;
@@ -83,7 +85,6 @@ class AppState extends ChangeNotifier {
       } else if (result is ConnectivityResult) {
         _updateConnectionStatus([result]);
       } else {
-        
         setConnected(false);
       }
     });
@@ -100,12 +101,13 @@ class AppState extends ChangeNotifier {
           results.any((result) => result != ConnectivityResult.none);
       setConnected(hasConnection);
       if ((oldConnectionState == false) && (hasConnection == true)) {
-        
         //If state changes from offline to online, sync data to cloud!
+        isSyncing.value = true;
+
         final databaseHelper = DatabaseHelper();
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
-            
+            syncStatusNotifier.value = "Synchronisierung mit $cloudKey";
             await cloudSyncService.syncMethods(cloudKey);
           }
         }
@@ -117,6 +119,9 @@ class AppState extends ChangeNotifier {
           inbox = await databaseHelper.getInboxItems(ownerUID);
           inboxCount.value = inbox.length;
         }
+
+        isSyncing.value = false;
+        syncStatusNotifier.value = null;
       }
     }
   }
@@ -126,14 +131,82 @@ class AppState extends ChangeNotifier {
     final String? userId = prefs.getString('userId');
     if (userId != null) {
       if (FirebaseAuth.instance.currentUser == null) {
-
-signOut();
+        signOut();
         //In this case, we should make sure that old data is kept on the device and not deleted
         //However, all old processes will keep the old user as executor and owner and might need manual assignment later
       } else {
         _isAuthenticated = true;
         _isEmailVerified =
             FirebaseAuth.instance.currentUser?.emailVerified ?? false;
+
+        // KRITISCH: Bei Reload muss der user-spezifische localStorage initialisiert werden
+        if (!isLocalStorageInitialized()) {
+          await initializeUserLocalStorage(
+              FirebaseAuth.instance.currentUser!.uid);
+        }
+
+        // Lade appUserDoc aus localStorage
+        if (isLocalStorageInitialized() && appUserDoc == null) {
+          for (var doc in localStorage!.values) {
+            if (doc['template'] != null &&
+                doc['template']["RALType"] == "human") {
+              final doc2 = Map<String, dynamic>.from(doc);
+              if (getObjectMethodUID(doc2) ==
+                  FirebaseAuth.instance.currentUser!.uid) {
+                appUserDoc = doc2;
+                break;
+              }
+            }
+          }
+        }
+
+        // Lade Benutzerrolle
+        if (appUserDoc != null) {
+          String finalRole = '';
+
+          if (_isConnected) {
+            try {
+              // Hole die aktuellste Rolle aus der Cloud
+              final roleService = RoleManagementService();
+              final cloudRole = await roleService.getCurrentUserRoleFromCloud();
+
+              if (cloudRole.isNotEmpty) {
+                finalRole = cloudRole;
+
+                // Aktualisiere das lokale appUserDoc mit der Cloud-Rolle
+                if (cloudRole !=
+                    getSpecificPropertyfromJSON(appUserDoc!, "userRole")) {
+                  appUserDoc = setSpecificPropertyJSON(
+                      appUserDoc!, "userRole", cloudRole, "String");
+                }
+              } else {
+                // Fallback auf lokale Rolle
+                final localRole =
+                    getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+                finalRole = (localRole != "" && localRole != "-no data found-")
+                    ? localRole
+                    : '';
+              }
+            } catch (e) {
+              final localRole =
+                  getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+              finalRole = (localRole != "" && localRole != "-no data found-")
+                  ? localRole
+                  : '';
+            }
+          } else {
+            // Offline - nutze lokale Rolle
+            final localRole =
+                getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+            finalRole = (localRole != "" && localRole != "-no data found-")
+                ? localRole
+                : '';
+          }
+
+          if (finalRole.isNotEmpty) {
+            await setUserRole(finalRole);
+          }
+        }
       }
     }
     notifyListeners();

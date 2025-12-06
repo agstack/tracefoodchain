@@ -104,6 +104,7 @@
   "activeItems": "Artículos Activos",
   "pastItems": "Artículos Pasados",
   "changeFarmerId": "Cambiar ID del Agricultor",
+  "changeFarm": "Cambiar Finca",
   "associateWithDifferentFarm": "Asociar con Otra Granja",
   "manageFarmEmployees": "Gestionar Empleados de la Granja",
   "manageHarvests": "Gestionar Cosechas",
@@ -395,6 +396,7 @@
   "nologoutpossible": "Cerrar sesión solo es posible cuando está conectado a internet",
   "manuallySyncingWith": "Sincronizando manualmente con",
   "syncingWith": "Sincronizando con",
+  "syncInProgress": "Sincronización en curso...",
   "newKeypairNeeded": "No se encontró clave privada - generando nuevo par de claves...",
   "failedToInitializeKeyManagement": "ADVERTENCIA: ¡Error al inicializar la gestión de claves!",
   "newUserProfileNeeded": "Perfil de usuario no encontrado en la base de datos local - creando uno nuevo...",
@@ -737,5 +739,150 @@
         "type": "String"
       }
     }
-  }
+  },
+  "plotRegistrationNotPossible": "El registro de la parcela no es posible",
+  "deviceHasNoGps": "Este dispositivo no tiene GPS, utiliza otro dispositivo",
+  "gpsDisabledMessage": "Por favor, activa el GPS y permite que este dispositivo acceda a los datos de GPS",
+  "enableGpsButton": "Activar GPS y permisos",
+  "openSettingsButton": "Abrir configuración",
+  "registerFarmFarmer": "Registrar Finca/Agricultor",
+  "registerFarm": "Registrar Finca",
+  "registerFarmer": "Registrar Agricultor",
+  "registerField": "Registrar Parcela",
+  "recordFieldBoundary": "Grabar Límites de Parcela",
+  "fieldMustBeLinkedToFarm": "El campo debe estar vinculado a una finca",
+  "noFarmsRegisteredYet": "Aún no hay fincas registradas",
+  "startRecording": "Iniciar Grabación",
+  "stopRecording": "Detener Grabación",
+  "addPoint": "Agregar Punto",
+  "pointsRecorded": "{count} puntos grabados",
+  "@pointsRecorded": {
+    "description": "Número de puntos GPS grabados para el polígono",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "estimatedArea": "Área estimada: {area} ha",
+  "@estimatedArea": {
+    "description": "Área de campo calculada en hectáreas",
+    "placeholders": {
+      "area": {
+        "type": "String",
+        "example": "4.5"
+      }
+    }
+  },
+  "qcPending": "Pendiente de Aprobación",
+  "qcApproved": "Aprobado",
+  "qcRejected": "Rechazado",
+  "approveRegistration": "Aprobar",
+  "rejectRegistration": "Rechazar",
+  "reviewRegistration": "Revisar Registro",
+  "reviewPendingRegistrations": "Revisar Registros Pendientes",
+  "farmerDetails": "Detalles del Agricultor",
+  "farmDetails": "Detalles de la Finca",
+  "fieldDetails": "Detalles de la Parcela",
+  "nationalID": "Cédula de Identidad",
+  "phoneNumber": "Número de Teléfono",
+  "fieldArea": "Área de Parcela (ha)",
+  "polygonNotClosed": "El polígono no está cerrado",
+  "minimumPointsRequired": "Se requieren al menos 3 puntos",
+  "farmerInformation": "Información del Agricultor",
+  "farmInformation": "Información de la Finca",
+  "fieldInformation": "Información de la Parcela",
+  "reviewAllData": "Revisar Todos los Datos",
+  "firstName": "Nombre",
+  "lastName": "Apellido",
+  "farmName": "Nombre de la Finca",
+  "farmAddress": "Dirección de la Finca",
+  "fieldName": "Nombre de la Parcela",
+  "addAnotherField": "Agregar Otra Parcela",
+  "completeRegistration": "Completar Registro",
+  "registrationSuccessful": "Registro exitoso",
+  "registrationFailed": "Registro fallido",
+  "gpsRequired": "El GPS debe estar activado para el registro",
+  "pleaseEnableGps": "Por favor activa el GPS para continuar",
+  "waitingForGps": "Esperando señal GPS...",
+  "recordingInProgress": "Grabación en progreso...",
+  "cancelRegistration": "¿Salir del Registro?",
+  "cancelRegistrationMessage": "¿Desea salir del registro de campo?",
+  "continueRegistration": "Continuar",
+  "saveAndExit": "Guardar y Salir",
+  "discardData": "Descartar",
+  "tapToAddPoint": "Presiona el botón o camina para agregar puntos",
+  "minimumDistanceWarning": "Punto demasiado cerca del punto anterior (mín {meters}m)",
+  "@minimumDistanceWarning": {
+    "description": "Advertencia cuando el punto GPS está demasiado cerca",
+    "placeholders": {
+      "meters": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "clearPolygon": "Borrar Polígono",
+  "undoLastPoint": "Deshacer Último Punto",
+  "deletePoint": "¿Eliminar Punto?",
+  "deletePointConfirmation": "¿Eliminar punto {index} del polígono?",
+  "@deletePointConfirmation": {
+    "description": "Mensaje de confirmación para eliminar un punto",
+    "placeholders": {
+      "index": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "delete": "Eliminar",
+  "recordedPoints": "Puntos Registrados:",
+  "current": "Actual",
+  "accuracy": "Precisión",
+  "closeAutomatically": "¿Cerrar automáticamente?",
+  "cityName": "Ciudad/Pueblo",
+  "stateName": "Estado/Departamento",
+  "noPendingRegistrations": "No hay registros pendientes",
+  "registrationApproved": "Registro aprobado",
+  "registrationRejected": "Registro rechazado",
+  "rejectionReason": "Motivo del Rechazo",
+  "approvalNotes": "Notas de Aprobación",
+  "fieldsCount": "{count} parcela(s)",
+  "@fieldsCount": {
+    "description": "Número de parcelas",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "registeredBy": "Registrado por",
+  "registrationDate": "Fecha de Registro",
+  "pendingCount": "{count} pendiente(s)",
+  "@pendingCount": {
+    "description": "Cantidad de elementos pendientes",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "todaysRegistrations": "Registros de Hoy",
+  "registrarDashboard": "Panel de Registro",
+  "welcome": "Bienvenido",
+  "quickActions": "Acciones Rápidas",
+  "todaysStatistics": "Estadísticas de Hoy",
+  "registered": "Registrado",
+  "verified": "Verificado",
+  "pending": "Pendiente",
+  "continueOrStartNew": "¿Continuar o empezar nuevo?",
+  "unfinishedFieldRecordings": "Hay grabaciones de campo sin terminar:",
+  "points": "puntos",
+  "startNewField": "Comenzar nuevo campo",
+  "pinchToZoom": "Pellizca para zoom, mantén presionado para editar",
+  "point": "Punto",
+  "cancel": "Cancelar"
 }

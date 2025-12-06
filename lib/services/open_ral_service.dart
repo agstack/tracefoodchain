@@ -3,6 +3,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:trace_foodchain_app/helpers/deep_copy_map.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -43,7 +44,7 @@ dynamic getCloudConnectionProperty(String domain, connectorType, property) {
   dynamic rObject;
   try {
     // domain und subconnector suchen (connectorType)
-    Map<String, dynamic> subConnector = Map<String, dynamic>.from(
+    Map<String, dynamic> subConnector = deepCopyMap(
         cloudConnectors[domain]!["linkedObjects"].firstWhere(
             (subConnector) => subConnector["role"] == connectorType));
     //read requested property
@@ -62,7 +63,7 @@ Future<Map<String, dynamic>> getOpenRALTemplate(String templateName) async {
   try {
     Map<String, dynamic> res =
         json.decode(json.encode(openRALTemplates.get(templateName)));
-    rMap = Map<String, dynamic>.from(res);
+    rMap = deepCopyMap(res);
   } catch (e) {}
   return rMap;
 }
@@ -101,7 +102,7 @@ Future<Map<String, dynamic>> getLocalObjectMethod(
     for (var doc in localStorage!.values) {
       if (doc['identity'] != null &&
           doc['identity']["UID"] == objectMethodUID) {
-        doc2 = Map<String, dynamic>.from(doc);
+        doc2 = deepCopyMap(doc);
         break;
       }
       //return doc2;
@@ -286,7 +287,7 @@ Map<String, dynamic> setObjectMethodUID(
 // d) SPECIFIC PROPERTIES
 Map<String, dynamic> setSpecificPropertyJSON(
     Map<String, dynamic> jsonDoc, String name, dynamic value, String unit) {
-  Map<String, dynamic> jdoc = Map<String, dynamic>.from(jsonDoc);
+  Map<String, dynamic> jdoc = deepCopyMap(jsonDoc);
   String newUnit = "";
   if (unit == "") {
     newUnit = getSpecificPropertyUnitfromJSON(jsonDoc, name);
@@ -477,7 +478,7 @@ Future<Map<String, dynamic>> getObjectOrGenerateNew(
       .where((candidate) => types.contains(candidate['template']["RALType"]))
       .toList();
   for (dynamic candidate in candidates) {
-    Map<String, dynamic> candidate2 = Map<String, dynamic>.from(candidate);
+    Map<String, dynamic> candidate2 = deepCopyMap(candidate);
     switch (field) {
       case "uid":
         if (candidate2["identity"]["UID"] == uid) rDoc = candidate2;
@@ -507,7 +508,7 @@ Future<bool> checkAlternateIDExists(String alternateID) async {
       .toList();
 
   for (dynamic item in allItems) {
-    Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
+    Map<String, dynamic> itemMap = deepCopyMap(item);
     List alternateIDs = itemMap['identity']['alternateIDs'];
 
     if (alternateIDs.any((id) => id['UID'] == alternateID)) {
@@ -525,7 +526,7 @@ Future<Map<String, dynamic>> getContainerByAlternateUID(String uid) async {
       .where((candidate) => candidate['template']["RALType"] != "")
       .toList();
   for (dynamic candidate in candidates) {
-    Map<String, dynamic> candidate2 = Map<String, dynamic>.from(candidate);
+    Map<String, dynamic> candidate2 = deepCopyMap(candidate);
 
     if (candidate2["identity"]["alternateIDs"].length != 0) {
       if (candidate2["identity"]["alternateIDs"][0]["UID"] == uid) {
@@ -541,7 +542,7 @@ Future<Map<String, dynamic>> getContainerByAlternateUID(String uid) async {
 
 String createSigningObject(
     List<String> pathsToSign, Map<String, dynamic> objectMethod) {
-  final copy = Map<String, dynamic>.from(objectMethod);
+  final copy = deepCopyMap(objectMethod);
   copy.remove("digitalSignatures"); //do not sign existing signatures again
   copy.remove("needsSync");
   copy.remove("hasMergeConflict");
@@ -561,17 +562,15 @@ String createSigningObject(
     final matches = jp!.read(copy);
     if (matches.isNotEmpty) {
       if (matches.first.value is Map) {
-        Map<String, dynamic> valueMap =
-            Map<String, dynamic>.from(matches.first.value as Map);
+        Map<String, dynamic> valueMap = deepCopyMap(matches.first.value as Map);
         valueMap = convertToJson(
             valueMap); //Replace Datetime and GeoPoint with JSON objects
 
-        partsToSign.add(Map<String, dynamic>.from(valueMap as Map));
+        partsToSign.add(deepCopyMap(valueMap as Map));
       } else if (matches.first.value is List) {
         if (matches.first.value != null && matches.first.value is Iterable) {
           for (final item in matches.first.value as Iterable) {
-            Map<String, dynamic> valueMap =
-                Map<String, dynamic>.from(item as Map);
+            Map<String, dynamic> valueMap = deepCopyMap(item as Map);
 
             valueMap = convertToJson(
                 valueMap); //Replace Datetime and GeoPoint with JSON objects
@@ -773,7 +772,7 @@ class OpenRALService {
 
       if (userObject == null) {
         // Create new user object from template
-        userObject = Map<String, dynamic>.from(initialObjectTemplateHuman);
+        userObject = deepCopyMap(initialObjectTemplateHuman);
         userObject["identity"]["UID"] = user.uid;
       }
 
@@ -829,7 +828,7 @@ class OpenRALService {
 
       if (userObject == null) {
         // Create new user object from template
-        userObject = Map<String, dynamic>.from(initialObjectTemplateHuman);
+        userObject = deepCopyMap(initialObjectTemplateHuman);
         userObject["identity"]["UID"] = user.uid;
       }
 
@@ -881,7 +880,7 @@ class OpenRALService {
       if (localStorage != null) {
         final localObject = localStorage!.get(user.uid);
         if (localObject != null) {
-          return Map<String, dynamic>.from(localObject);
+          return deepCopyMap(localObject);
         }
       }
 
@@ -900,7 +899,7 @@ class OpenRALService {
       if (localStorage != null) {
         final localObject = localStorage!.get(uid);
         if (localObject != null) {
-          return Map<String, dynamic>.from(localObject);
+          return deepCopyMap(localObject);
         }
       }
 
@@ -922,7 +921,7 @@ class OpenRALService {
           .get();
 
       if (doc.exists) {
-        return Map<String, dynamic>.from(doc.data() ?? {});
+        return deepCopyMap(doc.data() ?? {});
       }
       return null;
     } catch (e) {

@@ -143,6 +143,7 @@
   "activeItems": "Articles Actifs",
   "pastItems": "Articles Passés",
   "changeFarmerId": "Changer l'ID de l'Agriculteur",
+  "changeFarm": "Changer la Ferme",
   "associateWithDifferentFarm": "Associer à une Autre Ferme",
   "manageFarmEmployees": "Gérer les Employés de la Ferme",
   "manageHarvests": "Gérer les Récoltes",
@@ -435,6 +436,7 @@
   "nologoutpossible": "Déconnexion possible uniquement lorsqu'une connexion Internet est établie",
   "manuallySyncingWith": "Synchronisation manuelle avec",
   "syncingWith": "Synchronisation avec",
+  "syncInProgress": "Synchronisation en cours...",
   "newKeypairNeeded": "Aucune clé privée trouvée - génération d'une nouvelle paire de clés...",
   "failedToInitializeKeyManagement": "ATTENTION : Échec de l'initialisation de la gestion des clés !",
   "newUserProfileNeeded": "Profil utilisateur non trouvé dans la base de données locale - création d'un nouveau...",
@@ -737,5 +739,150 @@
         "type": "String"
       }
     }
-  }
+  },
+  "plotRegistrationNotPossible": "L'enregistrement de la parcelle n'est pas possible",
+  "deviceHasNoGps": "Cet appareil n'a pas de GPS, veuillez utiliser un autre appareil",
+  "gpsDisabledMessage": "Veuillez activer le GPS et permettre à cet appareil d'accéder aux données GPS",
+  "enableGpsButton": "Activer le GPS et les autorisations",
+  "openSettingsButton": "Ouvrir les paramètres",
+  "registerFarmFarmer": "Enregistrer Ferme/Agriculteur",
+  "registerFarm": "Enregistrer Ferme",
+  "registerFarmer": "Enregistrer Agriculteur",
+  "registerField": "Enregistrer Parcelle",
+  "recordFieldBoundary": "Enregistrer Limites de Parcelle",
+  "fieldMustBeLinkedToFarm": "Le champ doit \u00eatre li\u00e9 \u00e0 une ferme",
+  "noFarmsRegisteredYet": "Aucune ferme enregistr\u00e9e pour le moment",
+  "startRecording": "D\u00e9marrer l'enregistrement",
+  "stopRecording": "Arrêter l'enregistrement",
+  "addPoint": "Ajouter un point",
+  "pointsRecorded": "{count} points enregistrés",
+  "@pointsRecorded": {
+    "description": "Nombre de points GPS enregistrés pour le polygone",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "estimatedArea": "Surface estimée: {area} ha",
+  "@estimatedArea": {
+    "description": "Surface de champ calculée en hectares",
+    "placeholders": {
+      "area": {
+        "type": "String",
+        "example": "4.5"
+      }
+    }
+  },
+  "qcPending": "En attente d'approbation",
+  "qcApproved": "Approuvé",
+  "qcRejected": "Rejeté",
+  "approveRegistration": "Approuver",
+  "rejectRegistration": "Rejeter",
+  "reviewRegistration": "Examiner l'enregistrement",
+  "reviewPendingRegistrations": "Examiner les enregistrements en attente",
+  "farmerDetails": "Détails de l'agriculteur",
+  "farmDetails": "Détails de la ferme",
+  "fieldDetails": "Détails de la parcelle",
+  "nationalID": "Carte d'identité nationale",
+  "phoneNumber": "Numéro de téléphone",
+  "fieldArea": "Surface de la parcelle (ha)",
+  "polygonNotClosed": "Le polygone n'est pas fermé",
+  "minimumPointsRequired": "Au moins 3 points requis",
+  "farmerInformation": "Informations sur l'agriculteur",
+  "farmInformation": "Informations sur la ferme",
+  "fieldInformation": "Informations sur la parcelle",
+  "reviewAllData": "Examiner toutes les données",
+  "firstName": "Prénom",
+  "lastName": "Nom de famille",
+  "farmName": "Nom de la ferme",
+  "farmAddress": "Adresse de la ferme",
+  "fieldName": "Nom de la parcelle",
+  "addAnotherField": "Ajouter une autre parcelle",
+  "completeRegistration": "Terminer l'enregistrement",
+  "registrationSuccessful": "Enregistrement réussi",
+  "registrationFailed": "Échec de l'enregistrement",
+  "gpsRequired": "Le GPS doit être activé pour l'enregistrement",
+  "pleaseEnableGps": "Veuillez activer le GPS pour continuer",
+  "waitingForGps": "En attente du signal GPS...",
+  "recordingInProgress": "Enregistrement en cours...",
+  "cancelRegistration": "Quitter l'enregistrement?",
+  "cancelRegistrationMessage": "Voulez-vous quitter l'enregistrement de champ?",
+  "continueRegistration": "Continuer",
+  "saveAndExit": "Enregistrer et Quitter",
+  "discardData": "Abandonner",
+  "tapToAddPoint": "Appuyez sur le bouton ou marchez pour ajouter des points",
+  "minimumDistanceWarning": "Point trop proche du point précédent (min {meters}m)",
+  "@minimumDistanceWarning": {
+    "description": "Avertissement lorsque le point GPS est trop proche",
+    "placeholders": {
+      "meters": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "clearPolygon": "Effacer le polygone",
+  "undoLastPoint": "Annuler le dernier point",
+  "deletePoint": "Supprimer le point?",
+  "deletePointConfirmation": "Supprimer le point {index} du polygone?",
+  "@deletePointConfirmation": {
+    "description": "Message de confirmation pour supprimer un point",
+    "placeholders": {
+      "index": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "delete": "Supprimer",
+  "recordedPoints": "Points Enregistrés:",
+  "current": "Actuel",
+  "accuracy": "Précision",
+  "closeAutomatically": "Fermer automatiquement?",
+  "cityName": "Ville",
+  "stateName": "État/Département",
+  "noPendingRegistrations": "Aucun enregistrement en attente",
+  "registrationApproved": "Enregistrement approuvé",
+  "registrationRejected": "Enregistrement rejeté",
+  "rejectionReason": "Motif du rejet",
+  "approvalNotes": "Notes d'approbation",
+  "fieldsCount": "{count} parcelle(s)",
+  "@fieldsCount": {
+    "description": "Nombre de parcelles",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "registeredBy": "Enregistré par",
+  "registrationDate": "Date d'enregistrement",
+  "pendingCount": "{count} en attente",
+  "@pendingCount": {
+    "description": "Nombre d'éléments en attente",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "todaysRegistrations": "Enregistrements d'aujourd'hui",
+  "registrarDashboard": "Tableau de bord de l'enregistreur",
+  "welcome": "Bienvenue",
+  "quickActions": "Actions Rapides",
+  "todaysStatistics": "Statistiques d'aujourd'hui",
+  "registered": "Enregistré",
+  "verified": "Vérifié",
+  "pending": "En attente",
+  "continueOrStartNew": "Continuer ou recommencer?",
+  "unfinishedFieldRecordings": "Il y a des enregistrements de champs inachevés:",
+  "points": "points",
+  "startNewField": "Commencer nouveau champ",
+  "pinchToZoom": "Pincez pour zoomer, appui long pour éditer",
+  "point": "Point",
+  "cancel": "Annuler"
 }

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/gps_position_widget.dart';
+import '../widgets/stepper_registrar_registration.dart';
+import '../widgets/field_boundary_recorder.dart';
+import '../widgets/language_selector.dart';
+import '../screens/registrar_qc_screen.dart';
+import '../providers/app_state.dart';
 import '../main.dart';
+import '../services/open_ral_service.dart';
 
 class RegistrarScreen extends StatefulWidget {
   const RegistrarScreen({super.key});
@@ -14,11 +21,22 @@ class RegistrarScreen extends StatefulWidget {
 class _RegistrarScreenState extends State<RegistrarScreen> {
   final user = FirebaseAuth.instance.currentUser;
   String _userName = '';
+  bool _isSuperAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
+    _checkUserRole();
+  }
+
+  void _checkUserRole() {
+    if (appUserDoc != null) {
+      final userRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
+      setState(() {
+        _isSuperAdmin = userRole == 'SUPERADMIN';
+      });
+    }
   }
 
   void _loadUserName() {
@@ -44,6 +62,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
   }
 
   Future<void> _logout() async {
+    final l10n = AppLocalizations.of(context)!;
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -68,14 +87,86 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
     }
   }
 
+  void _openRegistrationForm() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+
+    // GPS-Check
+    if (!appState.hasGPS) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.gpsRequired),
+          content: Text(l10n.pleaseEnableGps),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Öffne Registrierungs-Stepper
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StepperRegistrarRegistration(),
+      ),
+    );
+  }
+
+  void _openQCReview() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RegistrarQCScreen(),
+      ),
+    );
+  }
+
+  void _openFieldBoundaryRecorder() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+
+    // GPS-Check
+    if (!appState.hasGPS) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.gpsRequired),
+          content: Text(l10n.pleaseEnableGps),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Öffne Field Boundary Recorder
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FieldBoundaryRecorder(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Registrar Dashboard'),
+        title: Text(l10n.registrarDashboard),
         actions: [
+          const LanguageSelector(),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
@@ -114,8 +205,9 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  const SizedBox(height: 4),
                                   Text(
-                                    'Welcome',
+                                    l10n.welcome,
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
@@ -164,10 +256,6 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // GPS Position Widget
-                const GpsPositionWidget(),
-                const SizedBox(height: 24),
-
                 // Quick Actions Card
                 Card(
                   elevation: 4,
@@ -177,7 +265,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Quick Actions',
+                          l10n.quickActions,
                           style:
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -191,26 +279,33 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                           children: [
                             _buildActionButton(
                               context,
-                              icon: Icons.person_add,
-                              label: 'Register Entity',
+                              icon: Icons.agriculture,
+                              label: l10n.registerFarmFarmer,
                               color: Colors.blue,
-                              onTap: () {
-                                // TODO: Implement entity registration
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Entity registration - Coming soon'),
-                                  ),
-                                );
-                              },
+                              onTap: _openRegistrationForm,
                             ),
+                            _buildActionButton(
+                              context,
+                              icon: Icons.terrain,
+                              label: l10n.recordFieldBoundary,
+                              color: Colors.green,
+                              onTap: _openFieldBoundaryRecorder,
+                            ),
+                            // Nur für SUPERADMIN anzeigen
+                            if (_isSuperAdmin)
+                              _buildActionButton(
+                                context,
+                                icon: Icons.rate_review,
+                                label: l10n.reviewPendingRegistrations,
+                                color: Colors.orange,
+                                onTap: _openQCReview,
+                              ),
                             _buildActionButton(
                               context,
                               icon: Icons.qr_code_scanner,
                               label: 'Scan QR',
-                              color: Colors.orange,
+                              color: Colors.purple,
                               onTap: () {
-                                // TODO: Implement QR scanning
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('QR scanning - Coming soon'),
@@ -220,26 +315,10 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                             ),
                             _buildActionButton(
                               context,
-                              icon: Icons.check_circle,
-                              label: 'Verify Location',
-                              color: Colors.green,
-                              onTap: () {
-                                // TODO: Implement location verification
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Location verification - Coming soon'),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildActionButton(
-                              context,
                               icon: Icons.history,
                               label: 'View History',
-                              color: Colors.purple,
+                              color: Colors.teal,
                               onTap: () {
-                                // TODO: Implement history view
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('History view - Coming soon'),
@@ -255,6 +334,10 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // GPS Position Widget
+                const GpsPositionWidget(),
+                const SizedBox(height: 24),
+
                 // Statistics Card (Placeholder for future)
                 Card(
                   elevation: 4,
@@ -264,7 +347,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Today\'s Statistics',
+                          l10n.todaysStatistics,
                           style:
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -278,21 +361,21 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                             _buildStatItem(
                               context,
                               icon: Icons.person_add,
-                              label: 'Registered',
+                              label: l10n.registered,
                               value: '0',
                               color: Colors.blue,
                             ),
                             _buildStatItem(
                               context,
                               icon: Icons.check_circle,
-                              label: 'Verified',
+                              label: l10n.verified,
                               value: '0',
                               color: Colors.green,
                             ),
                             _buildStatItem(
                               context,
                               icon: Icons.pending,
-                              label: 'Pending',
+                              label: l10n.pending,
                               value: '0',
                               color: Colors.orange,
                             ),

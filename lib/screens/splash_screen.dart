@@ -101,7 +101,26 @@ class _SplashScreenState extends State<SplashScreen>
           //* AUTHENTICATED
           if (appState.isEmailVerified) {
             //* VERIFIED
-            await _navigateToNextScreen();
+            // Prüfe ob bereits vollständig initialisiert (z.B. nach Hot Reload)
+            if (isLocalStorageInitialized() &&
+                appUserDoc != null &&
+                appState.userRole != null &&
+                appState.userRole!.isNotEmpty) {
+              // Bereits initialisiert - navigiere basierend auf Rolle
+              final userRole = appState.userRole!.toLowerCase();
+              if (userRole == 'registrar' || userRole == 'superadmin') {
+                // SUPERADMIN und Registrar gehen zum Registrar-Screen
+                Navigator.of(context).pushReplacementNamed('/registrar');
+              } else {
+                // Alle anderen Rollen gehen zum HomeScreen
+                Navigator.of(context).pushReplacement(
+                  FadeRoute(builder: (_) => const HomeScreen()),
+                );
+              }
+            } else {
+              // Noch nicht vollständig initialisiert - normale Initialisierung
+              await _navigateToNextScreen();
+            }
           } else {
             //*NOT VERIFIED
             // Show email verification overlay
@@ -262,15 +281,17 @@ class _SplashScreenState extends State<SplashScreen>
     final appState = Provider.of<AppState>(context, listen: false);
 
     if (appState.isConnected) {
-      //ToDo: Display screenblocker "syncing data with cloud - please wait"
+      // Starte Synchronisierung - zeige persistentes Banner
+      isSyncing.value = true;
+
       // openRAL: Update Templates
-      snackbarMessageNotifier.value = "${l10n.syncingWith} open-ral.io";
+      syncStatusNotifier.value = "${l10n.syncingWith} open-ral.io";
       await cloudSyncService.syncOpenRALTemplates('open-ral.io');
 
       // sync all non-open-ral methods with it's clouds on startup
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
-          snackbarMessageNotifier.value = "${l10n.syncingWith} $cloudKey";
+          syncStatusNotifier.value = "${l10n.syncingWith} $cloudKey";
           await cloudSyncService.syncMethods(cloudKey);
         }
       }
@@ -285,6 +306,10 @@ class _SplashScreenState extends State<SplashScreen>
       }
       cloudConnectors =
           await getCloudConnectors(); //refresh cloud connectors (if updates where downloaded)
+
+      // Beende Synchronisierung
+      isSyncing.value = false;
+      syncStatusNotifier.value = null;
     }
 
     for (var doc in localStorage!.values) {
@@ -583,17 +608,74 @@ class _SplashScreenState extends State<SplashScreen>
             left: 16,
             child: StatusBar(isSmallScreen: false),
           ),
-          // Neuer ValueListenableBuilder zur Anzeige des Snackbars:
+          // Persistentes Banner für Synchronisierung:
+          ValueListenableBuilder<bool>(
+            valueListenable: isSyncing,
+            builder: (context, syncing, child) {
+              if (!syncing) return const SizedBox.shrink();
+
+              final l10n = AppLocalizations.of(context);
+
+              return Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Material(
+                    color: const Color(0xFF35DB00),
+                    elevation: 4,
+                    child: ValueListenableBuilder<String?>(
+                      valueListenable: syncStatusNotifier,
+                      builder: (context, message, _) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 12.0,
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  message ??
+                                      l10n?.syncInProgress ??
+                                      'Synchronization in progress...',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Snackbar für kurze Meldungen:
           ValueListenableBuilder<String?>(
             valueListenable: snackbarMessageNotifier,
             builder: (context, message, child) {
-              if (message != null && message.isNotEmpty) {
+              if (message != null && message.isNotEmpty && !isSyncing.value) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   final snackBar = SnackBar(
-                    content: Text(message), //ToDo: localise
-                    duration: const Duration(
-                        seconds:
-                            1), // Snackbar will auto-dismiss after 3 seconds
+                    content: Text(message),
+                    duration: const Duration(seconds: 2),
                   );
                   ScaffoldMessenger.of(context).showSnackBar(snackBar);
                   snackbarMessageNotifier.value = "";

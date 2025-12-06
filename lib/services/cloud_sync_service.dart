@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:trace_foodchain_app/helpers/deep_copy_map.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -29,7 +30,6 @@ class CloudApiClient {
       urlString = getCloudConnectionProperty(
           domain, "cloudFunctionsConnector", "persistPublicKey")["url"];
     } catch (e) {
-      
       return false;
     }
 
@@ -58,7 +58,6 @@ class CloudApiClient {
           return true;
         }
       } catch (e) {
-        
         return false;
       }
     }
@@ -75,8 +74,7 @@ class CloudApiClient {
         "getRALMethodByUID",
       )["url"];
     } catch (e) {
-
-return {};
+      return {};
     }
     final apiKey = await FirebaseAuth.instance.currentUser?.getIdToken();
 
@@ -93,7 +91,6 @@ return {};
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        
         return {};
       }
     } else {
@@ -104,7 +101,7 @@ return {};
   Future<Map<String, dynamic>> syncMethodToCloud(
       String domain, Map<String, dynamic> ralMethod) async {
     dynamic urlString;
-    Map<String, dynamic> valueMap = Map<String, dynamic>.from(ralMethod as Map);
+    Map<String, dynamic> valueMap = deepCopyMap(ralMethod);
 
     valueMap = convertToJson(
         valueMap); //Replace Datetime and GeoPoint with JSON objects
@@ -132,13 +129,12 @@ return {};
       );
 
       if (response.statusCode == 200) {
-
 // return jsonDecode(response.body);
         return {"response": "success"};
       } else {
         //Response codes? 400: Bad Request, 401: Unauthorized, 403: Forbidden, 404: Not Found, 500: Internal Server Error
         //Merge Conflict: 409
-        
+
         return {
           "response": "${response.statusCode}",
           "responseDetails": jsonDecode(response.body),
@@ -162,8 +158,7 @@ return {};
         "syncFromCloud",
       )["url"];
     } catch (e) {
-
-return {};
+      return {};
     }
     String? apiKey = await FirebaseAuth.instance.currentUser?.getIdToken();
     if (urlString != null && apiKey != null) {
@@ -181,11 +176,9 @@ return {};
           Map<String, dynamic> jsonResponse = jsonDecode(response.body);
           return jsonResponse;
         } else {
-          
           return {};
         }
       } catch (e) {
-        
         return {};
       }
     } else {
@@ -207,9 +200,7 @@ class CloudSyncService {
         //If possible, always use the cloud versions of the templates for locale database
         // final cloudTemplate = await _apiClient.getRalObjectByUid(domain,templateName);
         // openRALTemplates.put(templateName, cloudTemplate);
-      } catch (e) {
-        
-      }
+      } catch (e) {}
     }
   }
 
@@ -218,7 +209,6 @@ class CloudSyncService {
   Future<bool> syncMethods(String domain) async {
     List<String> failedSyncedOutputObjects = [];
     if (_isSyncing) {
-      
       return false;
     }
     _isSyncing = true;
@@ -324,7 +314,7 @@ class CloudSyncService {
                   // missingParameters:
                   // invalidSignature => Flag method as invalid
                   // errorMessage
-                  
+
                   if (kDebugMode && 1 == 2) {
                     String signingObject = "";
                     List<String> pathsToSign = [];
@@ -371,7 +361,6 @@ class CloudSyncService {
           //   'text': "error syncing to cloud",
           //   'errorCode': "unknown error"
           // };
-          
         }
         if (syncSuccess) {
           snackbarMessageNotifier.value = "sync to cloud successful";
@@ -391,7 +380,6 @@ class CloudSyncService {
           await apiClient.syncObjectsMethodsFromCloud(domain, deviceHashes);
       // this will return an empty object in case there is an error.
       if (cloudData.isEmpty) {
-        
         return false;
       }
 
@@ -399,12 +387,10 @@ class CloudSyncService {
       List<dynamic> mergedList = [];
       if (cloudData.containsKey("ralMethods") &&
           cloudData["ralMethods"] is List) {
-
-mergedList.addAll(cloudData["ralMethods"]);
+        mergedList.addAll(cloudData["ralMethods"]);
       }
       if (cloudData.containsKey("ralObjects") &&
           cloudData["ralObjects"] is List) {
-        
         for (final item in cloudData["ralObjects"]) {
           // );
           //Check if the UID of this object is in the failedSyncedOutputObjects, only add if not
@@ -442,7 +428,6 @@ mergedList.addAll(cloudData["ralMethods"]);
       }
       //
     } catch (e) {
-      
       return false;
     } finally {
       _isSyncing = false;
@@ -454,7 +439,7 @@ mergedList.addAll(cloudData["ralMethods"]);
 ///Returns the SHA-256 hash of a Utf8 encoded JSON string as a hex string
 ///Can be converted to bytes with utf8.encode(hashString)
 String generateStableHash(Map<String, dynamic> docData) {
-  Map<String, dynamic> valueMap = Map<String, dynamic>.from(docData as Map);
+  Map<String, dynamic> valueMap = deepCopyMap(docData);
 
   valueMap =
       convertToJson(valueMap); //Replace Datetime and GeoPoint with JSON objects
@@ -467,7 +452,7 @@ String generateStableHash(Map<String, dynamic> docData) {
 
   final jsonString = jsonEncode(valueMap);
   // if (valueMap.keys.contains("methodHistoryRef")) {
-  //   
+  //
   // }
   final String uid = getObjectMethodUID(docData);
 
@@ -475,7 +460,7 @@ String generateStableHash(Map<String, dynamic> docData) {
 
   final bytes = utf8.encode(jsonString);
 
-  // 
+  //
   // }");
 
   final hashStr = sha256.convert(bytes).toString();

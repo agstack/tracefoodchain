@@ -15,6 +15,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/firebase_options.dart';
+import 'package:trace_foodchain_app/helpers/deep_copy_map.dart';
 import 'package:trace_foodchain_app/helpers/digital_signature.dart';
 import 'package:trace_foodchain_app/helpers/key_management.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
@@ -41,6 +42,12 @@ TrackedValueNotifier<bool> rebuildSpeedDial =
     TrackedValueNotifier<bool>(false, "rebuildSpeedDial");
 TrackedValueNotifier<bool> rebuildDDS =
     TrackedValueNotifier<bool>(false, "rebuildDDS");
+
+// ValueNotifier für Synchronisierungsstatus
+TrackedValueNotifier<String?> syncStatusNotifier =
+    TrackedValueNotifier<String?>(null, "syncStatusNotifier");
+TrackedValueNotifier<bool> isSyncing =
+    TrackedValueNotifier<bool>(false, "isSyncing");
 
 // Debug-Wrapper für ValueNotifiers
 class DebugValueNotifier<T> extends ValueNotifier<T> {
@@ -302,7 +309,7 @@ void main() async {
   for (final ot in initialTemplates) {
     //add inital templates from static storage to hive if not in local database
     if (!openRALTemplates.containsKey(ot["template"]["RALType"])) {
-      Map<String, dynamic> mot = Map.from(ot);
+      Map<String, dynamic> mot = deepCopyMap(ot);
       openRALTemplates.put(ot["template"]["RALType"], mot);
     }
   }
