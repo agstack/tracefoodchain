@@ -170,47 +170,68 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
     setState(() => _isProcessing = true);
 
     try {
+      debugPrint('=== SAVE FIELD START ===');
       final farmUID = _selectedFarm!['identity']['UID'];
+      debugPrint('Farm UID: $farmUID');
 
       // Erstelle Field
       final fieldUID = const Uuid().v4();
+      debugPrint('Field UID: $fieldUID');
+
       Map<String, dynamic> field = await getOpenRALTemplate('field');
+      debugPrint('Field template loaded');
+
       setObjectMethodUID(field, fieldUID);
+      debugPrint('Field UID set');
+
       // Auto-generiere Feldname mit Datum/Uhrzeit
       final now = DateTime.now();
       final fieldName =
           'Field ${now.day}.${now.month}.${now.year} ${now.hour}:${now.minute.toString().padLeft(2, '0')}';
       field['identity']['name'] = fieldName;
       field['objectState'] = 'qcPending';
+      debugPrint('Field name: $fieldName');
 
       // Polygon boundaries
+      debugPrint('Setting boundaries with ${polygon.length} points');
       field =
           setSpecificPropertyJSON(field, 'boundaries', polygon, 'vector_list');
+      debugPrint('Boundaries set');
+
+      debugPrint('Setting area: $area (type: ${area.runtimeType})');
       field = setSpecificPropertyJSON(field, 'area', area, 'double');
+      debugPrint('Area set');
 
       // Recorded by
       if (appUserDoc != null) {
+        debugPrint('Setting recordedBy');
         field = setSpecificPropertyJSON(
             field, 'recordedBy', getObjectMethodUID(appUserDoc!), 'String');
+        debugPrint('RecordedBy set');
       }
 
       // PFLICHT-Verknüpfung zur Farm
+      debugPrint('Setting geolocation container');
       field['currentGeolocation']['container']['UID'] = farmUID;
       field['linkedObjectRef'].add({
         'UID': farmUID,
         'RALType': 'farm',
         'role': 'location',
       });
+      debugPrint('Farm link added');
 
       // Berechne Centroid für geoCoordinates
       final centroid = _calculateCentroid(polygon);
+      debugPrint('Centroid: ${centroid[0]}, ${centroid[1]}');
       field['currentGeolocation']['geoCoordinates'] = {
         'latitude': centroid[0],
         'longitude': centroid[1],
       };
       field['currentGeolocation']['postalAddress']['country'] = 'Honduras';
+      debugPrint('Geolocation set');
 
       // Erstelle generateDigitalSibling Methode
+      debugPrint('Creating generateDigitalSibling method');
       Map<String, dynamic> registerMethod =
           await getOpenRALTemplate('generateDigitalSibling');
       final methodUID = const Uuid().v4();
@@ -220,20 +241,27 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       registerMethod['executor'] = appUserDoc!;
       registerMethod['existenceStarts'] =
           DateTime.now().toUtc().toIso8601String();
+      debugPrint('Method created');
 
       // Input: Farm (Kontext)
+      debugPrint('Adding farm as input');
       addInputobject(registerMethod, _selectedFarm!, 'farm');
+      debugPrint('Farm input added');
 
       // Output: Field
+      debugPrint('Adding field as output');
       addOutputobject(registerMethod, field, 'field');
+      debugPrint('Field output added');
 
       // Update method history
       field['methodHistoryRef'].add({
         'UID': methodUID,
         'RALType': 'generateDigitalSibling',
       });
+      debugPrint('Method history updated');
 
       // Update Farm mit neuem Field-Link
+      debugPrint('Updating farm with field link');
       Map<String, dynamic> updatedFarm =
           Map<String, dynamic>.from(_selectedFarm!);
       updatedFarm['linkedObjectRef'].add({
@@ -243,21 +271,52 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       });
 
       // Aktualisiere totalAreaHa der Farm
-      final currentArea =
-          getSpecificPropertyfromJSON(updatedFarm, 'totalAreaHa') ?? 0.0;
+      final currentAreaRaw =
+          getSpecificPropertyfromJSON(updatedFarm, 'totalAreaHa');
+      debugPrint(
+          'Current farm area raw: $currentAreaRaw (type: ${currentAreaRaw.runtimeType})');
+
+      // Parse current area - handle "-no data found-" string
+      double currentArea = 0.0;
+      if (currentAreaRaw != null && currentAreaRaw is num) {
+        currentArea = currentAreaRaw.toDouble();
+      } else if (currentAreaRaw is String &&
+          currentAreaRaw != '-no data found-') {
+        currentArea = double.tryParse(currentAreaRaw) ?? 0.0;
+      }
+
+      debugPrint('Current farm area parsed: $currentArea, adding: $area');
+      final newTotalArea = currentArea + area;
+      debugPrint('New total area: $newTotalArea');
+
       updatedFarm = setSpecificPropertyJSON(
-          updatedFarm, 'totalAreaHa', currentArea + area, 'double');
+          updatedFarm, 'totalAreaHa', newTotalArea, 'double');
+      debugPrint('Farm area updated');
 
       // Speichere Objekte
-      field = jsonFullDoubleToInt(sortJsonAlphabetically(field));
+      debugPrint('Converting field with jsonFullDoubleToInt');
+      field = jsonFullDoubleToInt(field);
+      debugPrint('Sorting field alphabetically');
+      field = sortJsonAlphabetically(field);
+      debugPrint('Saving field to storage');
       await setObjectMethod(field, false, false);
+      debugPrint('Field saved');
 
-      updatedFarm = jsonFullDoubleToInt(sortJsonAlphabetically(updatedFarm));
+      debugPrint('Converting farm with jsonFullDoubleToInt');
+      updatedFarm = jsonFullDoubleToInt(updatedFarm);
+      debugPrint('Sorting farm alphabetically');
+      updatedFarm = sortJsonAlphabetically(updatedFarm);
+      debugPrint('Saving farm to storage');
       await setObjectMethod(updatedFarm, false, false);
+      debugPrint('Farm saved');
 
-      registerMethod =
-          jsonFullDoubleToInt(sortJsonAlphabetically(registerMethod));
+      debugPrint('Converting method with jsonFullDoubleToInt');
+      registerMethod = jsonFullDoubleToInt(registerMethod);
+      debugPrint('Sorting method alphabetically');
+      registerMethod = sortJsonAlphabetically(registerMethod);
+      debugPrint('Saving and signing method');
       await setObjectMethod(registerMethod, true, true); // Signieren und syncen
+      debugPrint('Method saved and signed');
 
       // UI aktualisieren
       repaintContainerList.value = true;
@@ -268,8 +327,15 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
             content: Text(
                 '${l10n.registerField} "$fieldName" ${l10n.registrationSuccessful}'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
+
+        // Navigiere zurück zum Registrar Dashboard
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       debugPrint('Error saving field: $e');
