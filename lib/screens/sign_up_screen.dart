@@ -120,10 +120,9 @@ class _AuthScreenState extends State<AuthScreen> {
   void _navigateBasedOnRole(Map<String, String> userProfile) {
     final userRole = userProfile['userRole'] ?? 'Trader';
 
-    if (userRole.toLowerCase() == 'registrar' ||
-        userRole.toLowerCase() == 'superadmin') {
+    if (userRole.toLowerCase() == 'registrar') {
       // Navigate to Registrar-specific screen
-      // SUPERADMIN gets registrar screen for debug purposes
+  
       Navigator.of(context).pushReplacementNamed('/registrar');
     } else {
       // All other roles (Trader, etc.) go to main screen

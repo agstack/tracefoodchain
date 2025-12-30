@@ -7,6 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+// Google Maps Web support
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 // import 'package:nfc_manager/nfc_manager.dart';
 import 'l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -25,6 +27,7 @@ import 'package:trace_foodchain_app/screens/registrar_screen.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
+import 'package:trace_foodchain_app/services/google_maps_initializer.dart';
 
 import 'package:trace_foodchain_app/widgets/tracked_value_notifier.dart';
 import 'package:trace_foodchain_app/widgets/items_list_widget.dart';
@@ -285,6 +288,12 @@ void main() async {
   };
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  // Initialize Google Maps API für Web (lädt API Key aus .env)
+  if (kIsWeb) {
+    await GoogleMapsInitializer.initialize();
+  }
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

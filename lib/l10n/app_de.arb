@@ -61,6 +61,8 @@
   "userManagement": "Benutzerverwaltung",
   "userManagementSubtitle": "Benutzerrollen verwalten und zuweisen",
   "noPermissionForUserManagement": "Keine Berechtigung für Benutzerverwaltung",
+  "qcReview": "QC-Überprüfung",
+  "qcReviewSubtitle": "Ausstehende Registrierungen überprüfen und genehmigen",
   "userManagementOnlineOnly": "Benutzerverwaltung ist nur online verfügbar",
   "noUsersFound": "Keine Benutzer gefunden",
   "assignRole": "Rolle zuweisen",
@@ -890,5 +892,47 @@
   "startNewField": "Neues Feld beginnen",
   "pinchToZoom": "Pinch zum Zoomen, lange drücken zum Bearbeiten",
   "point": "Punkt",
-  "cancel": "Abbrechen"
+  "cancel": "Abbrechen",
+  "optionalNotes": "Optionale Notizen (z.B. geprüfte Dokumente, Qualitätsbewertung)",
+  "pleaseProvideReason": "Bitte geben Sie einen Grund für die Ablehnung an",
+  "objectNotFound": "Objekt nicht gefunden",
+  "invalidObjectData": "Ungültige Objektdaten",
+  "errorLoadingDetails": "Fehler beim Laden der Details",
+  "tapToEnlarge": "Tippen zum Vergrößern",
+  "tapToEnlargeMap": "Tippen zum Vergrößern der Karte",
+  "nationalIDPhoto": "Ausweis-Foto",
+  "errorLoadingImage": "Fehler beim Laden des Bildes",
+  "unnamed": "Unbenannt",
+  "mapView": "Kartenansicht",
+  "debugDeleteAllObjects": "DEBUG: Alle angezeigten Objekte löschen",
+  "confirmDeleteAllObjects": "Möchten Sie wirklich alle {count} angezeigten Objekte löschen? Diese Aktion kann nicht rückgängig gemacht werden!",
+  "@confirmDeleteAllObjects": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "objectsDeleted": "{count} Objekt(e) gelöscht",
+  "@objectsDeleted": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "errorDeleting": "Fehler beim Löschen",
+  "uidCopiedToClipboard": "UID in Zwischenablage kopiert",
+  "status": "Status",
+  "type": "Typ",
+  "created": "Erstellt",
+  "all": "Alle",
+  "farms": "Farmen",
+  "farmers": "Bauern",
+  "fields": "Felder",
+  "totalArea": "Gesamtfläche",
+  "owner": "Eigentümer",
+  "country": "Land",
+  "polygonPoints": "Polygonpunkte",
+  "takeIDPhoto": "Ausweis-Foto aufnehmen",
+  "retakeIDPhoto": "Ausweis-Foto erneut aufnehmen",
+  "farmID": "Farm-ID",
+  "nationalIDPhotoRequired": "Ausweis-Foto ist erforderlich",
+  "idPhotoTaken": "Ausweis-Foto erfolgreich aufgenommen"
 }

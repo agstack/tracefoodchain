@@ -171,6 +171,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'No permission for user management';
 
   @override
+  String get qcReview => 'QC Review';
+
+  @override
+  String get qcReviewSubtitle => 'Review and approve pending registrations';
+
+  @override
   String get userManagementOnlineOnly =>
       'User management is only available online';
 
@@ -1816,4 +1822,105 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get point => 'Point';
+
+  @override
+  String get optionalNotes =>
+      'Optional notes (e.g., checked documents, quality assessment)';
+
+  @override
+  String get pleaseProvideReason => 'Please provide a reason for rejection';
+
+  @override
+  String get objectNotFound => 'Object not found';
+
+  @override
+  String get invalidObjectData => 'Invalid object data';
+
+  @override
+  String get errorLoadingDetails => 'Error loading details';
+
+  @override
+  String get tapToEnlarge => 'Tap to enlarge';
+
+  @override
+  String get tapToEnlargeMap => 'Tap to enlarge map';
+
+  @override
+  String get nationalIDPhoto => 'National ID Photo';
+
+  @override
+  String get errorLoadingImage => 'Error loading image';
+
+  @override
+  String get unnamed => 'Unnamed';
+
+  @override
+  String get mapView => 'Map View';
+
+  @override
+  String get debugDeleteAllObjects => 'DEBUG: Delete All Displayed Objects';
+
+  @override
+  String confirmDeleteAllObjects(int count) {
+    return 'Are you sure you want to delete all $count displayed objects? This action cannot be undone!';
+  }
+
+  @override
+  String objectsDeleted(int count) {
+    return '$count object(s) deleted';
+  }
+
+  @override
+  String get errorDeleting => 'Error deleting';
+
+  @override
+  String get uidCopiedToClipboard => 'UID copied to clipboard';
+
+  @override
+  String get status => 'Status';
+
+  @override
+  String get type => 'Type';
+
+  @override
+  String get created => 'Created';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get farms => 'Farms';
+
+  @override
+  String get farmers => 'Farmers';
+
+  @override
+  String get fields => 'Fields';
+
+  @override
+  String get totalArea => 'Total Area';
+
+  @override
+  String get owner => 'Owner';
+
+  @override
+  String get country => 'Country';
+
+  @override
+  String get polygonPoints => 'Polygon Points';
+
+  @override
+  String get takeIDPhoto => 'Take ID Photo';
+
+  @override
+  String get retakeIDPhoto => 'Retake ID Photo';
+
+  @override
+  String get farmID => 'Farm ID';
+
+  @override
+  String get nationalIDPhotoRequired => 'National ID Photo is required';
+
+  @override
+  String get idPhotoTaken => 'ID Photo taken successfully';
 }

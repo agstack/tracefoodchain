@@ -1,9 +1,15 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
+import '../services/firebase_storage_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 
@@ -34,12 +40,18 @@ class _StepperRegistrarRegistrationState
 
   // Farm Daten
   final TextEditingController _farmNameController = TextEditingController();
+  final TextEditingController _farmIDController = TextEditingController();
   final TextEditingController _farmCityController = TextEditingController();
   final TextEditingController _farmStateController = TextEditingController();
   final TextEditingController _farmEmailController = TextEditingController();
 
   // Position cache
   Position? _currentPosition;
+
+  // National ID Photo
+  XFile? _nationalIDPhoto;
+  String? _nationalIDPhotoLocalPath;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -94,6 +106,16 @@ class _StepperRegistrarRegistrationState
       );
       return false;
     }
+    // Validate National ID Photo is taken (only mandatory in release mode)
+    if (!kDebugMode && _nationalIDPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.nationalIDPhotoRequired),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
     return true;
   }
 
@@ -116,7 +138,39 @@ class _StepperRegistrarRegistrationState
     try {
       debugPrint('=== START REGISTRATION ===');
 
-      // 1. Erstelle Farmer (Human)
+      // Upload National ID Photo to Firebase Storage first
+//ToDo: Since registrar will be offline often, consider uploading later when online together with rest of data
+      String? nationalIDPhotoURL;
+      if (_nationalIDPhoto != null) {
+        debugPrint('Uploading National ID Photo to Firebase Storage...');
+        try {
+          // Upload to Firebase Storage in folder: documents/<userId>/nationalID/
+          final user = appUserDoc;
+          if (user != null) {
+            final userId = user['identity']['UID'];
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final fileName = 'documents/$userId/nationalID/id_${timestamp}.jpg';
+
+            final bytes = await _nationalIDPhoto!.readAsBytes();
+            final ref = FirebaseStorage.instance.ref().child(fileName);
+            final uploadTask = ref.putData(
+              bytes,
+              SettableMetadata(contentType: 'image/jpeg'),
+            );
+
+            final snapshot = await uploadTask;
+            nationalIDPhotoURL = await snapshot.ref.getDownloadURL();
+            debugPrint(
+                'National ID Photo uploaded successfully: $nationalIDPhotoURL');
+          }
+        } catch (e) {
+          debugPrint('Error uploading National ID Photo: $e');
+          // Continue registration even if upload fails - photo is stored locally
+        }
+      }
+
+      //* ****************  1. Erstelle Farmer (Human) *****************
+
       debugPrint('Step 1: Creating farmer template');
       final farmerUID = const Uuid().v4();
       debugPrint('Farmer UID: $farmerUID');
@@ -173,6 +227,19 @@ class _StepperRegistrarRegistrationState
         debugPrint('farmer email set');
       }
 
+      // Add National ID Photo URL or local path
+      if (nationalIDPhotoURL != null) {
+        debugPrint('Setting nationalIDPhotoURL...');
+        farmer = setSpecificPropertyJSON(
+            farmer, 'nationalIDPhotoURL', nationalIDPhotoURL, 'String');
+        debugPrint('nationalIDPhotoURL set: \$nationalIDPhotoURL');
+      } else if (_nationalIDPhotoLocalPath != null) {
+        debugPrint('Setting local nationalIDPhotoPath...');
+        farmer = setSpecificPropertyJSON(farmer, 'nationalIDPhotoLocalPath',
+            _nationalIDPhotoLocalPath, 'String');
+        debugPrint('nationalIDPhotoLocalPath set: \$_nationalIDPhotoLocalPath');
+      }
+
       // Position
       debugPrint('Setting farmer geolocation...');
       if (_currentPosition != null) {
@@ -182,7 +249,7 @@ class _StepperRegistrarRegistrationState
         };
         debugPrint('Farmer coordinates set');
       }
-      farmer['currentGeolocation']['postalAddress']['country'] = 'Honduras';
+      farmer['currentGeolocation']['postalAddress']['country'] = 'Honduras';//ToDo: Make dynamic
       if (_farmCityController.text.isNotEmpty) {
         farmer['currentGeolocation']['postalAddress']['cityName'] =
             _farmCityController.text;
@@ -210,17 +277,27 @@ class _StepperRegistrarRegistrationState
       farm['objectState'] = 'qcPending';
       debugPrint('Farm objectState set');
 
+      // Add Farm ID to alternateIDs if provided
+      if (_farmIDController.text.isNotEmpty) {
+        debugPrint('Setting farm ID in alternateIDs...');
+        farm['identity']['alternateIDs'].add({
+          'UID': _farmIDController.text,
+          'issuedBy': 'Farm Registry',
+        });
+        debugPrint('Farm ID set: ${_farmIDController.text}');
+      }
+
       // Link Farmer zu Farm
       debugPrint('Linking farmer to farm...');
       farm['linkedObjectRef'].add({
         'UID': farmerUID,
         'RALType': 'human',
-        'role': 'farmer',
+        'role': 'owner',
       });
       debugPrint('Farmer linked to farm');
 
       // Farm Position
-      debugPrint('Setting farm geolocation...');
+      debugPrint('Setting farm geolocation = current location of registrar...');
       if (_currentPosition != null) {
         farm['currentGeolocation']['geoCoordinates'] = {
           'latitude': _currentPosition!.latitude,
@@ -367,6 +444,66 @@ class _StepperRegistrarRegistrationState
     }
   }
 
+  Future<void> _takeIDPhoto() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      // Take photo using camera
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (photo != null) {
+        debugPrint('National ID Photo taken: ${photo.path}');
+
+        // Save photo locally for offline access
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName =
+            'nationalID_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final localPath = '${appDir.path}/nationalIDs/$fileName';
+
+        // Create directory if it doesn't exist
+        final directory = Directory('${appDir.path}/nationalIDs');
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        // Copy file to local storage
+        final File localFile = File(localPath);
+        await localFile.writeAsBytes(await photo.readAsBytes());
+
+        setState(() {
+          _nationalIDPhoto = photo;
+          _nationalIDPhotoLocalPath = localPath;
+        });
+
+        debugPrint('National ID Photo saved locally: $localPath');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.idPhotoTaken),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error taking ID photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _farmerFirstNameController.dispose();
@@ -375,6 +512,7 @@ class _StepperRegistrarRegistrationState
     _farmerPhoneController.dispose();
     _farmerEmailController.dispose();
     _farmNameController.dispose();
+    _farmIDController.dispose();
     _farmCityController.dispose();
     _farmStateController.dispose();
     _farmEmailController.dispose();
@@ -391,6 +529,7 @@ class _StepperRegistrarRegistrationState
         _farmerPhoneController.text.isNotEmpty ||
         _farmerEmailController.text.isNotEmpty ||
         _farmNameController.text.isNotEmpty ||
+        _farmIDController.text.isNotEmpty ||
         _farmCityController.text.isNotEmpty ||
         _farmStateController.text.isNotEmpty ||
         _farmEmailController.text.isNotEmpty;
@@ -585,6 +724,100 @@ class _StepperRegistrarRegistrationState
           ),
         ),
         const SizedBox(height: 16),
+
+        // National ID Photo Button (Mandatory)
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _nationalIDPhoto == null
+                  ? (kDebugMode ? Colors.orange : Colors.red)
+                  : Colors.green,
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _nationalIDPhoto == null
+                        ? Icons.camera_alt
+                        : Icons.check_circle,
+                    color: _nationalIDPhoto == null
+                        ? (kDebugMode ? Colors.orange : Colors.red)
+                        : Colors.green,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.nationalIDPhoto,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _nationalIDPhoto == null
+                              ? (kDebugMode
+                                  ? '${l10n.nationalIDPhotoRequired} (Debug: Optional)'
+                                  : l10n.nationalIDPhotoRequired)
+                              : l10n.idPhotoTaken,
+                          style: TextStyle(
+                            color: _nationalIDPhoto == null
+                                ? (kDebugMode ? Colors.orange : Colors.red)
+                                : Colors.green[700],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _takeIDPhoto,
+                  icon: Icon(_nationalIDPhoto == null
+                      ? Icons.camera_alt
+                      : Icons.refresh),
+                  label: Text(_nationalIDPhoto == null
+                      ? l10n.takeIDPhoto
+                      : l10n.retakeIDPhoto),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _nationalIDPhoto == null
+                        ? (kDebugMode ? Colors.orange : Colors.red)
+                        : Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              if (_nationalIDPhoto != null) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(_nationalIDPhoto!.path),
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         TextField(
           controller: _farmerPhoneController,
           style: const TextStyle(color: Colors.black),
@@ -625,6 +858,17 @@ class _StepperRegistrarRegistrationState
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.agriculture),
             hintText: 'e.g., Finca Santa Ana',
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _farmIDController,
+          style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            labelText: l10n.farmID,
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.tag),
+            hintText: 'e.g., FARM-2025-001',
           ),
         ),
         const SizedBox(height: 16),

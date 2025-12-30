@@ -291,28 +291,6 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                               color: Colors.green,
                               onTap: _openFieldBoundaryRecorder,
                             ),
-                            // Nur für SUPERADMIN anzeigen
-                            if (_isSuperAdmin)
-                              _buildActionButton(
-                                context,
-                                icon: Icons.rate_review,
-                                label: l10n.reviewPendingRegistrations,
-                                color: Colors.orange,
-                                onTap: _openQCReview,
-                              ),
-                            _buildActionButton(
-                              context,
-                              icon: Icons.qr_code_scanner,
-                              label: 'Scan QR',
-                              color: Colors.purple,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('QR scanning - Coming soon'),
-                                  ),
-                                );
-                              },
-                            ),
                             _buildActionButton(
                               context,
                               icon: Icons.history,

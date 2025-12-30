@@ -58,6 +58,8 @@
   "userManagement": "Gestion des Utilisateurs",
   "userManagementSubtitle": "Gérer et attribuer les rôles d''utilisateur",
   "noPermissionForUserManagement": "Aucune autorisation pour la gestion des utilisateurs",
+  "qcReview": "Révision QC",
+  "qcReviewSubtitle": "Examiner et approuver les enregistrements en attente",
   "userManagementOnlineOnly": "La gestion des utilisateurs n''est disponible qu''en ligne",
   "noUsersFound": "Aucun utilisateur trouvé",
   "assignRole": "Attribuer un Rôle",
@@ -884,5 +886,47 @@
   "startNewField": "Commencer nouveau champ",
   "pinchToZoom": "Pincez pour zoomer, appui long pour éditer",
   "point": "Point",
-  "cancel": "Annuler"
+  "cancel": "Annuler",
+  "optionalNotes": "Notes facultatives (par ex., documents vérifiés, évaluation de qualité)",
+  "pleaseProvideReason": "Veuillez fournir une raison pour le rejet",
+  "objectNotFound": "Objet introuvable",
+  "invalidObjectData": "Données d'objet invalides",
+  "errorLoadingDetails": "Erreur lors du chargement des détails",
+  "tapToEnlarge": "Appuyez pour agrandir",
+  "tapToEnlargeMap": "Appuyez pour agrandir la carte",
+  "nationalIDPhoto": "Photo de Pièce d'Identité",
+  "errorLoadingImage": "Erreur lors du chargement de l'image",
+  "unnamed": "Sans nom",
+  "mapView": "Vue de la Carte",
+  "debugDeleteAllObjects": "DEBUG: Supprimer Tous les Objets Affichés",
+  "confirmDeleteAllObjects": "Êtes-vous sûr de vouloir supprimer tous les {count} objets affichés ? Cette action ne peut pas être annulée !",
+  "@confirmDeleteAllObjects": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "objectsDeleted": "{count} objet(s) supprimé(s)",
+  "@objectsDeleted": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "errorDeleting": "Erreur lors de la suppression",
+  "uidCopiedToClipboard": "UID copié dans le presse-papiers",
+  "status": "Statut",
+  "type": "Type",
+  "created": "Créé",
+  "all": "Tous",
+  "farms": "Fermes",
+  "farmers": "Agriculteurs",
+  "fields": "Champs",
+  "totalArea": "Superficie Totale",
+  "owner": "Propriétaire",
+  "country": "Pays",
+  "polygonPoints": "Points du Polygone",
+  "takeIDPhoto": "Prendre une Photo d'Identité",
+  "retakeIDPhoto": "Reprendre une Photo d'Identité",
+  "farmID": "ID de la Ferme",
+  "nationalIDPhotoRequired": "Photo d'identité nationale requise",
+  "idPhotoTaken": "Photo d'identité prise avec succès"
 }

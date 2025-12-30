@@ -61,6 +61,8 @@
   "userManagement": "User Management",
   "userManagementSubtitle": "Manage and assign user roles",
   "noPermissionForUserManagement": "No permission for user management",
+  "qcReview": "QC Review",
+  "qcReviewSubtitle": "Review and approve pending registrations",
   "userManagementOnlineOnly": "User management is only available online",
   "noUsersFound": "No users found",
   "assignRole": "Assign Role",
@@ -890,5 +892,47 @@
   "startNewField": "Start new field",
   "pinchToZoom": "Pinch to zoom, long press to edit",
   "point": "Point",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "optionalNotes": "Optional notes (e.g., checked documents, quality assessment)",
+  "pleaseProvideReason": "Please provide a reason for rejection",
+  "objectNotFound": "Object not found",
+  "invalidObjectData": "Invalid object data",
+  "errorLoadingDetails": "Error loading details",
+  "tapToEnlarge": "Tap to enlarge",
+  "tapToEnlargeMap": "Tap to enlarge map",
+  "nationalIDPhoto": "National ID Photo",
+  "errorLoadingImage": "Error loading image",
+  "unnamed": "Unnamed",
+  "mapView": "Map View",
+  "debugDeleteAllObjects": "DEBUG: Delete All Displayed Objects",
+  "confirmDeleteAllObjects": "Are you sure you want to delete all {count} displayed objects? This action cannot be undone!",
+  "@confirmDeleteAllObjects": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "objectsDeleted": "{count} object(s) deleted",
+  "@objectsDeleted": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "errorDeleting": "Error deleting",
+  "uidCopiedToClipboard": "UID copied to clipboard",
+  "status": "Status",
+  "type": "Type",
+  "created": "Created",
+  "all": "All",
+  "farms": "Farms",
+  "farmers": "Farmers",
+  "fields": "Fields",
+  "totalArea": "Total Area",
+  "owner": "Owner",
+  "country": "Country",
+  "polygonPoints": "Polygon Points",
+  "takeIDPhoto": "Take ID Photo",
+  "retakeIDPhoto": "Retake ID Photo",
+  "farmID": "Farm ID",
+  "nationalIDPhotoRequired": "National ID Photo is required",
+  "idPhotoTaken": "ID Photo taken successfully"
 }

@@ -52,6 +52,9 @@ class PermissionService {
     ],
     'approve_trades': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
 
+    // QC Review
+    'qc_review': ['SUPERADMIN', 'registrarCoordinator'],
+
     // Data Management
     'export_data': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
     'import_data': ['SUPERADMIN', 'tfcAdmin'],
@@ -90,7 +93,6 @@ class PermissionService {
   bool hasPermission(String permission) {
     final userRole = getCurrentUserRole();
     if (userRole.isEmpty) {
-      
       return false;
     }
 
@@ -99,15 +101,13 @@ class PermissionService {
       final allowedRoles = featurePermissions[permission]!;
       final hasAccess = allowedRoles.contains(userRole);
 
-      if (!hasAccess) {
-        
-      }
+      if (!hasAccess) {}
 
       return hasAccess;
     }
 
     // Fallback: Nur SUPERADMIN hat Zugang zu unbekannten Permissions
-    
+
     return userRole == 'SUPERADMIN';
   }
 
@@ -210,7 +210,6 @@ class PermissionService {
         return hasPermission('backup_data');
 
       default:
-        
         return isAdmin();
     }
   }

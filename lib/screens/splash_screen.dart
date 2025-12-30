@@ -108,8 +108,8 @@ class _SplashScreenState extends State<SplashScreen>
                 appState.userRole!.isNotEmpty) {
               // Bereits initialisiert - navigiere basierend auf Rolle
               final userRole = appState.userRole!.toLowerCase();
-              if (userRole == 'registrar' || userRole == 'superadmin') {
-                // SUPERADMIN und Registrar gehen zum Registrar-Screen
+              if (userRole == 'registrar' ) {
+              
                 Navigator.of(context).pushReplacementNamed('/registrar');
               } else {
                 // Alle anderen Rollen gehen zum HomeScreen

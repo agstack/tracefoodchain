@@ -653,6 +653,8 @@
   "sortByDateDesc": "Fecha (más recientes primero)",
   "noSearchResults": "No se encontraron contenedores que coincidan con \"{searchTerm}\"",
   "userManagement": "Gestión de Usuarios",
+  "qcReview": "Revisión de QC",
+  "qcReviewSubtitle": "Revisar y aprobar registros pendientes",
   "assignRole": "Asignar Rol",
   "currentRole": "Rol Actual",
   "newRole": "Nuevo Rol",
@@ -884,5 +886,47 @@
   "startNewField": "Comenzar nuevo campo",
   "pinchToZoom": "Pellizca para zoom, mantén presionado para editar",
   "point": "Punto",
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "optionalNotes": "Notas opcionales (p. ej., documentos verificados, evaluación de calidad)",
+  "pleaseProvideReason": "Por favor proporcione una razón para el rechazo",
+  "objectNotFound": "Objeto no encontrado",
+  "invalidObjectData": "Datos de objeto inválidos",
+  "errorLoadingDetails": "Error al cargar detalles",
+  "tapToEnlarge": "Toque para ampliar",
+  "tapToEnlargeMap": "Toque para ampliar el mapa",
+  "nationalIDPhoto": "Foto de Identificación Nacional",
+  "errorLoadingImage": "Error al cargar la imagen",
+  "unnamed": "Sin nombre",
+  "mapView": "Vista de Mapa",
+  "debugDeleteAllObjects": "DEBUG: Eliminar Todos los Objetos Mostrados",
+  "confirmDeleteAllObjects": "¿Está seguro de que desea eliminar todos los {count} objetos mostrados? ¡Esta acción no se puede deshacer!",
+  "@confirmDeleteAllObjects": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "objectsDeleted": "{count} objeto(s) eliminado(s)",
+  "@objectsDeleted": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "errorDeleting": "Error al eliminar",
+  "uidCopiedToClipboard": "UID copiado al portapapeles",
+  "status": "Estado",
+  "type": "Tipo",
+  "created": "Creado",
+  "all": "Todos",
+  "farms": "Fincas",
+  "farmers": "Agricultores",
+  "fields": "Campos",
+  "totalArea": "Área Total",
+  "owner": "Propietario",
+  "country": "País",
+  "polygonPoints": "Puntos del Polígono",
+  "takeIDPhoto": "Tomar Foto de Identificación",
+  "retakeIDPhoto": "Volver a Tomar Foto de Identificación",
+  "farmID": "ID de Finca",
+  "nationalIDPhotoRequired": "Se requiere foto de identificación nacional",
+  "idPhotoTaken": "Foto de identificación tomada exitosamente"
 }

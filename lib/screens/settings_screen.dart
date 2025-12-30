@@ -9,6 +9,7 @@ import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/screens/field_registry_screen.dart';
 import 'package:trace_foodchain_app/screens/user_management_screen.dart';
+import 'package:trace_foodchain_app/screens/registrar_qc_screen.dart';
 import 'package:trace_foodchain_app/screens/user_profile_view_screen.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
@@ -106,6 +107,21 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const UserManagementScreen(),
+                  ),
+                );
+              },
+            ),
+          // QC Review (nur für SUPERADMIN und registrarCoordinator)
+          if (PermissionService().hasPermission('qc_review'))
+            ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: const Icon(Icons.fact_check),
+              title: Text(l10n.qcReview),
+              subtitle: Text(l10n.qcReviewSubtitle),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const RegistrarQCScreen(),
                   ),
                 );
               },

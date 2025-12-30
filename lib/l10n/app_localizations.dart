@@ -420,6 +420,18 @@ abstract class AppLocalizations {
   /// **'No permission for user management'**
   String get noPermissionForUserManagement;
 
+  /// No description provided for @qcReview.
+  ///
+  /// In en, this message translates to:
+  /// **'QC Review'**
+  String get qcReview;
+
+  /// No description provided for @qcReviewSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review and approve pending registrations'**
+  String get qcReviewSubtitle;
+
   /// No description provided for @userManagementOnlineOnly.
   ///
   /// In en, this message translates to:
@@ -3449,6 +3461,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Point'**
   String get point;
+
+  /// No description provided for @optionalNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional notes (e.g., checked documents, quality assessment)'**
+  String get optionalNotes;
+
+  /// No description provided for @pleaseProvideReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Please provide a reason for rejection'**
+  String get pleaseProvideReason;
+
+  /// No description provided for @objectNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Object not found'**
+  String get objectNotFound;
+
+  /// No description provided for @invalidObjectData.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid object data'**
+  String get invalidObjectData;
+
+  /// No description provided for @errorLoadingDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading details'**
+  String get errorLoadingDetails;
+
+  /// No description provided for @tapToEnlarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to enlarge'**
+  String get tapToEnlarge;
+
+  /// No description provided for @tapToEnlargeMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to enlarge map'**
+  String get tapToEnlargeMap;
+
+  /// No description provided for @nationalIDPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'National ID Photo'**
+  String get nationalIDPhoto;
+
+  /// No description provided for @errorLoadingImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading image'**
+  String get errorLoadingImage;
+
+  /// No description provided for @unnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed'**
+  String get unnamed;
+
+  /// No description provided for @mapView.
+  ///
+  /// In en, this message translates to:
+  /// **'Map View'**
+  String get mapView;
+
+  /// No description provided for @debugDeleteAllObjects.
+  ///
+  /// In en, this message translates to:
+  /// **'DEBUG: Delete All Displayed Objects'**
+  String get debugDeleteAllObjects;
+
+  /// No description provided for @confirmDeleteAllObjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete all {count} displayed objects? This action cannot be undone!'**
+  String confirmDeleteAllObjects(int count);
+
+  /// No description provided for @objectsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} object(s) deleted'**
+  String objectsDeleted(int count);
+
+  /// No description provided for @errorDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'Error deleting'**
+  String get errorDeleting;
+
+  /// No description provided for @uidCopiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'UID copied to clipboard'**
+  String get uidCopiedToClipboard;
+
+  /// No description provided for @status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get status;
+
+  /// No description provided for @type.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get type;
+
+  /// No description provided for @created.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get created;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @farms.
+  ///
+  /// In en, this message translates to:
+  /// **'Farms'**
+  String get farms;
+
+  /// No description provided for @farmers.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmers'**
+  String get farmers;
+
+  /// No description provided for @fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Fields'**
+  String get fields;
+
+  /// No description provided for @totalArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Area'**
+  String get totalArea;
+
+  /// No description provided for @owner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get owner;
+
+  /// No description provided for @country.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get country;
+
+  /// No description provided for @polygonPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygon Points'**
+  String get polygonPoints;
+
+  /// No description provided for @takeIDPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take ID Photo'**
+  String get takeIDPhoto;
+
+  /// No description provided for @retakeIDPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake ID Photo'**
+  String get retakeIDPhoto;
+
+  /// No description provided for @farmID.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm ID'**
+  String get farmID;
+
+  /// No description provided for @nationalIDPhotoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'National ID Photo is required'**
+  String get nationalIDPhotoRequired;
+
+  /// No description provided for @idPhotoTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'ID Photo taken successfully'**
+  String get idPhotoTaken;
 }
 
 class _AppLocalizationsDelegate
