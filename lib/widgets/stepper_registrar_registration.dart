@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
@@ -52,11 +53,41 @@ class _StepperRegistrarRegistrationState
   XFile? _nationalIDPhoto;
   String? _nationalIDPhotoLocalPath;
   final ImagePicker _imagePicker = ImagePicker();
+  camera_plugin.CameraController? _cameraController;
+  List<camera_plugin.CameraDescription>? _cameras;
+  bool _showCameraPreview = false;
 
   @override
   void initState() {
     super.initState();
+    _initializeAndCheckStorage();
     _getCurrentPosition();
+  }
+
+  /// Prüfe und warte auf localStorage-Initialisierung
+  Future<void> _initializeAndCheckStorage() async {
+    // Warte bis zu 5 Sekunden auf localStorage-Initialisierung
+    int attempts = 0;
+    while (!isLocalStorageInitialized() && attempts < 50) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      attempts++;
+    }
+
+    if (!isLocalStorageInitialized()) {
+      debugPrint('WARNING: localStorage still not initialized after waiting');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.errorLoadingUserData),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      debugPrint('localStorage is initialized and ready for registration');
+    }
   }
 
   Future<void> _getCurrentPosition() async {
@@ -138,36 +169,17 @@ class _StepperRegistrarRegistrationState
     try {
       debugPrint('=== START REGISTRATION ===');
 
-      // Upload National ID Photo to Firebase Storage first
-//ToDo: Since registrar will be offline often, consider uploading later when online together with rest of data
-      String? nationalIDPhotoURL;
-      if (_nationalIDPhoto != null) {
-        debugPrint('Uploading National ID Photo to Firebase Storage...');
-        try {
-          // Upload to Firebase Storage in folder: documents/<userId>/nationalID/
-          final user = appUserDoc;
-          if (user != null) {
-            final userId = user['identity']['UID'];
-            final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final fileName = 'documents/$userId/nationalID/id_${timestamp}.jpg';
-
-            final bytes = await _nationalIDPhoto!.readAsBytes();
-            final ref = FirebaseStorage.instance.ref().child(fileName);
-            final uploadTask = ref.putData(
-              bytes,
-              SettableMetadata(contentType: 'image/jpeg'),
-            );
-
-            final snapshot = await uploadTask;
-            nationalIDPhotoURL = await snapshot.ref.getDownloadURL();
-            debugPrint(
-                'National ID Photo uploaded successfully: $nationalIDPhotoURL');
-          }
-        } catch (e) {
-          debugPrint('Error uploading National ID Photo: $e');
-          // Continue registration even if upload fails - photo is stored locally
-        }
+      // CRITICAL: Check if localStorage is initialized before proceeding
+      if (!isLocalStorageInitialized()) {
+        debugPrint('ERROR: localStorage not initialized');
+        throw Exception(
+            'localStorage not initialized. User must be logged in.');
       }
+      debugPrint('localStorage is initialized and ready');
+
+      // Photos are stored locally and will be uploaded during cloud sync
+      debugPrint(
+          'National ID Photo stored locally: $_nationalIDPhotoLocalPath');
 
       //* ****************  1. Erstelle Farmer (Human) *****************
 
@@ -227,17 +239,15 @@ class _StepperRegistrarRegistrationState
         debugPrint('farmer email set');
       }
 
-      // Add National ID Photo URL or local path
-      if (nationalIDPhotoURL != null) {
-        debugPrint('Setting nationalIDPhotoURL...');
-        farmer = setSpecificPropertyJSON(
-            farmer, 'nationalIDPhotoURL', nationalIDPhotoURL, 'String');
-        debugPrint('nationalIDPhotoURL set: \$nationalIDPhotoURL');
-      } else if (_nationalIDPhotoLocalPath != null) {
+      // Save local photo path - will be replaced with cloud URL during sync
+      if (_nationalIDPhotoLocalPath != null &&
+          _nationalIDPhotoLocalPath!.isNotEmpty) {
         debugPrint('Setting local nationalIDPhotoPath...');
         farmer = setSpecificPropertyJSON(farmer, 'nationalIDPhotoLocalPath',
-            _nationalIDPhotoLocalPath, 'String');
-        debugPrint('nationalIDPhotoLocalPath set: \$_nationalIDPhotoLocalPath');
+            _nationalIDPhotoLocalPath!, 'String');
+        debugPrint('nationalIDPhotoLocalPath set: $_nationalIDPhotoLocalPath');
+      } else {
+        debugPrint('No national ID photo path to save');
       }
 
       // Position
@@ -249,7 +259,8 @@ class _StepperRegistrarRegistrationState
         };
         debugPrint('Farmer coordinates set');
       }
-      farmer['currentGeolocation']['postalAddress']['country'] = 'Honduras';//ToDo: Make dynamic
+      farmer['currentGeolocation']['postalAddress']['country'] =
+          'Honduras'; //ToDo: Make dynamic
       if (_farmCityController.text.isNotEmpty) {
         farmer['currentGeolocation']['postalAddress']['cityName'] =
             _farmCityController.text;
@@ -260,7 +271,21 @@ class _StepperRegistrarRegistrationState
       }
       debugPrint('Farmer geolocation complete');
 
-      // 2. Erstelle Farm
+      // Add registrar as currentOwner and in linkedObjectRef
+      debugPrint(
+          'Adding registrar to farmer currentOwners and linkedObjectRef...');
+      farmer['currentOwners'] = [
+        {"UID": getObjectMethodUID(appUserDoc!), "role": "registrar"}
+      ];
+      farmer['linkedObjectRef'].add({
+        'UID': getObjectMethodUID(appUserDoc!),
+        'RALType': 'user',
+        'role': 'registrar',
+      });
+      debugPrint('Registrar added to farmer');
+
+      //*  ************** 2. Erstelle Farm  **************
+
       debugPrint('Step 2: Creating farm template');
       final farmUID = const Uuid().v4();
       debugPrint('Farm UID: $farmUID');
@@ -327,85 +352,94 @@ class _StepperRegistrarRegistrationState
         debugPrint('farm email set');
       }
 
-      // 3. Erstelle generateDigitalSibling Methode
-      debugPrint('Step 3: Creating generateDigitalSibling method');
-      Map<String, dynamic> registerMethod =
+      // Add registrar as currentOwner and in linkedObjectRef
+      debugPrint(
+          'Adding registrar to farm currentOwners and linkedObjectRef...');
+      farm['currentOwners'] = [
+        {"UID": getObjectMethodUID(appUserDoc!), "role": "registrar"}
+      ];
+      farm['linkedObjectRef'].add({
+        'UID': getObjectMethodUID(appUserDoc!),
+        'RALType': 'user',
+        'role': 'registrar',
+      });
+      debugPrint('Registrar added to farm');
+
+      //* ****************  3. Erstelle generateDigitalSibling Methode für FARMER (EXAKTE SEQUENZ WIE IN STEPPER_FIRST_SALE) *****************
+      debugPrint('Step 3: Creating generateDigitalSibling method for FARMER');
+      Map<String, dynamic> farmerRegisterMethod =
           await getOpenRALTemplate('generateDigitalSibling');
-      debugPrint('Method template loaded successfully');
+      debugPrint('Farmer method template loaded successfully');
 
-      final methodUID = const Uuid().v4();
-      debugPrint('Method UID: $methodUID');
-
-      setObjectMethodUID(registerMethod, methodUID);
-      debugPrint('Method UID set');
-
-      registerMethod['identity']['name'] =
-          'Farm Registration - ${_farmNameController.text}';
-      debugPrint('Method name set');
-
-      registerMethod['methodState'] = 'finished';
-      debugPrint('Method state set');
-
-      debugPrint(
-          'Setting executor (appUserDoc type: ${appUserDoc.runtimeType})');
-      registerMethod['executor'] = appUserDoc!;
-      debugPrint('Executor set');
-
-      registerMethod['existenceStarts'] =
+      farmerRegisterMethod['identity']['name'] =
+          'Farmer Registration - ${_farmerFirstNameController.text} ${_farmerLastNameController.text}';
+      farmerRegisterMethod['methodState'] = 'finished';
+      farmerRegisterMethod['executor'] = appUserDoc!;
+      farmerRegisterMethod['existenceStarts'] =
           DateTime.now().toUtc().toIso8601String();
-      debugPrint('existenceStarts set');
 
-      // Output objects: Farmer, Farm
-      debugPrint('Step 4: Adding output objects');
-      debugPrint(
-          'Adding farmer to method (farmer type: ${farmer.runtimeType})');
-      addOutputobject(registerMethod, farmer, 'farmer');
+      //Step 1: get method an uuid (for method history entries)
+      setObjectMethodUID(farmerRegisterMethod, const Uuid().v4());
+      debugPrint('Farmer Method UID set');
+
+      //Step 2: save the objects a first time to get it the method history change
+      await setObjectMethod(farmer, false, false);
+      debugPrint('Farmer saved first time');
+
+      //Step 3: add the output objects with updated method history to the method
+      addOutputobject(farmerRegisterMethod, farmer, 'farmer');
       debugPrint('Farmer added to method');
 
-      debugPrint('Adding farm to method (farm type: ${farm.runtimeType})');
-      addOutputobject(registerMethod, farm, 'farm');
-      debugPrint('Farm added to method');
-
-      // 4. Update method histories
-      debugPrint('Step 5: Updating method histories');
-      farmer['methodHistoryRef'].add({
-        'UID': methodUID,
-        'RALType': 'generateDigitalSibling',
-      });
+      //Step 4: update method history in all affected objects (will also tag them for syncing)
+      await updateMethodHistories(farmerRegisterMethod);
       debugPrint('Farmer method history updated');
 
-      farm['methodHistoryRef'].add({
-        'UID': methodUID,
-        'RALType': 'generateDigitalSibling',
-      });
+      //Step 5: again add Outputobjects to generate valid representation in the method
+      farmer = await getLocalObjectMethod(getObjectMethodUID(farmer));
+      addOutputobject(farmerRegisterMethod, farmer, 'farmer');
+      debugPrint('Farmer re-added to method with updated history');
+
+      //Step 6: persist process
+      await setObjectMethod(farmerRegisterMethod, true, true); //sign it!
+      debugPrint('Farmer method saved and signed successfully');
+
+      //* ****************  4. Erstelle generateDigitalSibling Methode für FARM (EXAKTE SEQUENZ WIE IN STEPPER_FIRST_SALE) *****************
+      debugPrint('Step 4: Creating generateDigitalSibling method for FARM');
+      Map<String, dynamic> farmRegisterMethod =
+          await getOpenRALTemplate('generateDigitalSibling');
+      debugPrint('Farm method template loaded successfully');
+
+      farmRegisterMethod['identity']['name'] =
+          'Farm Registration - ${_farmNameController.text}';
+      farmRegisterMethod['methodState'] = 'finished';
+      farmRegisterMethod['executor'] = appUserDoc!;
+      farmRegisterMethod['existenceStarts'] =
+          DateTime.now().toUtc().toIso8601String();
+
+      //Step 1: get method an uuid (for method history entries)
+      setObjectMethodUID(farmRegisterMethod, const Uuid().v4());
+      debugPrint('Farm Method UID set');
+
+      //Step 2: save the objects a first time to get it the method history change
+      await setObjectMethod(farm, false, false);
+      debugPrint('Farm saved first time');
+
+      //Step 3: add the output objects with updated method history to the method
+      addOutputobject(farmRegisterMethod, farm, 'farm');
+      debugPrint('Farm added to method');
+
+      //Step 4: update method history in all affected objects (will also tag them for syncing)
+      await updateMethodHistories(farmRegisterMethod);
       debugPrint('Farm method history updated');
 
-      // 5. Speichere alle Objekte (sortieren und konvertieren)
-      debugPrint('Step 6: Saving farmer object');
-      debugPrint('Farmer before sort (type: ${farmer.runtimeType})');
-      farmer = jsonFullDoubleToInt(sortJsonAlphabetically(farmer));
-      debugPrint(
-          'Farmer after jsonFullDoubleToInt (type: ${farmer.runtimeType})');
-      await setObjectMethod(farmer, false, false);
-      debugPrint('Farmer saved successfully');
+      //Step 5: again add Outputobjects to generate valid representation in the method
+      farm = await getLocalObjectMethod(getObjectMethodUID(farm));
+      addOutputobject(farmRegisterMethod, farm, 'farm');
+      debugPrint('Farm re-added to method with updated history');
 
-      debugPrint('Step 7: Saving farm object');
-      debugPrint('Farm before sort (type: ${farm.runtimeType})');
-      farm = jsonFullDoubleToInt(sortJsonAlphabetically(farm));
-      debugPrint('Farm after jsonFullDoubleToInt (type: ${farm.runtimeType})');
-      await setObjectMethod(farm, false, false);
-      debugPrint('Farm saved successfully');
-
-      // 6. Speichere und signiere Methode
-      debugPrint('Step 8: Saving and signing method');
-      debugPrint('Method before sort (type: ${registerMethod.runtimeType})');
-      registerMethod =
-          jsonFullDoubleToInt(sortJsonAlphabetically(registerMethod));
-      debugPrint(
-          'Method after jsonFullDoubleToInt (type: ${registerMethod.runtimeType})');
-      await setObjectMethod(
-          registerMethod, true, true); // Signieren und für Sync markieren
-      debugPrint('Method saved and signed successfully');
+      //Step 6: persist process
+      await setObjectMethod(farmRegisterMethod, true, true); //sign it!
+      debugPrint('Farm method saved and signed successfully');
 
       // Aktualisiere UI
       debugPrint('Step 9: Updating UI');
@@ -448,18 +482,43 @@ class _StepperRegistrarRegistrationState
     final l10n = AppLocalizations.of(context)!;
 
     try {
-      // Take photo using camera
-      final XFile? photo = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
+      if (kIsWeb) {
+        // Web: Open camera preview in dialog
+        await _showWebCameraDialog();
+      } else {
+        // Mobile: Use image_picker for native camera
+        final XFile? photo = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
 
-      if (photo != null) {
-        debugPrint('National ID Photo taken: ${photo.path}');
+        if (photo != null) {
+          await _savePhoto(photo);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error taking ID photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
-        // Save photo locally for offline access
+  Future<void> _savePhoto(XFile photo) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      debugPrint('National ID Photo taken: ${photo.path}');
+
+      // Save photo locally for offline access
+      if (!kIsWeb) {
         final appDir = await getApplicationDocumentsDirectory();
         final fileName =
             'nationalID_${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -481,26 +540,144 @@ class _StepperRegistrarRegistrationState
         });
 
         debugPrint('National ID Photo saved locally: $localPath');
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.idPhotoTaken),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+      } else {
+        // Web: Just store the XFile
+        setState(() {
+          _nationalIDPhoto = photo;
+          _nationalIDPhotoLocalPath = photo.name;
+        });
       }
-    } catch (e) {
-      debugPrint('Error taking ID photo: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(l10n.idPhotoTaken),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error saving photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    }
+  }
+
+  Future<void> _showWebCameraDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      // Initialize cameras
+      _cameras = await camera_plugin.availableCameras();
+      if (_cameras == null || _cameras!.isEmpty) {
+        throw Exception('No cameras available');
+      }
+
+      // Use front camera if available, otherwise use first camera
+      final camera_plugin.CameraDescription selectedCamera =
+          _cameras!.firstWhere(
+        (cam) => cam.lensDirection == camera_plugin.CameraLensDirection.front,
+        orElse: () => _cameras!.first,
+      );
+
+      _cameraController = camera_plugin.CameraController(
+        selectedCamera,
+        camera_plugin.ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+
+      if (!mounted) return;
+
+      // Show camera preview in dialog
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.takeIDPhoto,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: camera_plugin.CameraPreview(_cameraController!),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        icon: const Icon(Icons.close),
+                        label: Text(l10n.cancel),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          try {
+                            final image =
+                                await _cameraController!.takePicture();
+                            Navigator.of(dialogContext).pop();
+                            await _savePhoto(image);
+                          } catch (e) {
+                            debugPrint('Error capturing photo: $e');
+                          }
+                        },
+                        icon: const Icon(Icons.camera),
+                        label: Text(l10n.capture),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error initializing camera: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // Cleanup camera controller
+      await _cameraController?.dispose();
+      _cameraController = null;
     }
   }
 
@@ -516,6 +693,7 @@ class _StepperRegistrarRegistrationState
     _farmCityController.dispose();
     _farmStateController.dispose();
     _farmEmailController.dispose();
+    _cameraController?.dispose();
     super.dispose();
   }
 
@@ -806,12 +984,19 @@ class _StepperRegistrarRegistrationState
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    File(_nationalIDPhoto!.path),
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                  child: kIsWeb
+                      ? Image.network(
+                          _nationalIDPhoto!.path,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.file(
+                          File(_nationalIDPhoto!.path),
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ],
             ],

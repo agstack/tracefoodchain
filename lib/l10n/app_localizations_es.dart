@@ -205,6 +205,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cancel => 'Cancelar';
 
   @override
+  String get logout => 'Cerrar sesión';
+
+  @override
+  String get logoutConfirmation =>
+      '¿Estás seguro de que quieres cerrar sesión?';
+
+  @override
   String get assign => 'Assign';
 
   @override
@@ -1950,4 +1957,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get idPhotoTaken => 'Foto de identificación tomada exitosamente';
+
+  @override
+  String get capture => 'Capturar';
+
+  @override
+  String get errorLoadingUserData =>
+      'Error al cargar datos de usuario. Por favor, cierre sesión y vuelva a iniciar sesión.';
+
+  @override
+  String get gpsSignalExcellent => 'Señal GPS: Excelente';
+
+  @override
+  String get gpsSignalGood => 'Señal GPS: Buena';
+
+  @override
+  String get gpsSignalPoor => 'Señal GPS: Pobre';
 }

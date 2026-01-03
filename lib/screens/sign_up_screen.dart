@@ -118,16 +118,10 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _navigateBasedOnRole(Map<String, String> userProfile) {
-    final userRole = userProfile['userRole'] ?? 'Trader';
-
-    if (userRole.toLowerCase() == 'registrar') {
-      // Navigate to Registrar-specific screen
-  
-      Navigator.of(context).pushReplacementNamed('/registrar');
-    } else {
-      // All other roles (Trader, etc.) go to main screen
-      Navigator.of(context).pushReplacementNamed('/');
-    }
+    // Nach Login IMMER zum SplashScreen navigieren
+    // Der SplashScreen führt die vollständige Initialisierung durch
+    // und navigiert dann basierend auf der Rolle zum richtigen Screen
+    Navigator.of(context).pushReplacementNamed('/');
   }
 
   Future<void> _handleAuthError(FirebaseAuthException e) async {

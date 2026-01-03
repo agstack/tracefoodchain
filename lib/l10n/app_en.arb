@@ -72,6 +72,8 @@
   "enterReasonForRoleChange": "Enter reason for role change",
   "enterReason": "Enter reason for role change",
   "cancel": "Cancel",
+  "logout": "Logout",
+  "logoutConfirmation": "Are you sure you want to logout?",
   "assign": "Assign",
   "userDetails": "User Details",
   "name": "Name",
@@ -934,5 +936,10 @@
   "retakeIDPhoto": "Retake ID Photo",
   "farmID": "Farm ID",
   "nationalIDPhotoRequired": "National ID Photo is required",
-  "idPhotoTaken": "ID Photo taken successfully"
+  "idPhotoTaken": "ID Photo taken successfully",
+  "capture": "Capture",
+  "errorLoadingUserData": "Error loading user data. Please log out and log in again.",
+  "gpsSignalExcellent": "GPS Signal: Excellent",
+  "gpsSignalGood": "GPS Signal: Good",
+  "gpsSignalPoor": "GPS Signal: Poor"
 }

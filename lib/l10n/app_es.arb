@@ -66,6 +66,8 @@
     }
   },
   "cancel": "Cancelar",
+  "logout": "Cerrar sesión",
+  "logoutConfirmation": "¿Estás seguro de que quieres cerrar sesión?",
   "confirm": "Confirmar",
   "yes": "Sí",
   "no": "No",
@@ -928,5 +930,10 @@
   "retakeIDPhoto": "Volver a Tomar Foto de Identificación",
   "farmID": "ID de Finca",
   "nationalIDPhotoRequired": "Se requiere foto de identificación nacional",
-  "idPhotoTaken": "Foto de identificación tomada exitosamente"
+  "idPhotoTaken": "Foto de identificación tomada exitosamente",
+  "capture": "Capturar",
+  "errorLoadingUserData": "Error al cargar datos de usuario. Por favor, cierre sesión y vuelva a iniciar sesión.",
+  "gpsSignalExcellent": "Señal GPS: Excelente",
+  "gpsSignalGood": "Señal GPS: Buena",
+  "gpsSignalPoor": "Señal GPS: Pobre"
 }

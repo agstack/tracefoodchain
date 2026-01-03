@@ -486,6 +486,18 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get cancel;
 
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @logoutConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to logout?'**
+  String get logoutConfirmation;
+
   /// No description provided for @assign.
   ///
   /// In en, this message translates to:
@@ -3653,6 +3665,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ID Photo taken successfully'**
   String get idPhotoTaken;
+
+  /// No description provided for @capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture'**
+  String get capture;
+
+  /// No description provided for @errorLoadingUserData.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading user data. Please log out and log in again.'**
+  String get errorLoadingUserData;
+
+  /// No description provided for @gpsSignalExcellent.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Signal: Excellent'**
+  String get gpsSignalExcellent;
+
+  /// No description provided for @gpsSignalGood.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Signal: Good'**
+  String get gpsSignalGood;
+
+  /// No description provided for @gpsSignalPoor.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Signal: Poor'**
+  String get gpsSignalPoor;
 }
 
 class _AppLocalizationsDelegate

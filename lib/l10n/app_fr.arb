@@ -69,6 +69,8 @@
   "enterReasonForRoleChange": "Entrez la raison du changement de rôle",
   "enterReason": "Entrez la raison du changement de rôle",
   "cancel": "Annuler",
+  "logout": "Déconnexion",
+  "logoutConfirmation": "Êtes-vous sûr de vouloir vous déconnecter?",
   "assign": "Attribuer",
   "userDetails": "Détails de l''Utilisateur",
   "name": "Nom",
@@ -928,5 +930,10 @@
   "retakeIDPhoto": "Reprendre une Photo d'Identité",
   "farmID": "ID de la Ferme",
   "nationalIDPhotoRequired": "Photo d'identité nationale requise",
-  "idPhotoTaken": "Photo d'identité prise avec succès"
+  "idPhotoTaken": "Photo d'identité prise avec succès",
+  "capture": "Capturer",
+  "errorLoadingUserData": "Erreur lors du chargement des données utilisateur. Veuillez vous déconnecter et vous reconnecter.",
+  "gpsSignalExcellent": "Signal GPS: Excellent",
+  "gpsSignalGood": "Signal GPS: Bon",
+  "gpsSignalPoor": "Signal GPS: Faible"
 }

@@ -101,26 +101,8 @@ class _SplashScreenState extends State<SplashScreen>
           //* AUTHENTICATED
           if (appState.isEmailVerified) {
             //* VERIFIED
-            // Prüfe ob bereits vollständig initialisiert (z.B. nach Hot Reload)
-            if (isLocalStorageInitialized() &&
-                appUserDoc != null &&
-                appState.userRole != null &&
-                appState.userRole!.isNotEmpty) {
-              // Bereits initialisiert - navigiere basierend auf Rolle
-              final userRole = appState.userRole!.toLowerCase();
-              if (userRole == 'registrar' ) {
-              
-                Navigator.of(context).pushReplacementNamed('/registrar');
-              } else {
-                // Alle anderen Rollen gehen zum HomeScreen
-                Navigator.of(context).pushReplacement(
-                  FadeRoute(builder: (_) => const HomeScreen()),
-                );
-              }
-            } else {
-              // Noch nicht vollständig initialisiert - normale Initialisierung
-              await _navigateToNextScreen();
-            }
+            // Führe immer die vollständige Initialisierung durch
+            await _navigateToNextScreen();
           } else {
             //*NOT VERIFIED
             // Show email verification overlay
@@ -285,14 +267,28 @@ class _SplashScreenState extends State<SplashScreen>
       isSyncing.value = true;
 
       // openRAL: Update Templates
-      syncStatusNotifier.value = "${l10n.syncingWith} open-ral.io";
-      await cloudSyncService.syncOpenRALTemplates('open-ral.io');
+      syncStatusNotifier.value =
+          "${l10n?.syncingWith ?? 'Synchronizing with'} open-ral.io";
+      await cloudSyncService.syncOpenRALTemplates(
+        'open-ral.io',
+        onProgress: (current, total) {
+          syncStatusNotifier.value =
+              "${l10n?.syncingWith ?? 'Synchronizing with'} open-ral.io ($current/$total)";
+        },
+      );
 
       // sync all non-open-ral methods with it's clouds on startup
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
-          syncStatusNotifier.value = "${l10n.syncingWith} $cloudKey";
-          await cloudSyncService.syncMethods(cloudKey);
+          syncStatusNotifier.value =
+              "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey";
+          await cloudSyncService.syncMethods(
+            cloudKey,
+            onProgress: (current, total) {
+              syncStatusNotifier.value =
+                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ($current/$total)";
+            },
+          );
         }
       }
       final databaseHelper = DatabaseHelper();
@@ -502,9 +498,17 @@ class _SplashScreenState extends State<SplashScreen>
         },
       );
     } else {
-      Navigator.of(context).pushReplacement(
-        FadeRoute(builder: (_) => const HomeScreen()),
-      );
+      // Navigiere basierend auf Benutzerrolle
+      final userRole = appState.userRole?.toLowerCase() ?? '';
+      if (userRole == 'registrar' 
+// || userRole == 'superadmin'
+) {
+        Navigator.of(context).pushReplacementNamed('/registrar');
+      } else {
+        Navigator.of(context).pushReplacement(
+          FadeRoute(builder: (_) => const HomeScreen()),
+        );
+      }
     }
     // }
   }

@@ -24,6 +24,7 @@ import 'package:trace_foodchain_app/providers/app_state.dart';
 import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/splash_screen.dart';
 import 'package:trace_foodchain_app/screens/registrar_screen.dart';
+import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
@@ -482,6 +483,8 @@ class MyApp extends StatelessWidget {
         return MaterialPageRoute(builder: (_) => const SplashScreen());
       case '/registrar':
         return MaterialPageRoute(builder: (_) => const RegistrarScreen());
+      case '/auth':
+        return MaterialPageRoute(builder: (_) => const AuthScreen());
       default:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
     }

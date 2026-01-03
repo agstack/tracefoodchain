@@ -7,6 +7,7 @@ import '../widgets/stepper_registrar_registration.dart';
 import '../widgets/field_boundary_recorder.dart';
 import '../widgets/language_selector.dart';
 import '../screens/registrar_qc_screen.dart';
+import '../screens/sign_up_screen.dart';
 import '../providers/app_state.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
@@ -66,24 +67,35 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(l10n.logout, style: const TextStyle(color: Colors.black)),
+        content: Text(l10n.logoutConfirmation,
+            style: const TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel,
+                style: const TextStyle(color: Colors.black87)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Logout'),
+            child: Text(l10n.logout, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
 
     if (shouldLogout == true && mounted) {
-      await FirebaseAuth.instance.signOut();
-      Navigator.of(context).pushReplacementNamed('/auth');
+      // Verwende die zentrale signOut-Methode aus AppState
+      final appState = Provider.of<AppState>(context, listen: false);
+      await appState.signOut();
+
+      // Navigiere zum AuthScreen und entferne alle vorherigen Routes
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 

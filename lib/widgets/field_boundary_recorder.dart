@@ -44,7 +44,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
           final doc = localStorage!.get(key);
           if (doc != null) {
             final Map<String, dynamic> obj = Map<String, dynamic>.from(doc);
-
+            debugPrint(obj['template']?['RALType']);
             // Prüfe ob es eine Farm ist
             if (obj['template']?['RALType'] == 'farm') {
               farms.add(obj);
@@ -202,14 +202,6 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       field = setSpecificPropertyJSON(field, 'area', area, 'double');
       debugPrint('Area set');
 
-      // Recorded by
-      if (appUserDoc != null) {
-        debugPrint('Setting recordedBy');
-        field = setSpecificPropertyJSON(
-            field, 'recordedBy', getObjectMethodUID(appUserDoc!), 'String');
-        debugPrint('RecordedBy set');
-      }
-
       // PFLICHT-Verknüpfung zur Farm
       debugPrint('Setting geolocation container');
       field['currentGeolocation']['container']['UID'] = farmUID;
@@ -230,44 +222,28 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       field['currentGeolocation']['postalAddress']['country'] = 'Honduras';
       debugPrint('Geolocation set');
 
-      // Erstelle generateDigitalSibling Methode
-      debugPrint('Creating generateDigitalSibling method');
-      Map<String, dynamic> registerMethod =
-          await getOpenRALTemplate('generateDigitalSibling');
-      final methodUID = const Uuid().v4();
-      setObjectMethodUID(registerMethod, methodUID);
-      registerMethod['identity']['name'] = 'Field Registration - $fieldName';
-      registerMethod['methodState'] = 'finished';
-      registerMethod['executor'] = appUserDoc!;
-      registerMethod['existenceStarts'] =
-          DateTime.now().toUtc().toIso8601String();
-      debugPrint('Method created');
-
-      // Input: Farm (Kontext)
-      debugPrint('Adding farm as input');
-      addInputobject(registerMethod, _selectedFarm!, 'farm');
-      debugPrint('Farm input added');
-
-      // Output: Field
-      debugPrint('Adding field as output');
-      addOutputobject(registerMethod, field, 'field');
-      debugPrint('Field output added');
-
-      // Update method history
-      field['methodHistoryRef'].add({
-        'UID': methodUID,
-        'RALType': 'generateDigitalSibling',
+      // Add registrar as currentOwner and in linkedObjectRef
+      debugPrint(
+          'Adding registrar to field currentOwners and linkedObjectRef...');
+      field['currentOwners'] = [
+        {"UID": getObjectMethodUID(appUserDoc!), "role": "registrar"}
+      ];
+      field['linkedObjectRef'].add({
+        'UID': getObjectMethodUID(appUserDoc!),
+        'RALType': 'user',
+        'role': 'registrar',
       });
-      debugPrint('Method history updated');
+      debugPrint('Registrar added to field');
 
-      // Update Farm mit neuem Field-Link
+//************ Update Farm mit neuem Field-Link ZUERST (bevor Methode erstellt wird) ***
+//ToDo: changed Farm needs persistence via changeObject Method!!!
       debugPrint('Updating farm with field link');
       Map<String, dynamic> updatedFarm =
           Map<String, dynamic>.from(_selectedFarm!);
       updatedFarm['linkedObjectRef'].add({
         'UID': fieldUID,
         'RALType': 'field',
-        'role': 'parcel',
+        'role': 'parcel', //TODo: Check if correct
       });
 
       // Aktualisiere totalAreaHa der Farm
@@ -293,30 +269,47 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
           updatedFarm, 'totalAreaHa', newTotalArea, 'double');
       debugPrint('Farm area updated');
 
-      // Speichere Objekte
-      debugPrint('Converting field with jsonFullDoubleToInt');
-      field = jsonFullDoubleToInt(field);
-      debugPrint('Sorting field alphabetically');
-      field = sortJsonAlphabetically(field);
-      debugPrint('Saving field to storage');
+//ToDo: ChangeObject Methode aufrufen um Farm zu speichern
+
+      // Erstelle generateDigitalSibling Methode (EXAKTE SEQUENZ WIE IN STEPPER_FIRST_SALE)
+      debugPrint('Creating generateDigitalSibling method');
+      Map<String, dynamic> fieldRegisterMethod =
+          await getOpenRALTemplate('generateDigitalSibling');
+
+      fieldRegisterMethod['identity']['name'] =
+          'Field Registration - $fieldName';
+      fieldRegisterMethod['methodState'] = 'finished';
+      fieldRegisterMethod['executor'] = appUserDoc!;
+      fieldRegisterMethod['existenceStarts'] =
+          DateTime.now().toUtc().toIso8601String();
+      debugPrint('Method properties set');
+
+      //Step 1: get method an uuid (for method history entries)
+      setObjectMethodUID(fieldRegisterMethod, const Uuid().v4());
+      debugPrint('Method UID set');
+
+      //Step 2: save the objects a first time to get it the method history change
       await setObjectMethod(field, false, false);
-      debugPrint('Field saved');
+      debugPrint('Field saved first time');
 
-      debugPrint('Converting farm with jsonFullDoubleToInt');
-      updatedFarm = jsonFullDoubleToInt(updatedFarm);
-      debugPrint('Sorting farm alphabetically');
-      updatedFarm = sortJsonAlphabetically(updatedFarm);
-      debugPrint('Saving farm to storage');
-      await setObjectMethod(updatedFarm, false, false);
-      debugPrint('Farm saved');
+      //Step 3: add the output objects with updated method history to the method
+      addOutputobject(fieldRegisterMethod, field, 'field');
+      debugPrint('Field added to method');
 
-      debugPrint('Converting method with jsonFullDoubleToInt');
-      registerMethod = jsonFullDoubleToInt(registerMethod);
-      debugPrint('Sorting method alphabetically');
-      registerMethod = sortJsonAlphabetically(registerMethod);
-      debugPrint('Saving and signing method');
-      await setObjectMethod(registerMethod, true, true); // Signieren und syncen
-      debugPrint('Method saved and signed');
+      //Step 4: update method history in all affected objects (will also tag them for syncing)
+      await updateMethodHistories(fieldRegisterMethod);
+      debugPrint('Method history updated in all objects');
+
+      //Step 5: again add Outputobjects to generate valid representation in the method
+      field = await getLocalObjectMethod(getObjectMethodUID(field));
+      addOutputobject(fieldRegisterMethod, field, 'field');
+      debugPrint('Field re-added to method with updated history');
+
+      //Step 6: persist process
+      await setObjectMethod(fieldRegisterMethod, true, true); //sign it!
+      debugPrint(
+          'Method ${getObjectMethodUID(fieldRegisterMethod)} saved and signed');
+//**************************************************************** */
 
       // UI aktualisieren
       repaintContainerList.value = true;

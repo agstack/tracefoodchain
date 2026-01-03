@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -578,12 +580,22 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         _buildDetailRow(l10n.nationalID, nationalID),
       ]);
 
-      // National ID Photo anzeigen, falls vorhanden
+      // National ID Photo anzeigen - prüfe sowohl URL als auch lokalen Pfad
       final nationalIDPhotoURL =
           getSpecificPropertyfromJSON(obj, 'nationalIDPhotoURL');
+      final nationalIDPhotoLocalPath =
+          getSpecificPropertyfromJSON(obj, 'nationalIDPhotoLocalPath');
+
       if (nationalIDPhotoURL != null &&
           nationalIDPhotoURL.toString().isNotEmpty) {
-        details.add(_buildNationalIDPhotoWidget(nationalIDPhotoURL.toString()));
+        // Cloud URL vorhanden - zeige Cloud-Foto
+        details.add(
+            _buildNationalIDPhotoWidget(nationalIDPhotoURL.toString(), false));
+      } else if (nationalIDPhotoLocalPath != null &&
+          nationalIDPhotoLocalPath.toString().isNotEmpty) {
+        // Nur lokaler Pfad vorhanden - zeige lokales Foto
+        details.add(_buildNationalIDPhotoWidget(
+            nationalIDPhotoLocalPath.toString(), true));
       }
 
       details.add(_buildDetailRow(l10n.phoneNumber, phone));
@@ -910,7 +922,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   /// Widget für National ID Photo mit Tap-to-Zoom
-  Widget _buildNationalIDPhotoWidget(String photoURL) {
+  /// Unterstützt sowohl Cloud-URLs als auch lokale Dateipfade
+  Widget _buildNationalIDPhotoWidget(String photoPath, bool isLocalFile) {
     final l10n = AppLocalizations.of(context)!;
 
     return Padding(
@@ -925,7 +938,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           ),
           const SizedBox(height: 8),
           GestureDetector(
-            onTap: () => _showFullScreenImage(photoURL),
+            onTap: () => _showFullScreenImage(photoPath, isLocalFile),
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Container(
@@ -936,28 +949,48 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: photoURL,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                    errorWidget: (context, url, error) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline,
-                              size: 32, color: Colors.grey[400]),
-                          const SizedBox(height: 4),
-                          Text(
-                            l10n.errorLoadingImage,
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 12),
+                  child: isLocalFile && !kIsWeb
+                      ? Image.file(
+                          File(photoPath),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline,
+                                    size: 32, color: Colors.grey[400]),
+                                const SizedBox(height: 4),
+                                Text(
+                                  l10n.errorLoadingImage,
+                                  style: TextStyle(
+                                      color: Colors.grey[600], fontSize: 12),
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: photoPath,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                          errorWidget: (context, url, error) => Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline,
+                                    size: 32, color: Colors.grey[400]),
+                                const SizedBox(height: 4),
+                                Text(
+                                  l10n.errorLoadingImage,
+                                  style: TextStyle(
+                                      color: Colors.grey[600], fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -973,7 +1006,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   /// Zeigt Bild in bildschirmfüllender Ansicht
-  void _showFullScreenImage(String imageURL) {
+  /// Unterstützt sowohl Cloud-URLs als auch lokale Dateipfade
+  void _showFullScreenImage(String imagePath, bool isLocalFile) {
     final l10n = AppLocalizations.of(context)!;
 
     showDialog(
@@ -988,28 +1022,48 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 4.0,
-                child: CachedNetworkImage(
-                  imageUrl: imageURL,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  ),
-                  errorWidget: (context, url, error) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 64, color: Colors.white),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.errorLoadingImage,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 16),
+                child: isLocalFile && !kIsWeb
+                    ? Image.file(
+                        File(imagePath),
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 64, color: Colors.white),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.errorLoadingImage,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 16),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: imagePath,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
+                        errorWidget: (context, url, error) => Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 64, color: Colors.white),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.errorLoadingImage,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
               ),
             ),
             // Schließen-Button oben rechts
@@ -1084,26 +1138,59 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// Extrahiert Polygon-Koordinaten aus boundaries
   List<LatLng>? _getBoundariesFromObject(Map<String, dynamic> obj) {
     final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries');
-    if (boundaries == null || boundaries is! List || boundaries.isEmpty) {
-      return null;
-    }
+    if (boundaries == null) return null;
 
     List<LatLng> points = [];
-    for (var point in boundaries) {
-      if (point is! Map) continue;
 
-      final lat = point['latitude'] ?? point['lat'];
-      final lng = point['longitude'] ?? point['lon'] ?? point['lng'];
+    // Falls boundaries ein String ist (GeoJSON), parse ihn
+    if (boundaries is String) {
+      try {
+        final parsed = jsonDecode(boundaries);
+        if (parsed is Map && parsed.containsKey('coordinates')) {
+          final coords = parsed['coordinates'];
+          if (coords is List) {
+            for (var point in coords) {
+              if (point is List && point.length >= 2) {
+                final lat = point[0];
+                final lng = point[1];
 
-      if (lat == null || lng == null) continue;
+                final latNum = (lat is num)
+                    ? lat.toDouble()
+                    : double.tryParse(lat.toString());
+                final lngNum = (lng is num)
+                    ? lng.toDouble()
+                    : double.tryParse(lng.toString());
 
-      final latNum =
-          (lat is num) ? lat.toDouble() : double.tryParse(lat.toString());
-      final lngNum =
-          (lng is num) ? lng.toDouble() : double.tryParse(lng.toString());
+                if (latNum != null && lngNum != null) {
+                  points.add(LatLng(latNum, lngNum));
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error parsing boundaries GeoJSON: $e');
+        return null;
+      }
+    }
+    // Falls boundaries bereits ein Array ist (altes Format)
+    else if (boundaries is List && boundaries.isNotEmpty) {
+      for (var point in boundaries) {
+        if (point is! Map) continue;
 
-      if (latNum != null && lngNum != null) {
-        points.add(LatLng(latNum, lngNum));
+        final lat = point['latitude'] ?? point['lat'];
+        final lng = point['longitude'] ?? point['lon'] ?? point['lng'];
+
+        if (lat == null || lng == null) continue;
+
+        final latNum =
+            (lat is num) ? lat.toDouble() : double.tryParse(lat.toString());
+        final lngNum =
+            (lng is num) ? lng.toDouble() : double.tryParse(lng.toString());
+
+        if (latNum != null && lngNum != null) {
+          points.add(LatLng(latNum, lngNum));
+        }
       }
     }
 
@@ -1155,7 +1242,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       target: center,
                       zoom: boundaries != null ? 16 : 14,
                     ),
-                    markers: location != null
+                    markers: location != null && boundaries == null
                         ? {
                             Marker(
                               markerId: const MarkerId('location'),
@@ -1250,7 +1337,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 target: center,
                 zoom: boundaries != null ? 17 : 15,
               ),
-              markers: location != null
+              markers: location != null && boundaries == null
                   ? {
                       Marker(
                         markerId: const MarkerId('location'),

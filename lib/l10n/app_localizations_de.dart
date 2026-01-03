@@ -206,6 +206,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cancel => 'Abbrechen';
 
   @override
+  String get logout => 'Abmelden';
+
+  @override
+  String get logoutConfirmation => 'Möchten Sie sich wirklich abmelden?';
+
+  @override
   String get assign => 'Zuweisen';
 
   @override
@@ -1944,4 +1950,20 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get idPhotoTaken => 'Ausweis-Foto erfolgreich aufgenommen';
+
+  @override
+  String get capture => 'Aufnehmen';
+
+  @override
+  String get errorLoadingUserData =>
+      'Fehler beim Laden der Benutzerdaten. Bitte melden Sie sich ab und erneut an.';
+
+  @override
+  String get gpsSignalExcellent => 'GPS-Signal: Ausgezeichnet';
+
+  @override
+  String get gpsSignalGood => 'GPS-Signal: Gut';
+
+  @override
+  String get gpsSignalPoor => 'GPS-Signal: Schlecht';
 }

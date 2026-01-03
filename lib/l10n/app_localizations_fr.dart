@@ -208,6 +208,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cancel => 'Annuler';
 
   @override
+  String get logout => 'Déconnexion';
+
+  @override
+  String get logoutConfirmation => 'Êtes-vous sûr de vouloir vous déconnecter?';
+
+  @override
   String get assign => 'Attribuer';
 
   @override
@@ -1952,4 +1958,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get idPhotoTaken => 'Photo d\'identité prise avec succès';
+
+  @override
+  String get capture => 'Capturer';
+
+  @override
+  String get errorLoadingUserData =>
+      'Erreur lors du chargement des données utilisateur. Veuillez vous déconnecter et vous reconnecter.';
+
+  @override
+  String get gpsSignalExcellent => 'Signal GPS: Excellent';
+
+  @override
+  String get gpsSignalGood => 'Signal GPS: Bon';
+
+  @override
+  String get gpsSignalPoor => 'Signal GPS: Faible';
 }

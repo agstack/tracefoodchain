@@ -1,11 +1,12 @@
 ﻿// This service syncs local hive database to/from the clouds
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:trace_foodchain_app/helpers/deep_copy_map.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
@@ -15,9 +16,6 @@ import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/screens/home_screen.dart';
 import 'package:trace_foodchain_app/services/get_device_id.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 //import 'dart:html' as html;
 
 class CloudApiClient {
@@ -194,8 +192,17 @@ class CloudSyncService {
 
   CloudSyncService(String domain) : apiClient = CloudApiClient(domain: domain);
 
-  Future<void> syncOpenRALTemplates(String domain) async {
+  Future<void> syncOpenRALTemplates(String domain,
+      {Function(int current, int total)? onProgress}) async {
+    final totalTemplates = openRALTemplates.keys.length;
+    int currentIndex = 0;
+
     for (var templateName in openRALTemplates.keys) {
+      currentIndex++;
+      if (onProgress != null) {
+        onProgress(currentIndex, totalTemplates);
+      }
+
       try {
         //If possible, always use the cloud versions of the templates for locale database
         // final cloudTemplate = await _apiClient.getRalObjectByUid(domain,templateName);
@@ -204,9 +211,124 @@ class CloudSyncService {
     }
   }
 
+  /// Upload local photos to Firebase Storage and replace local paths with cloud URLs
+  /// This is called before syncing objects to cloud
+  Future<void> _uploadPendingPhotosAndUpdateObjects() async {
+    try {
+      debugPrint('=== START PHOTO UPLOAD PROCESS ===');
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('No authenticated user found, skipping photo upload');
+        return;
+      }
+
+      // Iterate through all objects in localStorage
+      for (var doc in localStorage!.values) {
+        final doc2 = Map<String, dynamic>.from(doc);
+
+        // Only process objects (not methods)
+        if (doc2["methodHistoryRef"] != null) {
+          bool objectModified = false;
+
+          // Check specificProperties for local photo paths
+          if (doc2["specificProperties"] != null) {
+            final specificProps = doc2["specificProperties"];
+            // debugPrint(specificProps.toString());
+            // Look for properties ending with "LocalPath" (e.g., nationalIDPhotoLocalPath)
+            for (var prop in specificProps) {
+              // Support both "key" (current) and "name" (legacy) for property names
+              final String? propertyKey = prop["key"] ?? prop["name"];
+              if (propertyKey != null &&
+                  propertyKey.endsWith('LocalPath') &&
+                  prop["value"] != null &&
+                  prop["value"] != "") {
+                final localPath = prop["value"].toString();
+
+                // Check if this is a local file path (not a URL)
+                if (!localPath.startsWith('http://') &&
+                    !localPath.startsWith('https://')) {
+                  debugPrint(
+                      'Found local photo path in object ${doc2["identity"]["UID"]}: $localPath');
+
+                  try {
+                    // Upload photo to Firebase Storage
+                    String? cloudUrl;
+
+                    if (!kIsWeb && localPath.isNotEmpty) {
+                      final file = File(localPath);
+                      if (await file.exists()) {
+                        // Determine storage path based on property name
+                        final propertyBaseName =
+                            propertyKey.replaceAll('LocalPath', '');
+                        final userId = user.uid;
+                        final objectUid = doc2["identity"]["UID"];
+                        final timestamp = DateTime.now().millisecondsSinceEpoch;
+                        final fileName =
+                            'documents/$userId/$propertyBaseName/${objectUid}_$timestamp.jpg';
+
+                        debugPrint(
+                            'Uploading photo to Firebase Storage: $fileName');
+
+                        final bytes = await file.readAsBytes();
+                        final ref =
+                            FirebaseStorage.instance.ref().child(fileName);
+                        final uploadTask = ref.putData(
+                          bytes,
+                          SettableMetadata(contentType: 'image/jpeg'),
+                        );
+
+                        final snapshot = await uploadTask;
+                        cloudUrl = await snapshot.ref.getDownloadURL();
+
+                        debugPrint('Photo uploaded successfully: $cloudUrl');
+                      } else {
+                        debugPrint('Local file does not exist: $localPath');
+                      }
+                    }
+
+                    // Replace local path with cloud URL if upload was successful
+                    if (cloudUrl != null) {
+                      // Remove the LocalPath property
+                      specificProps.remove(propertyKey);
+
+                      // Add the URL property (e.g., nationalIDPhotoURL)
+                      final urlPropertyName =
+                          propertyKey.replaceAll('LocalPath', 'URL');
+                      specificProps[urlPropertyName] = cloudUrl;
+
+                      objectModified = true;
+                      debugPrint(
+                          'Replaced $propertyKey with $urlPropertyName in object');
+                    }
+                  } catch (e) {
+                    debugPrint(
+                        'Error uploading photo for key $propertyKey: $e');
+                    // Continue with other photos even if one fails
+                  }
+                }
+              }
+            }
+          }
+
+          // Save the modified object back to localStorage
+          if (objectModified) {
+            await setObjectMethod(doc2, true, false); // Mark for sync
+            debugPrint('Object updated with cloud photo URLs');
+          }
+        }
+      }
+
+      debugPrint('=== PHOTO UPLOAD PROCESS COMPLETED ===');
+    } catch (e) {
+      debugPrint('Error in photo upload process: $e');
+      // Don't throw - allow sync to continue even if photo upload fails
+    }
+  }
+
 //This function syncs all methods and objects to the cloud if tagged as being changed/generated locally only
 
-  Future<bool> syncMethods(String domain) async {
+  Future<bool> syncMethods(String domain,
+      {Function(int current, int total)? onProgress}) async {
     List<String> failedSyncedOutputObjects = [];
     if (_isSyncing) {
       return false;
@@ -214,6 +336,9 @@ class CloudSyncService {
     _isSyncing = true;
     final databaseHelper = DatabaseHelper();
     try {
+      // FIRST: Upload any pending local photos and replace paths with cloud URLs
+      await _uploadPendingPhotosAndUpdateObjects();
+
       //****** 1. SYNC METHODS TO CLOUD - and build hash map for later syncing from cloud *********
       List<Map<String, dynamic>> methodsToSyncToCloud = [];
       Map<String, dynamic> deviceHashes = {
@@ -260,10 +385,19 @@ class CloudSyncService {
         }
       }
       bool syncSuccess = true;
+      int currentMethodIndex = 0;
+      final totalMethodsToSync = methodsToSyncToCloud.length;
+
       for (final method in methodsToSyncToCloud) {
+        currentMethodIndex++;
+        if (onProgress != null) {
+          onProgress(currentMethodIndex, totalMethodsToSync);
+        }
+
         final doc2 = Map<String, dynamic>.from(method);
         final methodUid = getObjectMethodUID(doc2);
         try {
+          debugPrint('Syncing method to cloud: $methodUid');
           Map<String, dynamic> syncresult =
               await apiClient.syncMethodToCloud(domain, doc2);
           if (syncresult["response"] == "success") {
@@ -401,7 +535,15 @@ class CloudSyncService {
         }
       }
       // bool downloadedFirst = false;
+      int currentDownloadIndex = 0;
+      final totalDownloads = mergedList.length;
+
       for (final item in mergedList) {
+        currentDownloadIndex++;
+        if (onProgress != null) {
+          onProgress(currentDownloadIndex, totalDownloads);
+        }
+
         final docData = Map<String, dynamic>.from(item);
 
         //);

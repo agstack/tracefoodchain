@@ -205,6 +205,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancel => 'Cancel';
 
   @override
+  String get logout => 'Logout';
+
+  @override
+  String get logoutConfirmation => 'Are you sure you want to logout?';
+
+  @override
   String get assign => 'Assign';
 
   @override
@@ -1923,4 +1929,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get idPhotoTaken => 'ID Photo taken successfully';
+
+  @override
+  String get capture => 'Capture';
+
+  @override
+  String get errorLoadingUserData =>
+      'Error loading user data. Please log out and log in again.';
+
+  @override
+  String get gpsSignalExcellent => 'GPS Signal: Excellent';
+
+  @override
+  String get gpsSignalGood => 'GPS Signal: Good';
+
+  @override
+  String get gpsSignalPoor => 'GPS Signal: Poor';
 }

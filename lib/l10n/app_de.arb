@@ -72,6 +72,8 @@
   "enterReasonForRoleChange": "Grund für Rollenänderung eingeben",
   "enterReason": "Grund für Rollenänderung eingeben",
   "cancel": "Abbrechen",
+  "logout": "Abmelden",
+  "logoutConfirmation": "Möchten Sie sich wirklich abmelden?",
   "assign": "Zuweisen",
   "userDetails": "Benutzerdetails",
   "name": "Name",
@@ -934,5 +936,10 @@
   "retakeIDPhoto": "Ausweis-Foto erneut aufnehmen",
   "farmID": "Farm-ID",
   "nationalIDPhotoRequired": "Ausweis-Foto ist erforderlich",
-  "idPhotoTaken": "Ausweis-Foto erfolgreich aufgenommen"
+  "idPhotoTaken": "Ausweis-Foto erfolgreich aufgenommen",
+  "capture": "Aufnehmen",
+  "errorLoadingUserData": "Fehler beim Laden der Benutzerdaten. Bitte melden Sie sich ab und erneut an.",
+  "gpsSignalExcellent": "GPS-Signal: Ausgezeichnet",
+  "gpsSignalGood": "GPS-Signal: Gut",
+  "gpsSignalPoor": "GPS-Signal: Schlecht"
 }

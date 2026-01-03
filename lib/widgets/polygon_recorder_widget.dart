@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
@@ -340,6 +341,9 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
           }
         });
       }
+
+      // Starte GPS automatisch beim Öffnen des Screens
+      await _startRecording();
     } catch (e) {
       debugPrint('Error initializing draft storage: $e');
     } finally {
@@ -413,42 +417,61 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   void _addCurrentPoint() async {
     final l10n = AppLocalizations.of(context)!;
 
-    // Starte GPS automatisch falls noch nicht aktiv
-    if (!_isRecording) {
-      await _startRecording();
+    Position? positionToAdd = _currentPosition;
 
-      // Warte auf erste GPS-Position (max 5 Sekunden)
-      int attempts = 0;
-      while (_currentPosition == null && attempts < 50) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        attempts++;
+    // Debug-Modus: Simuliere Punkte mit mindestens 15m Abstand
+    if (kDebugMode && _lastAddedPosition != null) {
+      // Generiere einen zufälligen Punkt 15-20m vom letzten Punkt entfernt
+      final random = Random();
+      final distanceMeters = 15.0 + random.nextDouble() * 5.0; // 15-20m
+      final bearing = random.nextDouble() * 360; // Zufällige Richtung
 
-        // Zeige Feedback nach 1 Sekunde
-        if (attempts == 10 && _currentPosition == null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.waitingForGps),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      }
+      // Berechne neue Koordinaten basierend auf Distanz und Richtung
+      // 1 Grad Latitude ≈ 111.32 km
+      // 1 Grad Longitude ≈ 111.32 km * cos(latitude)
+      final latOffset = (distanceMeters / 111320.0) * cos(bearing * pi / 180);
+      final lonOffset = (distanceMeters / 111320.0) *
+          sin(bearing * pi / 180) /
+          cos(_lastAddedPosition!.latitude * pi / 180);
+
+      final newLat = _lastAddedPosition!.latitude + latOffset;
+      final newLon = _lastAddedPosition!.longitude + lonOffset;
+
+      positionToAdd = Position(
+        latitude: newLat,
+        longitude: newLon,
+        timestamp: DateTime.now(),
+        accuracy: 5.0 + random.nextDouble() * 3.0, // 5-8m Genauigkeit
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+      debugPrint(
+          '🔧 Debug: Simulierter Punkt ${distanceMeters.toStringAsFixed(1)}m entfernt in Richtung ${bearing.toStringAsFixed(0)}°');
     }
 
-    if (_currentPosition == null) {
+    // Prüfe ob GPS-Position verfügbar ist
+    if (positionToAdd == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.pleaseEnableGps)),
+        SnackBar(
+          content: Text(l10n.waitingForGps),
+          duration: const Duration(seconds: 1),
+        ),
       );
       return;
     }
 
-    // Prüfe Mindestabstand zum letzten Punkt
-    if (_lastAddedPosition != null) {
+    // Prüfe Mindestabstand zum letzten Punkt (außer im Debug-Modus, wo bereits simuliert)
+    if (_lastAddedPosition != null && !kDebugMode) {
       final distance = Geolocator.distanceBetween(
         _lastAddedPosition!.latitude,
         _lastAddedPosition!.longitude,
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
+        positionToAdd.latitude,
+        positionToAdd.longitude,
       );
 
       if (distance < widget.minDistanceMeters) {
@@ -465,9 +488,9 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     }
 
     setState(() {
-      _points.add([_currentPosition!.latitude, _currentPosition!.longitude]);
-      _accuracies.add(_currentPosition!.accuracy);
-      _lastAddedPosition = _currentPosition;
+      _points.add([positionToAdd!.latitude, positionToAdd.longitude]);
+      _accuracies.add(positionToAdd.accuracy);
+      _lastAddedPosition = positionToAdd;
     });
 
     // Speichere Draft nach jedem Punkt
@@ -1015,349 +1038,485 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
           }
         }
       },
-      child: Card(
-        elevation: 4,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Icon(
-                    Icons.my_location,
-                    color: _isRecording ? Colors.green : Colors.grey,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l10n.recordFieldBoundary,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
+      child: Stack(
+        children: [
+          // Hauptinhalt (scrollbar)
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                top: 16.0,
+                bottom: 100.0, // Platz für GPS-Widget
               ),
-              const SizedBox(height: 16),
-
-              // Polygon-Visualisierung mit interaktiven Gesten - EXPANDED für verfügbaren Platz
-              if (_points.isNotEmpty)
-                Expanded(
-                  child: Container(
-                    key: _canvasKey,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[400]!),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: GestureDetector(
-                        onScaleStart: (details) {
-                          _lastFocalPoint = details.focalPoint;
-                          // Prüfe ob ein Punkt berührt wurde (aber nur bei Single Touch)
-                          if (details.pointerCount == 1) {
-                            _checkPointSelection(details.localFocalPoint);
-                          }
-                        },
-                        onScaleUpdate: (details) {
-                          if (_isDraggingPoint &&
-                              _selectedPointIndex != null &&
-                              details.pointerCount == 1) {
-                            // Punkt verschieben
-                            _dragPoint(details.localFocalPoint);
-                          } else if (details.pointerCount > 1) {
-                            // Zoom und Pan (nur bei Multi-Touch)
-                            setState(() {
-                              _scale = (_scale * details.scale).clamp(0.5, 5.0);
-                              _offset += details.focalPoint - _lastFocalPoint;
-                              _lastFocalPoint = details.focalPoint;
-                            });
-                          } else {
-                            // Nur Pan bei Single Touch ohne Punkt-Drag
-                            setState(() {
-                              _offset += details.focalPoint - _lastFocalPoint;
-                              _lastFocalPoint = details.focalPoint;
-                            });
-                          }
-                        },
-                        onScaleEnd: (details) {
-                          if (_isDraggingPoint) {
-                            _saveDraft();
-                          }
-                          setState(() {
-                            _isDraggingPoint = false;
-                            // Behalte die Selektion nach dem Drag
-                          });
-                        },
-                        onLongPressStart: (details) {
-                          // Wichtig: Selektion vor Dialog
-                          _checkPointSelection(details.localPosition);
-                          // Warte kurz damit setState wirksam wird
-                          Future.microtask(() {
-                            if (_selectedPointIndex != null && mounted) {
-                              _showPointEditDialog(_selectedPointIndex!);
-                            }
-                          });
-                        },
-                        child: Stack(
-                          children: [
-                            CustomPaint(
-                              painter: PolygonPainter(
-                                points:
-                                    _sortPointsToPolygon(List.from(_points)),
-                                accuracies: _accuracies,
-                                scale: _scale,
-                                offset: _offset,
-                                selectedPointIndex: _selectedPointIndex,
-                              ),
-                              child: Container(),
-                            ),
-                            // Zoom-Controls
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: Column(
-                                children: [
-                                  FloatingActionButton.small(
-                                    heroTag: 'zoom_in',
-                                    onPressed: () {
-                                      setState(() {
-                                        _scale = (_scale * 1.2).clamp(0.5, 5.0);
-                                      });
-                                    },
-                                    child: const Icon(Icons.add),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  FloatingActionButton.small(
-                                    heroTag: 'zoom_out',
-                                    onPressed: () {
-                                      setState(() {
-                                        _scale = (_scale / 1.2).clamp(0.5, 5.0);
-                                      });
-                                    },
-                                    child: const Icon(Icons.remove),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  FloatingActionButton.small(
-                                    heroTag: 'zoom_reset',
-                                    onPressed: () {
-                                      setState(() {
-                                        _scale = 1.0;
-                                        _offset = Offset.zero;
-                                        _selectedPointIndex = null;
-                                      });
-                                    },
-                                    child:
-                                        const Icon(Icons.center_focus_strong),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Info-Text
-                            Positioned(
-                              left: 8,
-                              bottom: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  l10n.pinchToZoom,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.my_location,
+                        color: _isRecording ? Colors.green : Colors.grey,
                       ),
-                    ),
-                  ),
-                ),
-
-              // Status-Info
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          l10n.pointsRecorded(_points.length),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.recordFieldBoundary,
                           style: const TextStyle(
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
                         ),
-                        if (_points.length >= 3)
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Polygon-Visualisierung mit interaktiven Gesten - EXPANDED für verfügbaren Platz
+                  if (_points.isNotEmpty)
+                    Expanded(
+                      child: Container(
+                        key: _canvasKey,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[400]!),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: GestureDetector(
+                            onScaleStart: (details) {
+                              _lastFocalPoint = details.focalPoint;
+                              // Prüfe ob ein Punkt berührt wurde (aber nur bei Single Touch)
+                              if (details.pointerCount == 1) {
+                                _checkPointSelection(details.localFocalPoint);
+                              }
+                            },
+                            onScaleUpdate: (details) {
+                              if (_isDraggingPoint &&
+                                  _selectedPointIndex != null &&
+                                  details.pointerCount == 1) {
+                                // Punkt verschieben
+                                _dragPoint(details.localFocalPoint);
+                              } else if (details.pointerCount > 1) {
+                                // Zoom und Pan (nur bei Multi-Touch)
+                                setState(() {
+                                  _scale =
+                                      (_scale * details.scale).clamp(0.5, 5.0);
+                                  _offset +=
+                                      details.focalPoint - _lastFocalPoint;
+                                  _lastFocalPoint = details.focalPoint;
+                                });
+                              } else {
+                                // Nur Pan bei Single Touch ohne Punkt-Drag
+                                setState(() {
+                                  _offset +=
+                                      details.focalPoint - _lastFocalPoint;
+                                  _lastFocalPoint = details.focalPoint;
+                                });
+                              }
+                            },
+                            onScaleEnd: (details) {
+                              if (_isDraggingPoint) {
+                                _saveDraft();
+                              }
+                              setState(() {
+                                _isDraggingPoint = false;
+                                // Behalte die Selektion nach dem Drag
+                              });
+                            },
+                            onLongPressStart: (details) {
+                              // Wichtig: Selektion vor Dialog
+                              _checkPointSelection(details.localPosition);
+                              // Warte kurz damit setState wirksam wird
+                              Future.microtask(() {
+                                if (_selectedPointIndex != null && mounted) {
+                                  _showPointEditDialog(_selectedPointIndex!);
+                                }
+                              });
+                            },
+                            child: Stack(
+                              children: [
+                                CustomPaint(
+                                  painter: PolygonPainter(
+                                    points: _sortPointsToPolygon(
+                                        List.from(_points)),
+                                    accuracies: _accuracies,
+                                    scale: _scale,
+                                    offset: _offset,
+                                    selectedPointIndex: _selectedPointIndex,
+                                  ),
+                                  child: Container(),
+                                ),
+                                // Zoom-Controls
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Column(
+                                    children: [
+                                      FloatingActionButton.small(
+                                        heroTag: 'zoom_in',
+                                        onPressed: () {
+                                          setState(() {
+                                            _scale =
+                                                (_scale * 1.2).clamp(0.5, 5.0);
+                                          });
+                                        },
+                                        child: const Icon(Icons.add),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FloatingActionButton.small(
+                                        heroTag: 'zoom_out',
+                                        onPressed: () {
+                                          setState(() {
+                                            _scale =
+                                                (_scale / 1.2).clamp(0.5, 5.0);
+                                          });
+                                        },
+                                        child: const Icon(Icons.remove),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FloatingActionButton.small(
+                                        heroTag: 'zoom_reset',
+                                        onPressed: () {
+                                          setState(() {
+                                            _scale = 1.0;
+                                            _offset = Offset.zero;
+                                            _selectedPointIndex = null;
+                                          });
+                                        },
+                                        child: const Icon(
+                                            Icons.center_focus_strong),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Info-Text
+                                Positioned(
+                                  left: 8,
+                                  bottom: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      l10n.pinchToZoom,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Status-Info
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              l10n.pointsRecorded(_points.length),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            if (_points.length >= 3)
+                              Text(
+                                l10n.estimatedArea(
+                                    estimatedArea.toStringAsFixed(2)),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700],
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (_isRecording && _currentPosition != null) ...[
+                          const SizedBox(height: 8),
                           Text(
-                            l10n.estimatedArea(
-                                estimatedArea.toStringAsFixed(2)),
+                            '${l10n.current}: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[700],
+                                fontSize: 12, color: Colors.grey[700]),
+                          ),
+                          Text(
+                            '${l10n.accuracy}: ${_currentPosition!.accuracy.toStringAsFixed(1)}m',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[700]),
+                          ),
+                        ],
+                        if (_points.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              l10n.tapToAddPoint,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue[700],
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
                       ],
                     ),
-                    if (_isRecording && _currentPosition != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        '${l10n.current}: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Punkt-Hinzufügen Button (groß und prominent)
+                  ElevatedButton.icon(
+                    onPressed: _addCurrentPoint,
+                    icon: const Icon(Icons.add_location, size: 28),
+                    label: Text(
+                      l10n.addPoint,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Liste der Punkte (scrollbar wenn viele)
+                  if (_points.isNotEmpty) ...[
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.recordedPoints,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
-                      Text(
-                        '${l10n.accuracy}: ${_currentPosition!.accuracy.toStringAsFixed(1)}m',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 150),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _points.length,
+                        itemBuilder: (context, index) {
+                          final accuracy = index < _accuracies.length
+                              ? _accuracies[index]
+                              : null;
+                          final accuracyColor = accuracy != null
+                              ? (accuracy <= 5
+                                  ? Colors.green[700]!
+                                  : accuracy <= 10
+                                      ? Colors.orange[700]!
+                                      : Colors.red[700]!)
+                              : Colors.grey[700]!;
+
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 2),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(
+                                  color: accuracyColor,
+                                  width: 4,
+                                ),
+                              ),
+                              color: accuracyColor.withOpacity(0.05),
+                            ),
+                            child: ListTile(
+                              dense: true,
+                              leading: CircleAvatar(
+                                radius: 12,
+                                backgroundColor: accuracyColor,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(
+                                      fontSize: 10, color: Colors.white),
+                                ),
+                              ),
+                              title: Text(
+                                'Lat: ${_points[index][0].toStringAsFixed(6)}, Lon: ${_points[index][1].toStringAsFixed(6)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              subtitle: accuracy != null
+                                  ? Text(
+                                      '${l10n.accuracy}: ${accuracy.toStringAsFixed(1)}m',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: accuracyColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, size: 20),
+                                color: Colors.red[400],
+                                onPressed: () => _removePointAt(index),
+                                tooltip: l10n.delete,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                    if (_points.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          l10n.tapToAddPoint,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[700],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
-                ),
+                  // Complete Button or Minimum Points Message
+                  if (_points.length >= 3)
+                    ElevatedButton.icon(
+                      onPressed: _completePolygon,
+                      icon: const Icon(Icons.check_circle),
+                      label: Text(l10n.completeRegistration),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Text(
+                        l10n.minimumPointsRequired,
+                        style: TextStyle(
+                          color: Colors.orange[700],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 16),
+            ),
+          ),
 
-              // Punkt-Hinzufügen Button (groß und prominent)
-              ElevatedButton.icon(
-                onPressed: _addCurrentPoint,
-                icon: const Icon(Icons.add_location, size: 28),
-                label: Text(
-                  l10n.addPoint,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Liste der Punkte (scrollbar wenn viele)
-              if (_points.isNotEmpty) ...[
-                const Divider(),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.recordedPoints,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+          // Fixiertes GPS-Signal-Widget am unteren Bildschirmrand
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: _currentPosition == null
+                    ? Colors.grey[300]
+                    : (_currentPosition!.accuracy <= 5
+                        ? Colors.green[100]
+                        : _currentPosition!.accuracy <= 10
+                            ? Colors.orange[100]
+                            : Colors.red[100]),
+                border: Border(
+                  top: BorderSide(
+                    color: _currentPosition == null
+                        ? Colors.grey[500]!
+                        : (_currentPosition!.accuracy <= 5
+                            ? Colors.green[700]!
+                            : _currentPosition!.accuracy <= 10
+                                ? Colors.orange[700]!
+                                : Colors.red[700]!),
+                    width: 3,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 150),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _points.length,
-                    itemBuilder: (context, index) {
-                      final accuracy = index < _accuracies.length
-                          ? _accuracies[index]
-                          : null;
-                      final accuracyColor = accuracy != null
-                          ? (accuracy <= 5
-                              ? Colors.green[700]!
-                              : accuracy <= 10
-                                  ? Colors.orange[700]!
-                                  : Colors.red[700]!)
-                          : Colors.grey[700]!;
-
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            left: BorderSide(
-                              color: accuracyColor,
-                              width: 4,
-                            ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _currentPosition == null
+                        ? Icons.gps_off
+                        : (_currentPosition!.accuracy <= 5
+                            ? Icons.gps_fixed
+                            : _currentPosition!.accuracy <= 10
+                                ? Icons.gps_not_fixed
+                                : Icons.gps_off),
+                    color: _currentPosition == null
+                        ? Colors.grey[700]
+                        : (_currentPosition!.accuracy <= 5
+                            ? Colors.green[700]
+                            : _currentPosition!.accuracy <= 10
+                                ? Colors.orange[700]
+                                : Colors.red[700]),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _currentPosition == null
+                              ? l10n.gpsDisabledMessage
+                              : (_currentPosition!.accuracy <= 5
+                                  ? l10n.gpsSignalExcellent
+                                  : _currentPosition!.accuracy <= 10
+                                      ? l10n.gpsSignalGood
+                                      : l10n.gpsSignalPoor),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _currentPosition == null
+                                ? Colors.grey[700]
+                                : (_currentPosition!.accuracy <= 5
+                                    ? Colors.green[900]
+                                    : _currentPosition!.accuracy <= 10
+                                        ? Colors.orange[900]
+                                        : Colors.red[900]),
                           ),
-                          color: accuracyColor.withOpacity(0.05),
                         ),
-                        child: ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 12,
-                            backgroundColor: accuracyColor,
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                  fontSize: 10, color: Colors.white),
-                            ),
-                          ),
-                          title: Text(
-                            'Lat: ${_points[index][0].toStringAsFixed(6)}, Lon: ${_points[index][1].toStringAsFixed(6)}',
+                        if (_currentPosition != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '${l10n.accuracy}: ${_currentPosition!.accuracy.toStringAsFixed(1)}m',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.black87,
                             ),
                           ),
-                          subtitle: accuracy != null
-                              ? Text(
-                                  '${l10n.accuracy}: ${accuracy.toStringAsFixed(1)}m',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: accuracyColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                              : null,
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, size: 20),
-                            color: Colors.red[400],
-                            onPressed: () => _removePointAt(index),
-                            tooltip: l10n.delete,
-                          ),
-                        ),
-                      );
-                    },
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Complete Button
-              ElevatedButton.icon(
-                onPressed: _points.length >= 3 ? _completePolygon : null,
-                icon: const Icon(Icons.check_circle),
-                label: Text(l10n.completeRegistration),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+                  if (_currentPosition != null &&
+                      _currentPosition!.accuracy <= 5)
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green[700],
+                      size: 24,
+                    ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
