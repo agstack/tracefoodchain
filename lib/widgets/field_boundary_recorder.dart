@@ -479,17 +479,78 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                                           final name = farm['identity']
                                                   ['name'] ??
                                               'Unnamed';
+                                          // Suche Farm-ID in alternateIDs (vom Benutzer eingegeben)
+                                          String farmId = '';
+                                          final alternateIDs = farm['identity']
+                                              ?['alternateIDs'] as List?;
+                                          if (alternateIDs != null) {
+                                            for (var altId in alternateIDs) {
+                                              if (altId['issuedBy'] ==
+                                                  'Farm Registry') {
+                                                farmId = altId['UID'] ?? '';
+                                                break;
+                                              }
+                                            }
+                                          }
                                           final city =
                                               farm['currentGeolocation']
                                                           ?['postalAddress']
                                                       ?['cityName'] ??
                                                   '';
+                                          // E-Mail aus specificProperties holen (wie im Registrierungsstepper gespeichert)
+                                          final emailFromSpecific =
+                                              getSpecificPropertyfromJSON(
+                                                  farm, 'email');
+                                          final email =
+                                              (emailFromSpecific != null &&
+                                                      emailFromSpecific !=
+                                                          '-no data found-')
+                                                  ? emailFromSpecific.toString()
+                                                  : '';
+
                                           return DropdownMenuItem(
                                             value: farm,
-                                            child: Text(
-                                              '$name ${city.isNotEmpty ? "($city)" : ""}',
-                                              style: const TextStyle(
-                                                  color: Colors.black),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  name,
+                                                  style: const TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 13,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                                if (farmId.isNotEmpty ||
+                                                    city.isNotEmpty ||
+                                                    email.isNotEmpty)
+                                                  Text(
+                                                    [
+                                                      if (farmId.isNotEmpty)
+                                                        farmId.length > 12
+                                                            ? '${farmId.substring(0, 12)}...'
+                                                            : farmId,
+                                                      if (city.isNotEmpty) city,
+                                                      if (email.isNotEmpty)
+                                                        email,
+                                                    ]
+                                                        .where(
+                                                            (s) => s.isNotEmpty)
+                                                        .join(' • '),
+                                                    style: TextStyle(
+                                                      color: Colors.grey[600],
+                                                      fontSize: 11,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                              ],
                                             ),
                                           );
                                         }).toList(),

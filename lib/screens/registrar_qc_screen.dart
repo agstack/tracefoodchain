@@ -8,9 +8,12 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
+import '../services/asset_registry_api_service.dart';
+import '../services/user_registry_api_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 
@@ -88,9 +91,13 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     // Zeige Bestätigungs-Dialog
+    final ralType = object['template']?['RALType'];
     final notes = await showDialog<String>(
       context: context,
-      builder: (context) => _ApprovalDialog(isApproval: true),
+      builder: (context) => _ApprovalDialog(
+        isApproval: true,
+        objectType: ralType,
+      ),
     );
 
     if (notes == null) return; // Abgebrochen
@@ -98,6 +105,29 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     setState(() => _isLoading = true);
 
     try {
+      String approvalNotes = notes;
+
+      // Für Field-Objekte: Asset Registry Registrierung durchführen
+      final ralType = object['template']?['RALType'];
+      if (ralType == 'field') {
+        final geoIdResult = await _registerFieldInAssetRegistry(object);
+        if (geoIdResult['geoId'] != null) {
+          // Füge GeoID zu alternateIDs hinzu
+          object['identity']['alternateIDs'] =
+              object['identity']['alternateIDs'] ?? [];
+          object['identity']['alternateIDs'].add({
+            'UID': geoIdResult['geoId'],
+            'issuedBy': 'Asset Registry',
+          });
+        } else if (geoIdResult['error'] != null) {
+          // API-Fehler: Füge Fehlermeldung zu approvalNotes hinzu
+          final errorNote = l10n.assetRegistryRegistrationFailed(
+              geoIdResult['error'] ?? 'Unknown error');
+          approvalNotes =
+              approvalNotes.isEmpty ? errorNote : '$notes\n$errorNote';
+        }
+      }
+
       // Erstelle changeObjectData Methode
       Map<String, dynamic> changeMethod =
           await getOpenRALTemplate('changeObjectData');
@@ -115,11 +145,11 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           changeMethod, 'changeType', 'qc_approval', 'String');
       changeMethod = setSpecificPropertyJSON(
           changeMethod, 'oldState', 'qcPending', 'String');
-      changeMethod = setSpecificPropertyJSON(
-          changeMethod, 'newState', 'qcApproved', 'String');
-      if (notes.isNotEmpty) {
+      changeMethod =
+          setSpecificPropertyJSON(changeMethod, 'newState', 'active', 'String');
+      if (approvalNotes.isNotEmpty) {
         changeMethod = setSpecificPropertyJSON(
-            changeMethod, 'approvalNotes', notes, 'String');
+            changeMethod, 'approvalNotes', approvalNotes, 'String');
       }
 
       // Input: Altes Objekt
@@ -127,7 +157,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
       // Output: Neues Objekt mit geändertem Status
       Map<String, dynamic> updatedObject = Map<String, dynamic>.from(object);
-      updatedObject['objectState'] = 'qcApproved';
+      updatedObject['objectState'] = 'active';
 
       // Update method history
       updatedObject['methodHistoryRef'].add({
@@ -286,6 +316,142 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  /// Registriert ein Field-Objekt bei der Asset Registry und gibt die GeoID zurück
+  /// Rückgabe: {'geoId': String?, 'error': String?}
+  Future<Map<String, String?>> _registerFieldInAssetRegistry(
+      Map<String, dynamic> fieldObject) async {
+    UserRegistryService? userRegistryService;
+    AssetRegistryService? assetRegistryService;
+
+    try {
+      // Extrahiere Feldgrenzen aus dem Field-Objekt
+      final boundariesJson =
+          getSpecificPropertyfromJSON(fieldObject, 'boundaries');
+      if (boundariesJson == null) {
+        return {'geoId': null, 'error': 'No boundaries found in field object'};
+      }
+
+      // Parse boundaries (sollte WKT-Format sein)
+      String wktCoordinates;
+      try {
+        final boundaries = jsonDecode(boundariesJson);
+        if (boundaries['coordinates'] != null) {
+          // Konvertiere GeoJSON zu WKT
+          wktCoordinates = _convertGeoJSONToWKT(boundaries['coordinates']);
+        } else {
+          return {'geoId': null, 'error': 'Invalid boundaries format'};
+        }
+      } catch (e) {
+        return {'geoId': null, 'error': 'Failed to parse boundaries: $e'};
+      }
+
+      // Initialisiere User Registry Service
+      userRegistryService = UserRegistryService();
+      await userRegistryService.initialize();
+
+      // Hole Credentials aus .env
+      final userEmail = dotenv.env['USER_REGISTRY_EMAIL'] ?? '';
+      final userPassword = dotenv.env['USER_REGISTRY_PASSWORD'] ?? '';
+
+      if (userEmail.isEmpty || userPassword.isEmpty) {
+        return {
+          'geoId': null,
+          'error': 'User Registry credentials not configured'
+        };
+      }
+
+      // Login
+      final loginSuccess = await userRegistryService.login(
+        email: userEmail,
+        password: userPassword,
+      );
+
+      if (!loginSuccess) {
+        return {'geoId': null, 'error': 'User Registry login failed'};
+      }
+
+      // Erstelle Asset Registry Service
+      assetRegistryService = await AssetRegistryService.withUserRegistry(
+        userRegistryService: userRegistryService,
+      );
+
+      // Registriere Field Boundary
+      final registerResponse = await assetRegistryService.registerFieldBoundary(
+        s2Index: '8, 13',
+        wkt: wktCoordinates,
+      );
+
+      String? geoId;
+      if (registerResponse.statusCode == 200) {
+        // Neu registriert
+        final responseData =
+            jsonDecode(registerResponse.body) as Map<String, dynamic>;
+        geoId = responseData['geoid'] as String?;
+        if (geoId != null) {
+          return {'geoId': geoId, 'error': null};
+        } else {
+          return {'geoId': null, 'error': 'No geoID in response'};
+        }
+      } else if (registerResponse.statusCode == 400) {
+        // Bereits registriert
+        final responseData =
+            jsonDecode(registerResponse.body) as Map<String, dynamic>;
+        final matchedGeoIds = responseData['matched geo ids'] as List<dynamic>?;
+        if (matchedGeoIds != null && matchedGeoIds.isNotEmpty) {
+          geoId = matchedGeoIds.first as String;
+          return {'geoId': geoId, 'error': null};
+        } else {
+          return {'geoId': null, 'error': 'No matched geo ids in response'};
+        }
+      } else {
+        return {
+          'geoId': null,
+          'error': 'Asset Registry API error: ${registerResponse.statusCode}'
+        };
+      }
+    } catch (e) {
+      debugPrint('Error registering field in Asset Registry: $e');
+      return {'geoId': null, 'error': e.toString()};
+    } finally {
+      // Logout
+      if (userRegistryService != null) {
+        try {
+          await userRegistryService.logout();
+        } catch (e) {
+          debugPrint('Error logging out from User Registry: $e');
+        }
+      }
+    }
+  }
+
+  /// Konvertiert GeoJSON-Koordinaten (List<List<double>>) zu WKT-Format
+  String _convertGeoJSONToWKT(dynamic coordinates) {
+    if (coordinates is! List) {
+      throw Exception('Invalid coordinates format');
+    }
+
+    List<String> wktCoordinates = [];
+    for (var point in coordinates) {
+      if (point is List && point.length == 2) {
+        // GeoJSON hat [lon, lat], WKT braucht "lon lat"
+        final lat = point[0];
+        final lon = point[1];
+        wktCoordinates.add('$lon $lat');
+      }
+    }
+
+    if (wktCoordinates.isEmpty) {
+      throw Exception('No valid coordinates found');
+    }
+
+    // Stelle sicher, dass das Polygon geschlossen ist
+    if (wktCoordinates.first != wktCoordinates.last) {
+      wktCoordinates.add(wktCoordinates.first);
+    }
+
+    return 'POLYGON ((${wktCoordinates.join(', ')}))';
   }
 
   Future<void> _debugDeleteAllDisplayedObjects() async {
@@ -486,7 +652,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         subtitle = l10n.farmerDetails;
         break;
       case 'field':
-        icon = Icons.terrain;
+        icon = Icons.map;
         color = Colors.orange;
         final area = getSpecificPropertyfromJSON(obj, 'area');
         final areaValue = (area is num) ? area.toDouble() : 0.0;
@@ -565,7 +731,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     List<Widget> details = [];
 
     // Common details
-    details.add(_buildDetailRow('UID', obj['identity']?['UID'] ?? '-'));
+    // details.add(_buildDetailRow('UID', obj['identity']?['UID'] ?? '-'));
 
     // Type-specific details
     if (ralType == 'human') {
@@ -616,8 +782,11 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     } else if (ralType == 'field') {
       final area = getSpecificPropertyfromJSON(obj, 'area');
       final areaValue = (area is num) ? area.toDouble() : 0.0;
-      final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries') ?? [];
-      final pointCount = boundaries is List ? boundaries.length : 0;
+      final boundaryPoints = _getBoundariesFromObject(obj);
+      // Letzter Punkt ist Wiederholung des ersten Punktes bei geschlossenen Polygonen
+      final pointCount = (boundaryPoints != null && boundaryPoints.isNotEmpty)
+          ? boundaryPoints.length - 1
+          : 0;
 
       details.addAll([
         _buildDetailRow(l10n.fieldArea, '${areaValue.toStringAsFixed(2)} ha'),
@@ -1410,8 +1579,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 /// Dialog für Genehmigung oder Ablehnung mit Notizen/Grund
 class _ApprovalDialog extends StatefulWidget {
   final bool isApproval;
+  final String? objectType;
 
-  const _ApprovalDialog({required this.isApproval});
+  const _ApprovalDialog({
+    required this.isApproval,
+    this.objectType,
+  });
 
   @override
   State<_ApprovalDialog> createState() => _ApprovalDialogState();
@@ -1431,19 +1604,56 @@ class _ApprovalDialogState extends State<_ApprovalDialog> {
     final l10n = AppLocalizations.of(context)!;
 
     return AlertDialog(
-      title: Text(widget.isApproval
-          ? l10n.approveRegistration
-          : l10n.rejectRegistration),
-      content: TextField(
-        controller: _controller,
-        decoration: InputDecoration(
-          labelText:
-              widget.isApproval ? l10n.approvalNotes : l10n.rejectionReason,
-          hintText:
-              widget.isApproval ? l10n.optionalNotes : l10n.pleaseProvideReason,
-          border: const OutlineInputBorder(),
-        ),
-        maxLines: 3,
+      title: Text(
+        widget.isApproval ? l10n.approveRegistration : l10n.rejectRegistration,
+        style: const TextStyle(color: Colors.black),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Info-Box für Field-Objekte bei Approval
+          if (widget.isApproval && widget.objectType == 'field')
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.assetRegistryWillBeAttempted,
+                      style: TextStyle(
+                        color: Colors.blue[900],
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          TextField(
+            controller: _controller,
+            style: const TextStyle(color: Colors.black),
+            decoration: InputDecoration(
+              labelText:
+                  widget.isApproval ? l10n.approvalNotes : l10n.rejectionReason,
+              labelStyle: const TextStyle(color: Colors.black87),
+              hintText: widget.isApproval
+                  ? l10n.optionalNotes
+                  : l10n.pleaseProvideReason,
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              border: const OutlineInputBorder(),
+            ),
+            maxLines: 3,
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -1585,8 +1795,27 @@ class _ObjectDetailsDialog extends StatelessWidget {
     } else if (ralType == 'field') {
       final area = getSpecificPropertyfromJSON(obj, 'area');
       final areaValue = (area is num) ? area.toDouble() : 0.0;
-      final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries') ?? [];
-      final pointCount = boundaries is List ? boundaries.length : 0;
+
+      // Parse boundaries (kann String oder List sein)
+      int pointCount = 0;
+      final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries');
+      if (boundaries is String) {
+        try {
+          final parsed = jsonDecode(boundaries);
+          if (parsed is Map && parsed.containsKey('coordinates')) {
+            final coords = parsed['coordinates'];
+            if (coords is List) {
+              // Letzter Punkt ist Wiederholung des ersten Punktes bei geschlossenen Polygonen
+              pointCount = coords.length > 0 ? coords.length - 1 : 0;
+            }
+          }
+        } catch (e) {
+          pointCount = 0;
+        }
+      } else if (boundaries is List) {
+        // Letzter Punkt ist Wiederholung des ersten Punktes bei geschlossenen Polygonen
+        pointCount = boundaries.length > 0 ? boundaries.length - 1 : 0;
+      }
 
       details.addAll([
         _buildInfoRow(l10n.fieldArea, '${areaValue.toStringAsFixed(2)} ha'),

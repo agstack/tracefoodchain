@@ -137,6 +137,12 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               continue;
             }
 
+            // Skip fields with objectState qcPending or qcRejected
+            final objectState = fieldData["objectState"];
+            if (objectState == "qcPending" || objectState == "qcRejected") {
+              continue;
+            }
+
             // Prüfe ob es sich um ein testmode-Objekt handelt, wenn wir nicht im Testmodus sind
             if (!isTestmode &&
                 fieldData.containsKey("isTestmode") &&

@@ -331,7 +331,13 @@
   "emailVerification": "Email verification",
   "securityError": "Security error",
   "securityErrorMessage":"We could not generate the setup for digital signage. Please try again later making sure you have internet connection.",
-  "closeApp" : "Close App", 
+  "closeApp" : "Close App",
+  "activateAppFirstTime": "To activate the app the first time, please connect to the internet for authentication!",
+  "localizationConfigError": "Localization Configuration Error",
+  "localizationErrorCannotSend": "Localization error - cannot send verification email",
+  "localizationErrorAppLocalizationsDelegateIsMissing": "AppLocalizations.delegate is missing in main.dart\nlocalizationsDelegates configuration",
+  "poweredByOpenRAL": "powered by openRAL by permarobotics",
+  "debugUploadingUserProfile": "DEBUG: Uploading user profile to the cloud...",
   "uidAlreadyExists": "This ID already exists, please chose another one",
   "selectItemToSell": "Please select an item to sell",
   "debugDeleteContainer": "Delete container (Debug)",
@@ -858,6 +864,17 @@
   "registrationRejected": "Registration rejected",
   "rejectionReason": "Rejection Reason",
   "approvalNotes": "Approval Notes",
+  "assetRegistryRegistrationFailed": "Initial Asset Registry registration failed calling API: {error}",
+  "@assetRegistryRegistrationFailed": {
+    "description": "Error message when Asset Registry API fails during field registration",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Connection timeout"
+      }
+    }
+  },
+  "assetRegistryWillBeAttempted": "Note: This field will be registered with the Asset Registry to obtain a GeoID.",
   "fieldsCount": "{count} field(s)",
   "@fieldsCount": {
     "description": "Number of fields",

@@ -738,6 +738,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get closeApp => 'Fermer l\'application';
 
   @override
+  String get activateAppFirstTime =>
+      'Pour activer l\'application pour la première fois, veuillez vous connecter à Internet pour l\'authentification !';
+
+  @override
+  String get localizationConfigError =>
+      'Erreur de configuration de localisation';
+
+  @override
+  String get localizationErrorCannotSend =>
+      'Erreur de localisation - impossible d\'envoyer l\'e-mail de vérification';
+
+  @override
+  String get localizationErrorAppLocalizationsDelegateIsMissing =>
+      'AppLocalizations.delegate manque dans main.dart\nconfiguration localizationsDelegates';
+
+  @override
+  String get poweredByOpenRAL => 'propulsé par openRAL de permarobotics';
+
+  @override
+  String get debugUploadingUserProfile =>
+      'DEBUG : Téléchargement du profil utilisateur vers le cloud...';
+
+  @override
   String get uidAlreadyExists =>
       'Cet identifiant existe déjà, veuillez en choisir un autre';
 
@@ -1797,6 +1820,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get approvalNotes => 'Notes d\'approbation';
+
+  @override
+  String assetRegistryRegistrationFailed(String error) {
+    return 'L\'enregistrement initial dans Asset Registry a échoué lors de l\'appel de l\'API: $error';
+  }
+
+  @override
+  String get assetRegistryWillBeAttempted =>
+      'Note : Cette parcelle sera enregistrée dans Asset Registry pour obtenir un GeoID.';
 
   @override
   String fieldsCount(int count) {

@@ -298,7 +298,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                             ),
                             _buildActionButton(
                               context,
-                              icon: Icons.terrain,
+                              icon: Icons.map,
                               label: l10n.recordFieldBoundary,
                               color: Colors.green,
                               onTap: _openFieldBoundaryRecorder,

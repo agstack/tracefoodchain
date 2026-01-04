@@ -324,6 +324,12 @@
   "securityError": "Erreur de sécurité",
   "securityErrorMessage": "Les paramètres de sécurité pour les signatures numériques n'ont pas pu être générés. Veuillez réessayer plus tard et assurez-vous d'avoir une connexion Internet.",
   "closeApp": "Fermer l'application",
+  "activateAppFirstTime": "Pour activer l'application pour la première fois, veuillez vous connecter à Internet pour l'authentification !",
+  "localizationConfigError": "Erreur de configuration de localisation",
+  "localizationErrorCannotSend": "Erreur de localisation - impossible d'envoyer l'e-mail de vérification",
+  "localizationErrorAppLocalizationsDelegateIsMissing": "AppLocalizations.delegate manque dans main.dart\nconfiguration localizationsDelegates",
+  "poweredByOpenRAL": "propulsé par openRAL de permarobotics",
+  "debugUploadingUserProfile": "DEBUG : Téléchargement du profil utilisateur vers le cloud...",
   "uidAlreadyExists": "Cet identifiant existe déjà, veuillez en choisir un autre",
   "selectItemToSell": "Veuillez sélectionner un article à vendre",
   "debugDeleteContainer": "Supprimer le conteneur (Debug)",
@@ -852,6 +858,17 @@
   "registrationRejected": "Enregistrement rejeté",
   "rejectionReason": "Motif du rejet",
   "approvalNotes": "Notes d'approbation",
+  "assetRegistryRegistrationFailed": "L'enregistrement initial dans Asset Registry a échoué lors de l'appel de l'API: {error}",
+  "@assetRegistryRegistrationFailed": {
+    "description": "Message d'erreur lorsque l'API Asset Registry échoue lors de l'enregistrement d'une parcelle",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Connection timeout"
+      }
+    }
+  },
+  "assetRegistryWillBeAttempted": "Note : Cette parcelle sera enregistrée dans Asset Registry pour obtenir un GeoID.",
   "fieldsCount": "{count} parcelle(s)",
   "@fieldsCount": {
     "description": "Nombre de parcelles",

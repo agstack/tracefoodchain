@@ -332,6 +332,12 @@
   "securityError": "Sicherheitsfehler",
   "securityErrorMessage": "Die Sicherheitseinstellungen für Digitale Unterschriften konnten nicht generiert werden. Bitte versuchen Sie es später erneut und stellen Sie sicher, dass Sie eine Internetverbindung haben.",
   "closeApp": "App schließen",
+  "activateAppFirstTime": "Um die App zum ersten Mal zu aktivieren, verbinden Sie sich bitte mit dem Internet zur Authentifizierung!",
+  "localizationConfigError": "Lokalisierungskonfigurationsfehler",
+  "localizationErrorCannotSend": "Lokalisierungsfehler - E-Mail kann nicht gesendet werden",
+  "localizationErrorAppLocalizationsDelegateIsMissing": "AppLocalizations.delegate fehlt in main.dart\nlocalizationsDelegates Konfiguration",
+  "poweredByOpenRAL": "basiert auf openRAL von permarobotics",
+  "debugUploadingUserProfile": "DEBUG: Benutzerprofil wird in die Cloud hochgeladen...",
   "uidAlreadyExists": "Diese ID existiert bereits, bitte wählen Sie eine andere!",
   "selectItemToSell": "Bitte wählen Sie einen Artikel zum Verkaufen aus",
   "debugDeleteContainer": "Container löschen (Debug)",
@@ -858,6 +864,17 @@
   "registrationRejected": "Registrierung abgelehnt",
   "rejectionReason": "Ablehnungsgrund",
   "approvalNotes": "Genehmigungsnotizen",
+  "assetRegistryRegistrationFailed": "Initiale Asset Registry Registrierung fehlgeschlagen beim Aufruf der API: {error}",
+  "@assetRegistryRegistrationFailed": {
+    "description": "Fehlermeldung wenn Asset Registry API während der Feldregistrierung fehlschlägt",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Connection timeout"
+      }
+    }
+  },
+  "assetRegistryWillBeAttempted": "Hinweis: Dieses Feld wird im Asset Registry registriert, um eine GeoID zu erhalten.",
   "fieldsCount": "{count} Feld(er)",
   "@fieldsCount": {
     "description": "Anzahl der Felder",

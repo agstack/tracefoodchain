@@ -283,6 +283,12 @@
   "securityError": "Error de seguridad",
   "securityErrorMessage": "No se pudieron generar los ajustes de seguridad para firmas digitales. Por favor, inténtelo más tarde y asegúrese de tener una conexión a Internet.",
   "closeApp": "Cerrar aplicación",
+  "activateAppFirstTime": "Para activar la aplicación por primera vez, conéctese a Internet para la autenticación!",
+  "localizationConfigError": "Error de configuración de localización",
+  "localizationErrorCannotSend": "Error de localización - no se puede enviar el correo de verificación",
+  "localizationErrorAppLocalizationsDelegateIsMissing": "AppLocalizations.delegate falta en main.dart\nconfiguración de localizationsDelegates",
+  "poweredByOpenRAL": "impulsado por openRAL de permarobotics",
+  "debugUploadingUserProfile": "DEBUG: Subiendo perfil de usuario a la nube...",
   "uidAlreadyExists": "Este ID ya existe, por favor elija otro",
   "selectItemToSell": "Por favor seleccione un artículo para vender",
   "debugDeleteContainer": "Eliminar contenedor (Debug)",
@@ -852,6 +858,17 @@
   "registrationRejected": "Registro rechazado",
   "rejectionReason": "Motivo del Rechazo",
   "approvalNotes": "Notas de Aprobación",
+  "assetRegistryRegistrationFailed": "El registro inicial en Asset Registry falló al llamar a la API: {error}",
+  "@assetRegistryRegistrationFailed": {
+    "description": "Mensaje de error cuando la API de Asset Registry falla durante el registro de parcela",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Connection timeout"
+      }
+    }
+  },
+  "assetRegistryWillBeAttempted": "Nota: Esta parcela será registrada en el Asset Registry para obtener un GeoID.",
   "fieldsCount": "{count} parcela(s)",
   "@fieldsCount": {
     "description": "Número de parcelas",

@@ -1464,6 +1464,42 @@ abstract class AppLocalizations {
   /// **'Close App'**
   String get closeApp;
 
+  /// No description provided for @activateAppFirstTime.
+  ///
+  /// In en, this message translates to:
+  /// **'To activate the app the first time, please connect to the internet for authentication!'**
+  String get activateAppFirstTime;
+
+  /// No description provided for @localizationConfigError.
+  ///
+  /// In en, this message translates to:
+  /// **'Localization Configuration Error'**
+  String get localizationConfigError;
+
+  /// No description provided for @localizationErrorCannotSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Localization error - cannot send verification email'**
+  String get localizationErrorCannotSend;
+
+  /// No description provided for @localizationErrorAppLocalizationsDelegateIsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'AppLocalizations.delegate is missing in main.dart\nlocalizationsDelegates configuration'**
+  String get localizationErrorAppLocalizationsDelegateIsMissing;
+
+  /// No description provided for @poweredByOpenRAL.
+  ///
+  /// In en, this message translates to:
+  /// **'powered by openRAL by permarobotics'**
+  String get poweredByOpenRAL;
+
+  /// No description provided for @debugUploadingUserProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'DEBUG: Uploading user profile to the cloud...'**
+  String get debugUploadingUserProfile;
+
   /// No description provided for @uidAlreadyExists.
   ///
   /// In en, this message translates to:
@@ -3365,6 +3401,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Approval Notes'**
   String get approvalNotes;
+
+  /// Error message when Asset Registry API fails during field registration
+  ///
+  /// In en, this message translates to:
+  /// **'Initial Asset Registry registration failed calling API: {error}'**
+  String assetRegistryRegistrationFailed(String error);
+
+  /// No description provided for @assetRegistryWillBeAttempted.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: This field will be registered with the Asset Registry to obtain a GeoID.'**
+  String get assetRegistryWillBeAttempted;
 
   /// Number of fields
   ///

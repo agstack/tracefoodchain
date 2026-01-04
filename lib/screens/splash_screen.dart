@@ -111,8 +111,11 @@ class _SplashScreenState extends State<SplashScreen>
         } else {
           //* NOT AUTHENTICATED YET
           if (!appState.isConnected) {
-            await fshowInfoDialog(context,
-                "To activate the app the first time, please connect to the internet for authentication!");
+            final l10n = AppLocalizations.of(context);
+            await fshowInfoDialog(
+                context,
+                l10n?.activateAppFirstTime ??
+                    "To activate the app the first time, please connect to the internet for authentication!");
             //ToDo You might want to add a retry mechanism here
             return;
           }
@@ -140,21 +143,25 @@ class _SplashScreenState extends State<SplashScreen>
         final l10n = AppLocalizations.of(context);
         if (l10n == null) {
           return AlertDialog(
-            title: const Text("Email Verification"),
+            title: const Text("Email Verification",
+                style: TextStyle(color: Colors.black)),
             content: const SizedBox(
                 height: 150,
                 child: Center(
                     child: Text(
-                        "Localization Error - please check main.dart configuration"))),
+                        "Localization Error - please check main.dart configuration",
+                        style: TextStyle(color: Colors.black87)))),
             actions: <Widget>[
               TextButton(
-                child: const Text("Resend Email"),
+                child: const Text("Resend Email",
+                    style: TextStyle(color: Colors.black)),
                 onPressed: () async {
                   await sendVerificationEmail();
                 },
               ),
               TextButton(
-                child: const Text("Sign Out"),
+                child: const Text("Sign Out",
+                    style: TextStyle(color: Colors.black)),
                 onPressed: () async {
                   _signOut();
                 },
@@ -221,8 +228,8 @@ class _SplashScreenState extends State<SplashScreen>
     final l10n = AppLocalizations.of(context);
     if (l10n == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-              Text("Localization error - cannot send verification email")));
+          content: Text("Localization error - cannot send verification email",
+              style: TextStyle(color: Colors.white))));
       return;
     }
 
@@ -399,7 +406,8 @@ class _SplashScreenState extends State<SplashScreen>
         final userDocSnapshot = await userDocRef.get();
 
         if (!userDocSnapshot.exists) {
-          snackbarMessageNotifier.value =
+          final l10n = AppLocalizations.of(context);
+          snackbarMessageNotifier.value = l10n?.debugUploadingUserProfile ??
               "DEBUG: Uploading user profile to the cloud...";
 
           await userDocRef.set(appUserDoc!);
@@ -471,12 +479,15 @@ class _SplashScreenState extends State<SplashScreen>
           final l10n = AppLocalizations.of(context);
           if (l10n == null) {
             return AlertDialog(
-              title: const Text("Security Error"),
+              title: const Text("Security Error",
+                  style: TextStyle(color: Colors.black)),
               content: const Text(
-                  "Failed to initialize key management - app cannot continue securely."),
+                  "Failed to initialize key management - app cannot continue securely.",
+                  style: TextStyle(color: Colors.black87)),
               actions: <Widget>[
                 TextButton(
-                  child: const Text("Close App"),
+                  child: const Text("Close App",
+                      style: TextStyle(color: Colors.black)),
                   onPressed: () =>
                       Navigator.of(context).pop(() => SystemNavigator.pop()),
                 ),
@@ -500,9 +511,7 @@ class _SplashScreenState extends State<SplashScreen>
     } else {
       // Navigiere basierend auf Benutzerrolle
       final userRole = appState.userRole?.toLowerCase() ?? '';
-      if (userRole == 'registrar' 
-// || userRole == 'superadmin'
-) {
+      if (userRole == 'registrar' || userRole == 'superadmin') {
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {
         Navigator.of(context).pushReplacement(
@@ -536,7 +545,7 @@ class _SplashScreenState extends State<SplashScreen>
               const Text(
                 'AppLocalizations.delegate is missing in main.dart\nlocalizationsDelegates configuration',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14, color: Colors.black87),
               ),
             ],
           ),
@@ -586,9 +595,9 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'powered by openRAL by permarobotics',
-                    style: TextStyle(
+                  Text(
+                    l10n.poweredByOpenRAL,
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.black54,
                     ),
