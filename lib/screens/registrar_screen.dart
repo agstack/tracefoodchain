@@ -8,6 +8,7 @@ import '../widgets/field_boundary_recorder.dart';
 import '../widgets/language_selector.dart';
 import '../screens/registrar_qc_screen.dart';
 import '../screens/sign_up_screen.dart';
+import '../screens/view_history_screen.dart';
 import '../providers/app_state.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
@@ -306,12 +307,14 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                             _buildActionButton(
                               context,
                               icon: Icons.history,
-                              label: 'View History',
+                              label: l10n.viewHistory,
                               color: Colors.teal,
                               onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('History view - Coming soon'),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ViewHistoryScreen(),
                                   ),
                                 );
                               },

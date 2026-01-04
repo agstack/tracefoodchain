@@ -1390,7 +1390,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String registeredOn(String date) {
-    return 'Registered: $date';
+    return 'Registered on';
   }
 
   @override
@@ -1962,6 +1962,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get idPhotoTaken => 'ID Photo taken successfully';
 
   @override
+  String get placeIDCardInFrame => 'Place ID card within the frame';
+
+  @override
   String get capture => 'Capture';
 
   @override
@@ -1976,4 +1979,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gpsSignalPoor => 'GPS Signal: Poor';
+
+  @override
+  String get viewHistory => 'View History';
+
+  @override
+  String get registrationHistory => 'Registration History';
+
+  @override
+  String get noRegistrationsFound => 'No registrations found';
+
+  @override
+  String get farm => 'Farm';
+
+  @override
+  String get farmer => 'Farmer';
+
+  @override
+  String get field => 'Field';
+
+  @override
+  String get consentFormPhoto => 'Consent Form Photo';
+
+  @override
+  String get dataUsageConsent => 'Data Usage Consent';
+
+  @override
+  String get dataUsageConsentDetails =>
+      'Please take a photo of the signed data usage consent form';
+
+  @override
+  String get consentFormPhotoRequired => 'Consent Form Photo is required';
+
+  @override
+  String get consentPhotoTaken => 'Consent form photo taken successfully';
+
+  @override
+  String get takeConsentFormPhoto => 'Take Consent Form Photo';
+
+  @override
+  String get retakeConsentFormPhoto => 'Retake Consent Form Photo';
+
+  @override
+  String get placeConsentFormInFrame =>
+      'Place signed consent form within the frame';
+
+  @override
+  String get fieldPhoto => 'Field Photo';
+
+  @override
+  String get takeFieldPhoto => 'Take Field Photo';
+
+  @override
+  String get retakeFieldPhoto => 'Retake Field Photo';
+
+  @override
+  String get fieldPhotoRequired => 'Field photo is strongly recommended';
+
+  @override
+  String get fieldPhotoTaken => 'Field photo taken successfully';
+
+  @override
+  String get photoTaken => 'Photo taken successfully';
+
+  @override
+  String get pleasePhotoField =>
+      'Please take a photo of the field before completing the recording';
+
+  @override
+  String get fieldPhotoNotInPolygon =>
+      'Photo was not taken within the field! Please retake the photo inside the field boundaries (tolerance: 50m).';
+
+  @override
+  String get fieldPhotoInvalid => 'Photo location is INVALID!';
 }

@@ -57,6 +57,10 @@ class _StepperRegistrarRegistrationState
   List<camera_plugin.CameraDescription>? _cameras;
   bool _showCameraPreview = false;
 
+  // Consent Form Photo
+  XFile? _consentFormPhoto;
+  String? _consentFormPhotoLocalPath;
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +119,10 @@ class _StepperRegistrarRegistrationState
       if (!_validateFarmerData()) return;
       setState(() => _currentStep = 1);
     } else if (_currentStep == 1) {
+      // Validiere Consent Form
+      if (!_validateConsentFormData()) return;
+      setState(() => _currentStep = 2);
+    } else if (_currentStep == 2) {
       // Validiere Farm-Daten und registriere
       if (!_validateFarmData()) return;
       _completeRegistration();
@@ -142,6 +150,21 @@ class _StepperRegistrarRegistrationState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.nationalIDPhotoRequired),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateConsentFormData() {
+    final l10n = AppLocalizations.of(context)!;
+    // Validate Consent Form Photo is taken (only mandatory in release mode)
+    if (!kDebugMode && _consentFormPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.consentFormPhotoRequired),
           backgroundColor: Colors.orange,
         ),
       );
@@ -214,15 +237,13 @@ class _StepperRegistrarRegistrationState
       debugPrint('userRole set');
 
       if (_farmerNationalIDController.text.isNotEmpty) {
-        debugPrint('Setting nationalID...');
-        farmer = setSpecificPropertyJSON(
-            farmer, 'nationalID', _farmerNationalIDController.text, 'String');
-        // Auch in alternateIDs
+        debugPrint('Setting nationalID in alternateIDs...');
+        // National ID wird nur in alternateIDs gespeichert (nicht in specificProperties)
         farmer['identity']['alternateIDs'].add({
           'UID': _farmerNationalIDController.text,
           'issuedBy': 'National ID',
         });
-        debugPrint('nationalID set');
+        debugPrint('nationalID set in alternateIDs');
       }
 
       if (_farmerPhoneController.text.isNotEmpty) {
@@ -350,6 +371,18 @@ class _StepperRegistrarRegistrationState
         farm = setSpecificPropertyJSON(
             farm, 'email', _farmEmailController.text, 'String');
         debugPrint('farm email set');
+      }
+
+      // Save consent form photo path - will be replaced with cloud URL during sync
+      if (_consentFormPhotoLocalPath != null &&
+          _consentFormPhotoLocalPath!.isNotEmpty) {
+        debugPrint('Setting local consentFormPhotoPath...');
+        farm = setSpecificPropertyJSON(farm, 'consentFormPhotoLocalPath',
+            _consentFormPhotoLocalPath!, 'String');
+        debugPrint(
+            'consentFormPhotoLocalPath set: $_consentFormPhotoLocalPath');
+      } else {
+        debugPrint('No consent form photo path to save');
       }
 
       // Add registrar as currentOwner and in linkedObjectRef
@@ -484,7 +517,7 @@ class _StepperRegistrarRegistrationState
     try {
       if (kIsWeb) {
         // Web: Open camera preview in dialog
-        await _showWebCameraDialog();
+        await _showWebCameraDialog(isConsentForm: false);
       } else {
         // Mobile: Use image_picker for native camera
         final XFile? photo = await _imagePicker.pickImage(
@@ -495,7 +528,7 @@ class _StepperRegistrarRegistrationState
         );
 
         if (photo != null) {
-          await _savePhoto(photo);
+          await _savePhoto(photo, isConsentForm: false);
         }
       }
     } catch (e) {
@@ -511,21 +544,57 @@ class _StepperRegistrarRegistrationState
     }
   }
 
-  Future<void> _savePhoto(XFile photo) async {
+  Future<void> _takeConsentFormPhoto() async {
     final l10n = AppLocalizations.of(context)!;
 
     try {
-      debugPrint('National ID Photo taken: ${photo.path}');
+      if (kIsWeb) {
+        // Web: Open camera preview in dialog
+        await _showWebCameraDialog(isConsentForm: true);
+      } else {
+        // Mobile: Use image_picker for native camera
+        final XFile? photo = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (photo != null) {
+          await _savePhoto(photo, isConsentForm: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error taking consent form photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _savePhoto(XFile photo, {required bool isConsentForm}) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      debugPrint(
+          '${isConsentForm ? "Consent Form" : "National ID"} Photo taken: ${photo.path}');
 
       // Save photo locally for offline access
       if (!kIsWeb) {
         final appDir = await getApplicationDocumentsDirectory();
+        final dirName = isConsentForm ? 'consentForms' : 'nationalIDs';
+        final prefix = isConsentForm ? 'consentForm' : 'nationalID';
         final fileName =
-            'nationalID_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final localPath = '${appDir.path}/nationalIDs/$fileName';
+            '${prefix}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final localPath = '${appDir.path}/$dirName/$fileName';
 
         // Create directory if it doesn't exist
-        final directory = Directory('${appDir.path}/nationalIDs');
+        final directory = Directory('${appDir.path}/$dirName');
         if (!await directory.exists()) {
           await directory.create(recursive: true);
         }
@@ -535,23 +604,35 @@ class _StepperRegistrarRegistrationState
         await localFile.writeAsBytes(await photo.readAsBytes());
 
         setState(() {
-          _nationalIDPhoto = photo;
-          _nationalIDPhotoLocalPath = localPath;
+          if (isConsentForm) {
+            _consentFormPhoto = photo;
+            _consentFormPhotoLocalPath = localPath;
+          } else {
+            _nationalIDPhoto = photo;
+            _nationalIDPhotoLocalPath = localPath;
+          }
         });
 
-        debugPrint('National ID Photo saved locally: $localPath');
+        debugPrint(
+            '${isConsentForm ? "Consent Form" : "National ID"} Photo saved locally: $localPath');
       } else {
         // Web: Just store the XFile
         setState(() {
-          _nationalIDPhoto = photo;
-          _nationalIDPhotoLocalPath = photo.name;
+          if (isConsentForm) {
+            _consentFormPhoto = photo;
+            _consentFormPhotoLocalPath = photo.name;
+          } else {
+            _nationalIDPhoto = photo;
+            _nationalIDPhotoLocalPath = photo.name;
+          }
         });
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.idPhotoTaken),
+            content: Text(
+                isConsentForm ? l10n.consentPhotoTaken : l10n.idPhotoTaken),
             backgroundColor: Colors.green,
           ),
         );
@@ -569,7 +650,7 @@ class _StepperRegistrarRegistrationState
     }
   }
 
-  Future<void> _showWebCameraDialog() async {
+  Future<void> _showWebCameraDialog({required bool isConsentForm}) async {
     final l10n = AppLocalizations.of(context)!;
 
     try {
@@ -609,7 +690,9 @@ class _StepperRegistrarRegistrationState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l10n.takeIDPhoto,
+                    isConsentForm
+                        ? l10n.takeConsentFormPhoto
+                        : l10n.takeIDPhoto,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -620,7 +703,163 @@ class _StepperRegistrarRegistrationState
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: camera_plugin.CameraPreview(_cameraController!),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Camera Preview
+                          camera_plugin.CameraPreview(_cameraController!),
+
+                          // Hint text overlay at top
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black87,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                isConsentForm
+                                    ? l10n.placeConsentFormInFrame
+                                    : l10n.placeIDCardInFrame,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+
+                          // Centered frame
+                          Center(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final aspectRatio =
+                                    isConsentForm ? 0.707 : 1.586;
+                                final availableWidth = constraints.maxWidth;
+                                final availableHeight = constraints.maxHeight;
+
+                                // Calculate dimensions to maximize space usage
+                                double frameWidth, frameHeight;
+                                if (availableWidth / availableHeight >
+                                    aspectRatio) {
+                                  // Height is limiting factor
+                                  frameHeight = availableHeight * 0.85;
+                                  frameWidth = frameHeight * aspectRatio;
+                                } else {
+                                  // Width is limiting factor
+                                  frameWidth = availableWidth * 0.85;
+                                  frameHeight = frameWidth / aspectRatio;
+                                }
+
+                                return SizedBox(
+                                  width: frameWidth,
+                                  height: frameHeight,
+                                  child: Container(
+                                    margin: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 3,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 10,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        // Corner markers
+                                        Positioned(
+                                          top: 0,
+                                          left: 0,
+                                          child: Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: const BoxDecoration(
+                                              border: Border(
+                                                top: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                                left: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          right: 0,
+                                          child: Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: const BoxDecoration(
+                                              border: Border(
+                                                top: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                                right: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          child: Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: const BoxDecoration(
+                                              border: Border(
+                                                bottom: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                                left: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 0,
+                                          right: 0,
+                                          child: Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: const BoxDecoration(
+                                              border: Border(
+                                                bottom: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                                right: BorderSide(
+                                                    color: Colors.green,
+                                                    width: 4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -644,7 +883,8 @@ class _StepperRegistrarRegistrationState
                             final image =
                                 await _cameraController!.takePicture();
                             Navigator.of(dialogContext).pop();
-                            await _savePhoto(image);
+                            await _savePhoto(image,
+                                isConsentForm: isConsentForm);
                           } catch (e) {
                             debugPrint('Error capturing photo: $e');
                           }
@@ -782,7 +1022,7 @@ class _StepperRegistrarRegistrationState
                     children: [
                       ElevatedButton(
                         onPressed: details.onStepContinue,
-                        child: Text(_currentStep == 1
+                        child: Text(_currentStep == 2
                             ? l10n.completeRegistration
                             : l10n.next),
                       ),
@@ -815,7 +1055,25 @@ class _StepperRegistrarRegistrationState
                   content: _buildFarmerForm(),
                 ),
 
-                // Schritt 2: Farm Information
+                // Schritt 2: Data Usage Consent
+                Step(
+                  title: Text(
+                    l10n.dataUsageConsent,
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  subtitle: Text(
+                    _consentFormPhoto == null
+                        ? l10n.dataUsageConsentDetails
+                        : l10n.consentPhotoTaken,
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  isActive: _currentStep >= 1,
+                  state:
+                      _currentStep > 1 ? StepState.complete : StepState.indexed,
+                  content: _buildConsentForm(),
+                ),
+
+                // Schritt 3: Farm Information
                 Step(
                   title: Text(
                     l10n.farmInformation,
@@ -827,7 +1085,7 @@ class _StepperRegistrarRegistrationState
                         : _farmNameController.text,
                     style: TextStyle(color: Colors.grey[700]),
                   ),
-                  isActive: _currentStep >= 1,
+                  isActive: _currentStep >= 2,
                   state: StepState.indexed,
                   content: _buildFarmForm(),
                 ),
@@ -863,6 +1121,140 @@ class _StepperRegistrarRegistrationState
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildConsentForm() {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Info Text
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue.shade700),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.dataUsageConsentDetails,
+                  style: TextStyle(
+                    color: Colors.blue.shade900,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Consent Form Photo Button (Mandatory)
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _consentFormPhoto == null
+                  ? (kDebugMode ? Colors.orange : Colors.red)
+                  : Colors.green,
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _consentFormPhoto == null
+                        ? Icons.camera_alt
+                        : Icons.check_circle,
+                    color: _consentFormPhoto == null
+                        ? (kDebugMode ? Colors.orange : Colors.red)
+                        : Colors.green,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.consentFormPhoto,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _consentFormPhoto == null
+                              ? (kDebugMode
+                                  ? '${l10n.consentFormPhotoRequired} (Debug: Optional)'
+                                  : l10n.consentFormPhotoRequired)
+                              : l10n.consentPhotoTaken,
+                          style: TextStyle(
+                            color: _consentFormPhoto == null
+                                ? (kDebugMode ? Colors.orange : Colors.red)
+                                : Colors.green[700],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _takeConsentFormPhoto,
+                  icon: Icon(_consentFormPhoto == null
+                      ? Icons.camera_alt
+                      : Icons.refresh),
+                  label: Text(_consentFormPhoto == null
+                      ? l10n.takeConsentFormPhoto
+                      : l10n.retakeConsentFormPhoto),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _consentFormPhoto == null
+                        ? (kDebugMode ? Colors.orange : Colors.red)
+                        : Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              if (_consentFormPhoto != null) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: kIsWeb
+                      ? Image.network(
+                          _consentFormPhoto!.path,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        )
+                      : Image.file(
+                          File(_consentFormPhoto!.path),
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 

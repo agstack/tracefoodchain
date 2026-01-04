@@ -737,7 +737,19 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     if (ralType == 'human') {
       final firstName = getSpecificPropertyfromJSON(obj, 'firstName') ?? '-';
       final lastName = getSpecificPropertyfromJSON(obj, 'lastName') ?? '-';
-      final nationalID = getSpecificPropertyfromJSON(obj, 'nationalID') ?? '-';
+
+      // National ID aus identity.alternateIDs lesen
+      String nationalID = '-';
+      final alternateIDs = obj['identity']?['alternateIDs'] as List?;
+      if (alternateIDs != null) {
+        for (var altId in alternateIDs) {
+          if (altId['issuedBy'] == 'National ID') {
+            nationalID = altId['UID']?.toString() ?? '-';
+            break;
+          }
+        }
+      }
+
       final phone = getSpecificPropertyfromJSON(obj, 'phoneNumber') ?? '-';
 
       details.addAll([
@@ -1767,7 +1779,19 @@ class _ObjectDetailsDialog extends StatelessWidget {
     if (ralType == 'human') {
       final firstName = getSpecificPropertyfromJSON(obj, 'firstName') ?? '-';
       final lastName = getSpecificPropertyfromJSON(obj, 'lastName') ?? '-';
-      final nationalID = getSpecificPropertyfromJSON(obj, 'nationalID') ?? '-';
+
+      // National ID aus identity.alternateIDs lesen
+      String nationalID = '-';
+      final alternateIDs = obj['identity']?['alternateIDs'] as List?;
+      if (alternateIDs != null) {
+        for (var altId in alternateIDs) {
+          if (altId['issuedBy'] == 'National ID') {
+            nationalID = altId['UID']?.toString() ?? '-';
+            break;
+          }
+        }
+      }
+
       final phone = getSpecificPropertyfromJSON(obj, 'phoneNumber') ?? '-';
       final email = getSpecificPropertyfromJSON(obj, 'email') ?? '-';
 

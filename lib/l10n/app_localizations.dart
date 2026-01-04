@@ -2673,7 +2673,7 @@ abstract class AppLocalizations {
   /// No description provided for @registeredOn.
   ///
   /// In en, this message translates to:
-  /// **'Registered: {date}'**
+  /// **'Registered on'**
   String registeredOn(String date);
 
   /// No description provided for @fieldsCountSorted.
@@ -3714,6 +3714,12 @@ abstract class AppLocalizations {
   /// **'ID Photo taken successfully'**
   String get idPhotoTaken;
 
+  /// No description provided for @placeIDCardInFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Place ID card within the frame'**
+  String get placeIDCardInFrame;
+
   /// No description provided for @capture.
   ///
   /// In en, this message translates to:
@@ -3743,6 +3749,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'GPS Signal: Poor'**
   String get gpsSignalPoor;
+
+  /// No description provided for @viewHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View History'**
+  String get viewHistory;
+
+  /// No description provided for @registrationHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration History'**
+  String get registrationHistory;
+
+  /// No description provided for @noRegistrationsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No registrations found'**
+  String get noRegistrationsFound;
+
+  /// No description provided for @farm.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm'**
+  String get farm;
+
+  /// No description provided for @farmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer'**
+  String get farmer;
+
+  /// No description provided for @field.
+  ///
+  /// In en, this message translates to:
+  /// **'Field'**
+  String get field;
+
+  /// No description provided for @consentFormPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent Form Photo'**
+  String get consentFormPhoto;
+
+  /// No description provided for @dataUsageConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Data Usage Consent'**
+  String get dataUsageConsent;
+
+  /// No description provided for @dataUsageConsentDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Please take a photo of the signed data usage consent form'**
+  String get dataUsageConsentDetails;
+
+  /// No description provided for @consentFormPhotoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent Form Photo is required'**
+  String get consentFormPhotoRequired;
+
+  /// No description provided for @consentPhotoTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent form photo taken successfully'**
+  String get consentPhotoTaken;
+
+  /// No description provided for @takeConsentFormPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Consent Form Photo'**
+  String get takeConsentFormPhoto;
+
+  /// No description provided for @retakeConsentFormPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake Consent Form Photo'**
+  String get retakeConsentFormPhoto;
+
+  /// No description provided for @placeConsentFormInFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Place signed consent form within the frame'**
+  String get placeConsentFormInFrame;
+
+  /// No description provided for @fieldPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Field Photo'**
+  String get fieldPhoto;
+
+  /// No description provided for @takeFieldPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Field Photo'**
+  String get takeFieldPhoto;
+
+  /// No description provided for @retakeFieldPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake Field Photo'**
+  String get retakeFieldPhoto;
+
+  /// No description provided for @fieldPhotoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Field photo is strongly recommended'**
+  String get fieldPhotoRequired;
+
+  /// No description provided for @fieldPhotoTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Field photo taken successfully'**
+  String get fieldPhotoTaken;
+
+  /// No description provided for @photoTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo taken successfully'**
+  String get photoTaken;
+
+  /// No description provided for @pleasePhotoField.
+  ///
+  /// In en, this message translates to:
+  /// **'Please take a photo of the field before completing the recording'**
+  String get pleasePhotoField;
+
+  /// No description provided for @fieldPhotoNotInPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo was not taken within the field! Please retake the photo inside the field boundaries (tolerance: 50m).'**
+  String get fieldPhotoNotInPolygon;
+
+  /// No description provided for @fieldPhotoInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo location is INVALID!'**
+  String get fieldPhotoInvalid;
 }
 
 class _AppLocalizationsDelegate

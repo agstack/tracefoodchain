@@ -1,6 +1,11 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
@@ -25,6 +30,15 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
   List<Map<String, dynamic>> _drafts = [];
   String? _selectedDraftKey;
   bool _showFarmSelector = true;
+
+  // Field Photo
+  XFile? _fieldPhoto;
+  String? _fieldPhotoLocalPath;
+  Position? _fieldPhotoPosition;
+  bool _isFieldPhotoValid = true;
+  final ImagePicker _imagePicker = ImagePicker();
+  camera_plugin.CameraController? _cameraController;
+  List<camera_plugin.CameraDescription>? _cameras;
 
   @override
   void initState() {
@@ -78,6 +92,166 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
 
     final drafts = await PolygonRecorderWidget.getDraftsForFarm(farmId);
     setState(() => _drafts = drafts);
+  }
+
+  void _showPhotoDialog() {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Wenn noch kein Foto vorhanden, direkt zur Kamera
+    if (_fieldPhoto == null) {
+      _takeFieldPhoto();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.fieldPhoto,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_fieldPhoto != null) ...[
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _showFullScreenPhoto,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: kIsWeb
+                          ? Image.network(
+                              _fieldPhoto!.path,
+                              fit: BoxFit.contain,
+                            )
+                          : Image.file(
+                              File(_fieldPhoto!.path),
+                              fit: BoxFit.contain,
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _isFieldPhotoValid
+                      ? l10n.fieldPhotoTaken
+                      : l10n.fieldPhotoInvalid,
+                  style: TextStyle(
+                    color: _isFieldPhotoValid
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ] else ...[
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.photo_camera,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await _takeFieldPhoto();
+                    },
+                    icon: Icon(
+                      _fieldPhoto == null ? Icons.camera_alt : Icons.refresh,
+                      size: 20,
+                    ),
+                    label: Text(
+                      _fieldPhoto == null
+                          ? l10n.takeFieldPhoto
+                          : l10n.retakeFieldPhoto,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, size: 20),
+                    label: Text(
+                      l10n.close,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFullScreenPhoto() {
+    if (_fieldPhoto == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: kIsWeb
+                    ? Image.network(
+                        _fieldPhoto!.path,
+                        fit: BoxFit.contain,
+                      )
+                    : Image.file(
+                        File(_fieldPhoto!.path),
+                        fit: BoxFit.contain,
+                      ),
+              ),
+            ),
+            Positioned(
+              top: 16,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showDraftSelectionDialog() async {
@@ -154,6 +328,240 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
     }
   }
 
+  Future<void> _takeFieldPhoto() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      if (kIsWeb) {
+        // Web: Open camera preview in dialog
+        await _showWebCameraDialog();
+      } else {
+        // Mobile: Use image_picker for native camera
+        final XFile? photo = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (photo != null) {
+          await _saveFieldPhoto(photo);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error taking field photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveFieldPhoto(XFile photo) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      debugPrint('Field Photo taken: ${photo.path}');
+
+      // Get current GPS position when photo is taken
+      Position? photoPosition;
+      try {
+        photoPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+        debugPrint(
+            'Photo GPS: ${photoPosition.latitude}, ${photoPosition.longitude}');
+      } catch (e) {
+        debugPrint('Warning: Could not get GPS position for photo: $e');
+      }
+
+      // Save photo locally for offline access
+      if (!kIsWeb) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'field_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final localPath = '${appDir.path}/fieldPhotos/$fileName';
+
+        // Create directory if it doesn't exist
+        final directory = Directory('${appDir.path}/fieldPhotos');
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        // Copy file to local storage
+        final File localFile = File(localPath);
+        await localFile.writeAsBytes(await photo.readAsBytes());
+
+        setState(() {
+          _fieldPhoto = photo;
+          _fieldPhotoLocalPath = localPath;
+          _fieldPhotoPosition = photoPosition;
+          _isFieldPhotoValid = true; // Reset validation state
+        });
+
+        debugPrint('Field Photo saved locally: $localPath');
+        if (photoPosition != null) {
+          debugPrint(
+              'Photo GPS stored: ${photoPosition.latitude}, ${photoPosition.longitude}');
+        }
+      } else {
+        // Web: Just store the XFile
+        setState(() {
+          _fieldPhoto = photo;
+          _fieldPhotoLocalPath = photo.name;
+          _fieldPhotoPosition = photoPosition;
+          _isFieldPhotoValid = true; // Reset validation state
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.photoTaken),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error saving field photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showWebCameraDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      // Initialize cameras
+      _cameras = await camera_plugin.availableCameras();
+      if (_cameras == null || _cameras!.isEmpty) {
+        throw Exception('No cameras available');
+      }
+
+      // Use back camera if available, otherwise use first camera
+      final camera_plugin.CameraDescription selectedCamera =
+          _cameras!.firstWhere(
+        (cam) => cam.lensDirection == camera_plugin.CameraLensDirection.back,
+        orElse: () => _cameras!.first,
+      );
+
+      _cameraController = camera_plugin.CameraController(
+        selectedCamera,
+        camera_plugin.ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+
+      if (!mounted) return;
+
+      // Show camera preview in dialog
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.takeFieldPhoto,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: camera_plugin.CameraPreview(_cameraController!),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          try {
+                            final image =
+                                await _cameraController!.takePicture();
+                            Navigator.of(dialogContext).pop();
+                            await _saveFieldPhoto(image);
+                          } catch (e) {
+                            debugPrint('Error capturing photo: $e');
+                          }
+                        },
+                        icon: const Icon(Icons.camera, size: 20),
+                        label: Text(
+                          l10n.capture,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        icon: const Icon(Icons.close, size: 20),
+                        label: Text(
+                          l10n.cancel,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error initializing camera: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // Cleanup camera controller
+      await _cameraController?.dispose();
+      _cameraController = null;
+    }
+  }
+
   Future<void> _saveField(List<List<double>> polygon, double area) async {
     final l10n = AppLocalizations.of(context)!;
 
@@ -165,6 +573,23 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
         ),
       );
       return;
+    }
+
+    // Validate field photo location
+    if (_fieldPhoto != null && _fieldPhotoPosition != null) {
+      final isPhotoValid =
+          _validateFieldPhotoLocation(polygon, toleranceMeters: 50.0);
+      if (!isPhotoValid) {
+        setState(() => _isFieldPhotoValid = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.fieldPhotoNotInPolygon),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return; // Refuse registration
+      }
     }
 
     setState(() => _isProcessing = true);
@@ -221,6 +646,26 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       };
       field['currentGeolocation']['postalAddress']['country'] = 'Honduras';
       debugPrint('Geolocation set');
+
+      // Save field photo path and GPS position - will be replaced with cloud URL during sync
+      if (_fieldPhotoLocalPath != null && _fieldPhotoLocalPath!.isNotEmpty) {
+        debugPrint('Setting local fieldPhotoPath...');
+        field = setSpecificPropertyJSON(
+            field, 'fieldPhotoLocalPath', _fieldPhotoLocalPath!, 'String');
+        debugPrint('fieldPhotoLocalPath set: $_fieldPhotoLocalPath');
+
+        // Save GPS position where photo was taken
+        if (_fieldPhotoPosition != null) {
+          field = setSpecificPropertyJSON(field, 'fieldPhotoLatitude',
+              _fieldPhotoPosition!.latitude, 'double');
+          field = setSpecificPropertyJSON(field, 'fieldPhotoLongitude',
+              _fieldPhotoPosition!.longitude, 'double');
+          debugPrint(
+              'Field photo GPS saved: ${_fieldPhotoPosition!.latitude}, ${_fieldPhotoPosition!.longitude}');
+        }
+      } else {
+        debugPrint('No field photo path to save');
+      }
 
       // Add registrar as currentOwner and in linkedObjectRef
       debugPrint(
@@ -358,8 +803,93 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
     return [sumLat / polygon.length, sumLon / polygon.length];
   }
 
+  /// Check if a point is inside a polygon using ray-casting algorithm
+  bool _isPointInPolygon(double lat, double lon, List<List<double>> polygon) {
+    int intersectCount = 0;
+    for (int i = 0; i < polygon.length; i++) {
+      final v1 = polygon[i];
+      final v2 = polygon[(i + 1) % polygon.length];
+
+      if (_rayIntersectsSegment(lat, lon, v1[0], v1[1], v2[0], v2[1])) {
+        intersectCount++;
+      }
+    }
+    return (intersectCount % 2) == 1;
+  }
+
+  bool _rayIntersectsSegment(
+      double px, double py, double x1, double y1, double x2, double y2) {
+    if (y1 > y2) {
+      // Swap points
+      final tempX = x1;
+      final tempY = y1;
+      x1 = x2;
+      y1 = y2;
+      x2 = tempX;
+      y2 = tempY;
+    }
+
+    if (py < y1 || py > y2) return false;
+    if (px >= (x1 > x2 ? x1 : x2)) return false;
+
+    if (px < (x1 < x2 ? x1 : x2)) return true;
+
+    final slope = (py - y1) / (y2 - y1);
+    final x = x1 + slope * (x2 - x1);
+    return px < x;
+  }
+
+  /// Calculate distance in meters between two GPS coordinates
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
+  }
+
+  /// Validate if photo was taken within or near the polygon
+  bool _validateFieldPhotoLocation(List<List<double>> polygon,
+      {double toleranceMeters = 50.0}) {
+    if (_fieldPhotoPosition == null) {
+      debugPrint('No GPS position for field photo - cannot validate');
+      return false; // No GPS = invalid
+    }
+
+    final photoLat = _fieldPhotoPosition!.latitude;
+    final photoLon = _fieldPhotoPosition!.longitude;
+
+    debugPrint('Validating photo position: $photoLat, $photoLon');
+    debugPrint('Polygon has ${polygon.length} points');
+
+    // Check if photo is inside polygon
+    if (_isPointInPolygon(photoLat, photoLon, polygon)) {
+      debugPrint('Photo is INSIDE polygon - VALID');
+      return true;
+    }
+
+    // Photo is outside - check if within tolerance distance from polygon edges
+    double minDistance = double.infinity;
+    for (final point in polygon) {
+      final distance =
+          _calculateDistance(photoLat, photoLon, point[0], point[1]);
+      if (distance < minDistance) {
+        minDistance = distance;
+      }
+    }
+
+    debugPrint(
+        'Photo is outside polygon. Minimum distance: ${minDistance.toStringAsFixed(1)}m (tolerance: ${toleranceMeters}m)');
+
+    if (minDistance <= toleranceMeters) {
+      debugPrint('Photo within tolerance - VALID');
+      return true;
+    }
+
+    debugPrint('Photo too far from polygon - INVALID');
+    return false;
+  }
+
   @override
   void dispose() {
+    _cameraController?.dispose();
     super.dispose();
   }
 
@@ -388,7 +918,25 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
               )
             : Text(l10n.recordFieldBoundary),
         actions: [
-          if (_selectedFarm != null && !_showFarmSelector)
+          if (_selectedFarm != null && !_showFarmSelector) ...[
+            // Field Photo Badge
+            IconButton(
+              icon: Badge(
+                backgroundColor: _fieldPhoto == null
+                    ? Colors.orange
+                    : (_isFieldPhotoValid ? Colors.green : Colors.red),
+                label: Icon(
+                  _fieldPhoto == null
+                      ? Icons.warning_amber
+                      : (_isFieldPhotoValid ? Icons.check : Icons.close),
+                  size: 12,
+                  color: Colors.white,
+                ),
+                child: const Icon(Icons.photo_camera),
+              ),
+              tooltip: l10n.fieldPhoto,
+              onPressed: _showPhotoDialog,
+            ),
             IconButton(
               icon: const Icon(Icons.edit),
               tooltip: l10n.changeFarm,
@@ -396,6 +944,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                 setState(() => _showFarmSelector = true);
               },
             ),
+          ],
         ],
         elevation: 2,
       ),
@@ -587,18 +1136,67 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                         ),
                       ),
 
-                    // Polygon Recorder - nimmt verfügbaren Platz ein
-                    if (_selectedFarm != null)
+                    // Polygon Recorder - nimmt verfügbaren Platz ein mit Warning Banner
+                    if (_selectedFarm != null && !_showFarmSelector)
                       Expanded(
-                        child: PolygonRecorderWidget(
-                          key: ValueKey(_selectedDraftKey ?? 'new'),
-                          onPolygonComplete: _saveField,
-                          minDistanceMeters: 10,
-                          farmId: _selectedFarm?['identity']?['UID'],
-                          draftKey: _selectedDraftKey,
-                          onCancel: () {
-                            // Optional: Navigiere zurück oder zeige Meldung
-                          },
+                        child: Stack(
+                          children: [
+                            PolygonRecorderWidget(
+                              key: ValueKey(_selectedDraftKey ?? 'new'),
+                              onPolygonComplete: _saveField,
+                              minDistanceMeters: 10,
+                              farmId: _selectedFarm?['identity']?['UID'],
+                              draftKey: _selectedDraftKey,
+                              onCancel: () {},
+                            ),
+                            // Warning Banner für ungültiges Foto
+                            if (_fieldPhoto != null && !_isFieldPhotoValid)
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: Material(
+                                  color: Colors.red.shade700,
+                                  elevation: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.error,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            l10n.fieldPhotoNotInPolygon,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.close,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                          onPressed: () {
+                                            setState(() =>
+                                                _isFieldPhotoValid = true);
+                                          },
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                   ],

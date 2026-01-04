@@ -1222,66 +1222,6 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                       ),
                     ),
 
-                  // Status-Info
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              l10n.pointsRecorded(_points.length),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                            if (_points.length >= 3)
-                              Text(
-                                l10n.estimatedArea(
-                                    estimatedArea.toStringAsFixed(2)),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green[700],
-                                ),
-                              ),
-                          ],
-                        ),
-                        if (_isRecording && _currentPosition != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            '${l10n.current}: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[700]),
-                          ),
-                          Text(
-                            '${l10n.accuracy}: ${_currentPosition!.accuracy.toStringAsFixed(1)}m',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[700]),
-                          ),
-                        ],
-                        if (_points.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              l10n.tapToAddPoint,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue[700],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
                   // Punkt-Hinzufügen Button (groß und prominent)
                   ElevatedButton.icon(
                     onPressed: _addCurrentPoint,
@@ -1297,90 +1237,23 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),
-                  const SizedBox(height: 16),
 
-                  // Liste der Punkte (scrollbar wenn viele)
-                  if (_points.isNotEmpty) ...[
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.recordedPoints,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                  // Kompakte Info über Punkte und Fläche
+                  if (_points.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        '${_points.length} ${l10n.points} • ${estimatedArea.toStringAsFixed(2)} ha',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 150),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _points.length,
-                        itemBuilder: (context, index) {
-                          final accuracy = index < _accuracies.length
-                              ? _accuracies[index]
-                              : null;
-                          final accuracyColor = accuracy != null
-                              ? (accuracy <= 5
-                                  ? Colors.green[700]!
-                                  : accuracy <= 10
-                                      ? Colors.orange[700]!
-                                      : Colors.red[700]!)
-                              : Colors.grey[700]!;
 
-                          return Container(
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(
-                                  color: accuracyColor,
-                                  width: 4,
-                                ),
-                              ),
-                              color: accuracyColor.withOpacity(0.05),
-                            ),
-                            child: ListTile(
-                              dense: true,
-                              leading: CircleAvatar(
-                                radius: 12,
-                                backgroundColor: accuracyColor,
-                                child: Text(
-                                  '${index + 1}',
-                                  style: const TextStyle(
-                                      fontSize: 10, color: Colors.white),
-                                ),
-                              ),
-                              title: Text(
-                                'Lat: ${_points[index][0].toStringAsFixed(6)}, Lon: ${_points[index][1].toStringAsFixed(6)}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              subtitle: accuracy != null
-                                  ? Text(
-                                      '${l10n.accuracy}: ${accuracy.toStringAsFixed(1)}m',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: accuracyColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    )
-                                  : null,
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, size: 20),
-                                color: Colors.red[400],
-                                onPressed: () => _removePointAt(index),
-                                tooltip: l10n.delete,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                  const SizedBox(height: 8),
                   // Complete Button or Minimum Points Message
                   if (_points.length >= 3)
                     ElevatedButton.icon(
@@ -1411,107 +1284,63 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
             ),
           ),
 
-          // Fixiertes GPS-Signal-Widget am unteren Bildschirmrand
+          // Minimiertes GPS-Signal-Widget (semi-transparent overlay)
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+            top: 8,
+            right: 8,
             child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: _currentPosition == null
-                    ? Colors.grey[300]
-                    : (_currentPosition!.accuracy <= 5
-                        ? Colors.green[100]
-                        : _currentPosition!.accuracy <= 10
-                            ? Colors.orange[100]
-                            : Colors.red[100]),
-                border: Border(
-                  top: BorderSide(
-                    color: _currentPosition == null
-                        ? Colors.grey[500]!
+                color: (_currentPosition == null
+                        ? Colors.grey[800]
                         : (_currentPosition!.accuracy <= 5
-                            ? Colors.green[700]!
+                            ? Colors.green[700]
                             : _currentPosition!.accuracy <= 10
-                                ? Colors.orange[700]!
-                                : Colors.red[700]!),
-                    width: 3,
-                  ),
-                ),
+                                ? Colors.orange[700]
+                                : Colors.red[700]))!
+                    .withOpacity(0.85),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     _currentPosition == null
                         ? Icons.gps_off
                         : (_currentPosition!.accuracy <= 5
                             ? Icons.gps_fixed
-                            : _currentPosition!.accuracy <= 10
-                                ? Icons.gps_not_fixed
-                                : Icons.gps_off),
-                    color: _currentPosition == null
-                        ? Colors.grey[700]
-                        : (_currentPosition!.accuracy <= 5
-                            ? Colors.green[700]
-                            : _currentPosition!.accuracy <= 10
-                                ? Colors.orange[700]
-                                : Colors.red[700]),
-                    size: 28,
+                            : Icons.gps_not_fixed),
+                    color: Colors.white,
+                    size: 16,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _currentPosition == null
-                              ? l10n.gpsDisabledMessage
-                              : (_currentPosition!.accuracy <= 5
-                                  ? l10n.gpsSignalExcellent
-                                  : _currentPosition!.accuracy <= 10
-                                      ? l10n.gpsSignalGood
-                                      : l10n.gpsSignalPoor),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: _currentPosition == null
-                                ? Colors.grey[700]
-                                : (_currentPosition!.accuracy <= 5
-                                    ? Colors.green[900]
-                                    : _currentPosition!.accuracy <= 10
-                                        ? Colors.orange[900]
-                                        : Colors.red[900]),
-                          ),
-                        ),
-                        if (_currentPosition != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            '${l10n.accuracy}: ${_currentPosition!.accuracy.toStringAsFixed(1)}m',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ],
+                  if (_currentPosition != null) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '±${_currentPosition!.accuracy.toStringAsFixed(1)}m',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  if (_currentPosition != null &&
-                      _currentPosition!.accuracy <= 5)
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green[700],
-                      size: 24,
+                  ] else ...[
+                    const SizedBox(width: 6),
+                    const Text(
+                      'GPS',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
+                  ],
                 ],
               ),
             ),
