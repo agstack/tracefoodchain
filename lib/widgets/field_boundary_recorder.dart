@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +47,12 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
     _loadAvailableFarms();
   }
 
+  @override
+  void dispose() {
+    _cameraController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadAvailableFarms() async {
     setState(() => _isLoadingFarms = true);
 
@@ -58,10 +65,13 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
           final doc = localStorage!.get(key);
           if (doc != null) {
             final Map<String, dynamic> obj = Map<String, dynamic>.from(doc);
-            debugPrint(obj['template']?['RALType']);
-            // Prüfe ob es eine Farm ist
+            // debugPrint(obj['template']?['RALType']);
+            // Prüfe ob es eine Farm ist und der Status nicht qcRejected ist
             if (obj['template']?['RALType'] == 'farm') {
-              farms.add(obj);
+              final status = obj['objectState'];
+              if (status != 'qcRejected') {
+                farms.add(obj);
+              }
             }
           }
         }
@@ -382,6 +392,28 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
         debugPrint('Warning: Could not get GPS position for photo: $e');
       }
 
+      await _saveFieldPhotoWithPosition(photo, photoPosition);
+    } catch (e) {
+      debugPrint('Error saving field photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveFieldPhotoWithPosition(
+      XFile photo, Position? photoPosition) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      debugPrint(
+          'Saving field photo with position: ${photoPosition != null ? "${photoPosition.latitude}, ${photoPosition.longitude}" : "no GPS"}');
+
       // Save photo locally for offline access
       if (!kIsWeb) {
         final appDir = await getApplicationDocumentsDirectory();
@@ -411,10 +443,10 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
               'Photo GPS stored: ${photoPosition.latitude}, ${photoPosition.longitude}');
         }
       } else {
-        // Web: Just store the XFile
+        // Web: Just store the XFile (use path which contains the blob URL)
         setState(() {
           _fieldPhoto = photo;
-          _fieldPhotoLocalPath = photo.name;
+          _fieldPhotoLocalPath = photo.path;
           _fieldPhotoPosition = photoPosition;
           _isFieldPhotoValid = true; // Reset validation state
         });
@@ -492,7 +524,19 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: camera_plugin.CameraPreview(_cameraController!),
+                      child: ValueListenableBuilder<camera_plugin.CameraValue>(
+                        valueListenable: _cameraController!,
+                        builder: (context, value, child) {
+                          if (_cameraController == null ||
+                              !_cameraController!.value.isInitialized) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          return camera_plugin.CameraPreview(
+                              _cameraController!);
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -502,12 +546,62 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           try {
+                            debugPrint('=== CAMERA CAPTURE START ===');
                             final image =
                                 await _cameraController!.takePicture();
-                            Navigator.of(dialogContext).pop();
-                            await _saveFieldPhoto(image);
+                            debugPrint('Image captured: ${image.path}');
+
+                            // Capture GPS position BEFORE closing dialog
+                            Position? photoPosition;
+                            try {
+                              debugPrint('Fetching GPS position...');
+                              photoPosition =
+                                  await Geolocator.getCurrentPosition(
+                                locationSettings: const LocationSettings(
+                                  accuracy: LocationAccuracy.best,
+                                  timeLimit: Duration(seconds: 10),
+                                ),
+                              );
+                              debugPrint(
+                                  'Photo GPS captured: ${photoPosition.latitude}, ${photoPosition.longitude}');
+                            } catch (e) {
+                              debugPrint(
+                                  'Warning: Could not get GPS position for photo: $e');
+                            }
+
+                            // Dispose camera and close dialog
+                            debugPrint('Disposing camera...');
+                            await _cameraController?.dispose();
+                            _cameraController = null;
+                            debugPrint('Camera disposed');
+
+                            if (mounted) {
+                              debugPrint('Closing dialog...');
+                              Navigator.of(dialogContext).pop();
+                            }
+
+                            // Save photo with GPS position AFTER dialog is closed
+                            debugPrint('Saving photo... mounted=$mounted');
+                            if (mounted) {
+                              await _saveFieldPhotoWithPosition(
+                                  image, photoPosition);
+                              debugPrint('Photo saved successfully');
+                            } else {
+                              debugPrint(
+                                  'ERROR: Widget not mounted, cannot save photo');
+                            }
+                            debugPrint('=== CAMERA CAPTURE END ===');
                           } catch (e) {
-                            debugPrint('Error capturing photo: $e');
+                            debugPrint('ERROR in camera capture: $e');
+                            if (mounted) {
+                              Navigator.of(dialogContext).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         },
                         icon: const Icon(Icons.camera, size: 20),
@@ -523,8 +617,12 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                       ),
                       const SizedBox(height: 12),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(dialogContext).pop();
+                        onPressed: () async {
+                          await _cameraController?.dispose();
+                          _cameraController = null;
+                          if (mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
                         },
                         icon: const Icon(Icons.close, size: 20),
                         label: Text(
@@ -555,14 +653,14 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
           ),
         );
       }
-    } finally {
-      // Cleanup camera controller
+      // Cleanup on error
       await _cameraController?.dispose();
       _cameraController = null;
     }
   }
 
-  Future<void> _saveField(List<List<double>> polygon, double area) async {
+  Future<void> _saveField(
+      List<List<double>> polygon, double area, List<double> accuracies) async {
     final l10n = AppLocalizations.of(context)!;
 
     if (_selectedFarm == null) {
@@ -575,20 +673,48 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       return;
     }
 
-    // Validate field photo location
+    // PFLICHT: Validate that field photo was taken
+    if (_fieldPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.fieldPhotoRequired),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Validate field photo location (only enforce in release mode)
     if (_fieldPhoto != null && _fieldPhotoPosition != null) {
       final isPhotoValid =
           _validateFieldPhotoLocation(polygon, toleranceMeters: 50.0);
       if (!isPhotoValid) {
         setState(() => _isFieldPhotoValid = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.fieldPhotoNotInPolygon),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-        return; // Refuse registration
+
+        if (kDebugMode) {
+          // Debug mode: Show warning but allow registration
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'DEBUG: ${l10n.fieldPhotoNotInPolygon} (allowed in debug mode)'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          debugPrint(
+              'DEBUG MODE: Field photo validation failed but registration is allowed');
+        } else {
+          // Release mode: Block registration
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.fieldPhotoNotInPolygon),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          return; // Refuse registration
+        }
       }
     }
 
@@ -617,15 +743,38 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       field['objectState'] = 'qcPending';
       debugPrint('Field name: $fieldName');
 
-      // Polygon boundaries
+      // Polygon boundaries speichern (als JSON String für Firestore Kompatibilität)
       debugPrint('Setting boundaries with ${polygon.length} points');
-      field =
-          setSpecificPropertyJSON(field, 'boundaries', polygon, 'vector_list');
-      debugPrint('Boundaries set');
+      final boundariesJson = jsonEncode({"coordinates": polygon});
+      field = setSpecificPropertyJSON(
+          field, 'boundaries', boundariesJson, 'String');
+      debugPrint('Boundaries set as JSON String');
 
       debugPrint('Setting area: $area (type: ${area.runtimeType})');
       field = setSpecificPropertyJSON(field, 'area', area, 'double');
       debugPrint('Area set');
+
+      // GPS Boundary Accuracies speichern (als JSON String für Firestore Kompatibilität)
+      debugPrint('Setting boundary accuracies: ${accuracies.length} values');
+      final accuraciesJson = jsonEncode(accuracies);
+      field = setSpecificPropertyJSON(
+          field, 'boundaryAccuracies', accuraciesJson, 'String');
+      debugPrint('Boundary accuracies set');
+
+      // Berechne GPS-Qualitätsstatistiken für Logging
+      if (accuracies.isNotEmpty) {
+        final avgAccuracy =
+            accuracies.reduce((a, b) => a + b) / accuracies.length;
+        final maxAccuracy = accuracies.reduce((a, b) => a > b ? a : b);
+        final minAccuracy = accuracies.reduce((a, b) => a < b ? a : b);
+        debugPrint(
+            'GPS Quality - Avg: ${avgAccuracy.toStringAsFixed(1)}m, Min: ${minAccuracy.toStringAsFixed(1)}m, Max: ${maxAccuracy.toStringAsFixed(1)}m');
+
+        if (maxAccuracy > 10.0) {
+          debugPrint(
+              'WARNING: Poor GPS quality detected (max: ${maxAccuracy.toStringAsFixed(1)}m)');
+        }
+      }
 
       // PFLICHT-Verknüpfung zur Farm
       debugPrint('Setting geolocation container');
@@ -647,24 +796,25 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       field['currentGeolocation']['postalAddress']['country'] = 'Honduras';
       debugPrint('Geolocation set');
 
-      // Save field photo path and GPS position - will be replaced with cloud URL during sync
+      // Create image object for Field Photo
+      Map<String, dynamic>? fieldImage;
       if (_fieldPhotoLocalPath != null && _fieldPhotoLocalPath!.isNotEmpty) {
-        debugPrint('Setting local fieldPhotoPath...');
-        field = setSpecificPropertyJSON(
-            field, 'fieldPhotoLocalPath', _fieldPhotoLocalPath!, 'String');
-        debugPrint('fieldPhotoLocalPath set: $_fieldPhotoLocalPath');
+        debugPrint('Creating image object for Field photo...');
+        fieldImage = await createImageObject(
+          localPath: _fieldPhotoLocalPath!,
+          position: _fieldPhotoPosition,
+          imageName: 'Field Photo - $fieldName',
+        );
 
-        // Save GPS position where photo was taken
-        if (_fieldPhotoPosition != null) {
-          field = setSpecificPropertyJSON(field, 'fieldPhotoLatitude',
-              _fieldPhotoPosition!.latitude, 'double');
-          field = setSpecificPropertyJSON(field, 'fieldPhotoLongitude',
-              _fieldPhotoPosition!.longitude, 'double');
-          debugPrint(
-              'Field photo GPS saved: ${_fieldPhotoPosition!.latitude}, ${_fieldPhotoPosition!.longitude}');
-        }
+        // Link image to field
+        field['linkedObjectRef'].add({
+          'UID': getObjectMethodUID(fieldImage),
+          'RALType': 'image',
+          'role': 'fieldRegistrationPhoto',
+        });
+        debugPrint('Field image object created and linked to field');
       } else {
-        debugPrint('No field photo path to save');
+        debugPrint('No field photo to create image object for');
       }
 
       // Add registrar as currentOwner and in linkedObjectRef
@@ -717,7 +867,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
 //ToDo: ChangeObject Methode aufrufen um Farm zu speichern
 
       // Erstelle generateDigitalSibling Methode (EXAKTE SEQUENZ WIE IN STEPPER_FIRST_SALE)
-      debugPrint('Creating generateDigitalSibling method');
+      debugPrint('Creating generateDigitalSibling method for field');
       Map<String, dynamic> fieldRegisterMethod =
           await getOpenRALTemplate('generateDigitalSibling');
 
@@ -753,7 +903,41 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       //Step 6: persist process
       await setObjectMethod(fieldRegisterMethod, true, true); //sign it!
       debugPrint(
-          'Method ${getObjectMethodUID(fieldRegisterMethod)} saved and signed');
+          'Method ${getObjectMethodUID(fieldRegisterMethod)} to register a field saved and signed');
+
+      // Create separate generateDigitalSibling method for Field Image
+      if (fieldImage != null) {
+        debugPrint(
+            'Creating separate generateDigitalSibling method for Field Image');
+        Map<String, dynamic> fieldImageMethod =
+            await getOpenRALTemplate('generateDigitalSibling');
+
+        fieldImageMethod['identity']['name'] = 'Field Image - $fieldName';
+        fieldImageMethod['methodState'] = 'finished';
+        fieldImageMethod['executor'] = appUserDoc!;
+        fieldImageMethod['existenceStarts'] =
+            DateTime.now().toUtc().toIso8601String();
+
+        setObjectMethodUID(fieldImageMethod, const Uuid().v4());
+        debugPrint('Field Image Method UID set');
+
+        await setObjectMethod(fieldImage, false, false);
+        debugPrint('Field Image saved first time');
+
+        addOutputobject(fieldImageMethod, fieldImage, 'image');
+        debugPrint('Field Image added to method');
+
+        await updateMethodHistories(fieldImageMethod);
+        debugPrint('Field Image method history updated');
+
+        fieldImage = await getLocalObjectMethod(getObjectMethodUID(fieldImage));
+        addOutputobject(fieldImageMethod, fieldImage, 'image');
+        debugPrint('Field Image re-added to method with updated history');
+
+        await setObjectMethod(fieldImageMethod, true, true);
+        debugPrint(
+            'Field Image method ${getObjectMethodUID(fieldImageMethod)} saved and signed successfully');
+      }
 //**************************************************************** */
 
       // UI aktualisieren
@@ -885,12 +1069,6 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
 
     debugPrint('Photo too far from polygon - INVALID');
     return false;
-  }
-
-  @override
-  void dispose() {
-    _cameraController?.dispose();
-    super.dispose();
   }
 
   @override

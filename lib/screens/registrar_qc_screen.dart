@@ -129,67 +129,21 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       }
 
       // Erstelle changeObjectData Methode
-      Map<String, dynamic> changeMethod =
-          await getOpenRALTemplate('changeObjectData');
-      final methodUID = const Uuid().v4();
-      setObjectMethodUID(changeMethod, methodUID);
-      changeMethod['identity']['name'] =
-          'QC Approval - ${object['identity']['name']}';
-      changeMethod['methodState'] = 'finished';
-      changeMethod['executor'] = appUserDoc!;
-      changeMethod['existenceStarts'] =
-          DateTime.now().toUtc().toIso8601String();
-
-      // Specific properties für Change-Tracking
-      changeMethod = setSpecificPropertyJSON(
-          changeMethod, 'changeType', 'qc_approval', 'String');
-      changeMethod = setSpecificPropertyJSON(
-          changeMethod, 'oldState', 'qcPending', 'String');
-      changeMethod =
-          setSpecificPropertyJSON(changeMethod, 'newState', 'active', 'String');
-      if (approvalNotes.isNotEmpty) {
-        changeMethod = setSpecificPropertyJSON(
-            changeMethod, 'approvalNotes', approvalNotes, 'String');
-      }
-
-      // Input: Altes Objekt
-      addInputobject(changeMethod, object, 'item');
 
       // Output: Neues Objekt mit geändertem Status
       Map<String, dynamic> updatedObject = Map<String, dynamic>.from(object);
       updatedObject['objectState'] = 'active';
+      setSpecificPropertyJSON(
+          updatedObject, "approvalNotes", approvalNotes, "String");
+      await changeObjectData(updatedObject);
 
-      // Update method history
-      updatedObject['methodHistoryRef'].add({
-        'UID': methodUID,
-        'RALType': 'changeObjectData',
-      });
-
-      addOutputobject(changeMethod, updatedObject, 'item');
-
-      // Speichere Objekte in Firestore
-      updatedObject =
-          jsonFullDoubleToInt(sortJsonAlphabetically(updatedObject));
-
-      // Schreibe aktualisiertes Objekt in Firestore
-      await FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .doc(updatedObject['identity']['UID'])
-          .set(updatedObject);
-
-      changeMethod = jsonFullDoubleToInt(sortJsonAlphabetically(changeMethod));
-
-      // Schreibe Methode in Firestore
-      await FirebaseFirestore.instance
-          .collection('TFC_methods')
-          .doc(methodUID)
-          .set(changeMethod);
-
-      // Optional: Auch lokal speichern falls gewünscht
-      if (localStorage != null) {
-        await setObjectMethod(updatedObject, false, false);
-        await setObjectMethod(changeMethod, false, false);
-      }
+      // Aktualisiere Status der verknüpften image-Objekte
+      await _updateLinkedImageStatus(
+        object,
+        'active',
+        'qc_approval',
+        approvalNotes.isNotEmpty ? approvalNotes : null,
+      );
 
       // UI aktualisieren
       repaintContainerList.value = true;
@@ -233,64 +187,25 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
     try {
       // Erstelle changeObjectData Methode
-      Map<String, dynamic> changeMethod =
-          await getOpenRALTemplate('changeObjectData');
-      final methodUID = const Uuid().v4();
-      setObjectMethodUID(changeMethod, methodUID);
-      changeMethod['identity']['name'] =
-          'QC Rejection - ${object['identity']['name']}';
-      changeMethod['methodState'] = 'finished';
-      changeMethod['executor'] = appUserDoc!;
-      changeMethod['existenceStarts'] =
-          DateTime.now().toUtc().toIso8601String();
-
-      // Specific properties
-      changeMethod = setSpecificPropertyJSON(
-          changeMethod, 'changeType', 'qc_rejection', 'String');
-      changeMethod = setSpecificPropertyJSON(
-          changeMethod, 'oldState', 'qcPending', 'String');
-      changeMethod = setSpecificPropertyJSON(
-          changeMethod, 'newState', 'qcRejected', 'String');
-      if (reason.isNotEmpty) {
-        changeMethod = setSpecificPropertyJSON(
-            changeMethod, 'rejectionReason', reason, 'String');
-      }
-
-      // Input/Output
-      addInputobject(changeMethod, object, 'item');
 
       Map<String, dynamic> updatedObject = Map<String, dynamic>.from(object);
       updatedObject['objectState'] = 'qcRejected';
-      updatedObject['methodHistoryRef'].add({
-        'UID': methodUID,
-        'RALType': 'changeObjectData',
-      });
-
-      addOutputobject(changeMethod, updatedObject, 'item');
+      setSpecificPropertyJSON(
+          updatedObject, 'rejectionReason', reason, 'String');
 
       // Speichern in Firestore
       updatedObject =
           jsonFullDoubleToInt(sortJsonAlphabetically(updatedObject));
 
-      // Schreibe aktualisiertes Objekt in Firestore
-      await FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .doc(updatedObject['identity']['UID'])
-          .set(updatedObject);
+      await changeObjectData(updatedObject);
 
-      changeMethod = jsonFullDoubleToInt(sortJsonAlphabetically(changeMethod));
-
-      // Schreibe Methode in Firestore
-      await FirebaseFirestore.instance
-          .collection('TFC_methods')
-          .doc(methodUID)
-          .set(changeMethod);
-
-      // Optional: Auch lokal speichern falls gewünscht
-      if (localStorage != null) {
-        await setObjectMethod(updatedObject, false, false);
-        await setObjectMethod(changeMethod, false, false);
-      }
+      // Aktualisiere Status der verknüpften image-Objekte
+      await _updateLinkedImageStatus(
+        object,
+        'qcRejected',
+        'qc_rejection',
+        reason.isNotEmpty ? reason : null,
+      );
 
       repaintContainerList.value = true;
 
@@ -436,8 +351,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     for (var point in coordinates) {
       if (point is List && point.length == 2) {
         // GeoJSON hat [lon, lat], WKT braucht "lon lat"
-        final lat = point[0];
-        final lon = point[1];
+        final lon = point[0];
+        final lat = point[1];
         wktCoordinates.add('$lon $lat');
       }
     }
@@ -731,7 +646,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     List<Widget> details = [];
 
     // Common details
-    // details.add(_buildDetailRow('UID', obj['identity']?['UID'] ?? '-'));
+    if (kDebugMode) {
+      details.add(_buildDetailRow('UID', obj['identity']?['UID'] ?? '-'));
+    }
 
     // Type-specific details
     if (ralType == 'human') {
@@ -758,23 +675,27 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         _buildDetailRow(l10n.nationalID, nationalID),
       ]);
 
-      // National ID Photo anzeigen - prüfe sowohl URL als auch lokalen Pfad
-      final nationalIDPhotoURL =
-          getSpecificPropertyfromJSON(obj, 'nationalIDPhotoURL');
-      final nationalIDPhotoLocalPath =
-          getSpecificPropertyfromJSON(obj, 'nationalIDPhotoLocalPath');
-
-      if (nationalIDPhotoURL != null &&
-          nationalIDPhotoURL.toString().isNotEmpty) {
-        // Cloud URL vorhanden - zeige Cloud-Foto
-        details.add(
-            _buildNationalIDPhotoWidget(nationalIDPhotoURL.toString(), false));
-      } else if (nationalIDPhotoLocalPath != null &&
-          nationalIDPhotoLocalPath.toString().isNotEmpty) {
-        // Nur lokaler Pfad vorhanden - zeige lokales Foto
-        details.add(_buildNationalIDPhotoWidget(
-            nationalIDPhotoLocalPath.toString(), true));
-      }
+      // National ID Photo anzeigen - lade aus image-Objekt via linkedObjectRef
+      details.add(FutureBuilder<Map<String, dynamic>?>(
+        future: _getImageURLFromLinkedObject(obj, 'nationalIDPhoto'),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final imageData = snapshot.data!;
+            return _buildPhotoWidget(
+              photoPath: imageData['url'] as String,
+              isLocalFile: imageData['isLocal'] as bool,
+              label: l10n.nationalIDPhoto,
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ));
 
       details.add(_buildDetailRow(l10n.phoneNumber, phone));
     } else if (ralType == 'farm') {
@@ -788,6 +709,28 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             l10n.totalArea, '${totalAreaValue.toStringAsFixed(2)} ha'),
         _buildDetailRow(l10n.cityName, city),
       ]);
+
+      // Consent Form Photo anzeigen - lade aus image-Objekt via linkedObjectRef
+      details.add(FutureBuilder<Map<String, dynamic>?>(
+        future: _getImageURLFromLinkedObject(obj, 'consentFormPhoto'),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final imageData = snapshot.data!;
+            return _buildPhotoWidget(
+              photoPath: imageData['url'] as String,
+              isLocalFile: imageData['isLocal'] as bool,
+              label: l10n.consentFormPhoto,
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ));
 
       // Eigentümer der Farm - wird asynchron geladen
       details.add(_buildOwnerRow(obj, l10n));
@@ -804,6 +747,63 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         _buildDetailRow(l10n.fieldArea, '${areaValue.toStringAsFixed(2)} ha'),
         _buildDetailRow(l10n.polygonPoints, '$pointCount'),
       ]);
+
+      // GPS-Qualität anzeigen
+      final accuracies = getSpecificPropertyfromJSON(obj, 'boundaryAccuracies');
+      if (accuracies is List && accuracies.isNotEmpty) {
+        final accuracyValues =
+            accuracies.map((e) => (e is num) ? e.toDouble() : 0.0).toList();
+        final avgAcc =
+            accuracyValues.reduce((a, b) => a + b) / accuracyValues.length;
+        final maxAcc = accuracyValues.reduce((a, b) => a > b ? a : b);
+        final minAcc = accuracyValues.reduce((a, b) => a < b ? a : b);
+
+        details.add(_buildDetailRow(
+            l10n.gpsQualityAverage, '${avgAcc.toStringAsFixed(1)}m'));
+        details.add(_buildDetailRow(l10n.gpsQualityRange,
+            '${minAcc.toStringAsFixed(1)}m - ${maxAcc.toStringAsFixed(1)}m'));
+
+        // Warnhinweis bei schlechter Qualität
+        if (maxAcc > 10.0) {
+          details.add(Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.orange, size: 16),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    l10n.gpsQualityWarning,
+                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ));
+        }
+      }
+
+      // Field Photo anzeigen - lade aus image-Objekt via linkedObjectRef
+      details.add(FutureBuilder<Map<String, dynamic>?>(
+        future: _getImageURLFromLinkedObject(obj, 'fieldRegistrationPhoto'),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final imageData = snapshot.data!;
+            return _buildPhotoWidget(
+              photoPath: imageData['url'] as String,
+              isLocalFile: imageData['isLocal'] as bool,
+              label: l10n.fieldPhoto,
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ));
     }
 
     // Registered by - wird asynchron geladen
@@ -1102,9 +1102,38 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
-  /// Widget für National ID Photo mit Tap-to-Zoom
+  /// Widget für GPS-Qualitäts-Legenden-Item
+  Widget _buildLegendItem(Color color, String range, String quality) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 30,
+            height: 4,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$range - $quality',
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Generisches Widget für Foto-Anzeige mit Tap-to-Zoom
   /// Unterstützt sowohl Cloud-URLs als auch lokale Dateipfade
-  Widget _buildNationalIDPhotoWidget(String photoPath, bool isLocalFile) {
+  Widget _buildPhotoWidget({
+    required String photoPath,
+    required bool isLocalFile,
+    required String label,
+  }) {
     final l10n = AppLocalizations.of(context)!;
 
     return Padding(
@@ -1113,7 +1142,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            l10n.nationalIDPhoto,
+            label,
             style: const TextStyle(
                 fontWeight: FontWeight.bold, color: Colors.black),
           ),
@@ -1286,10 +1315,13 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       }
     }
 
-    // Prüfe boundaries in specificProperties
-    final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries');
-    if (boundaries != null && boundaries is List && boundaries.isNotEmpty) {
-      return true;
+    // Prüfe boundaries nur bei Field-Objekten
+    final ralType = obj['template']?['RALType'] ?? '';
+    if (ralType == 'field') {
+      final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries');
+      if (boundaries != null && boundaries is List && boundaries.isNotEmpty) {
+        return true;
+      }
     }
 
     return false;
@@ -1316,8 +1348,115 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return LatLng(latNum, lngNum);
   }
 
-  /// Extrahiert Polygon-Koordinaten aus boundaries
+  /// Extrahiert GPS-Genauigkeitsdaten aus boundaryAccuracies (nur für Field-Objekte)
+  List<double>? _getBoundaryAccuracies(Map<String, dynamic> obj) {
+    // Nur für Field-Objekte verfügbar
+    final ralType = obj['template']?['RALType'] ?? '';
+    if (ralType != 'field') return null;
+
+    final accuraciesRaw =
+        getSpecificPropertyfromJSON(obj, 'boundaryAccuracies');
+    if (accuraciesRaw == null || accuraciesRaw == '-no data found-') {
+      return null;
+    }
+
+    debugPrint('boundaryAccuracies raw type: ${accuraciesRaw.runtimeType}');
+    debugPrint('boundaryAccuracies raw value: $accuraciesRaw');
+
+    List<double> accuracies = [];
+
+    // Falls boundaryAccuracies ein String ist (JSON), parse ihn
+    if (accuraciesRaw is String) {
+      // Entferne mögliche Anführungszeichen am Anfang/Ende
+      String cleanedString = accuraciesRaw.trim();
+      if (cleanedString.startsWith('"') && cleanedString.endsWith('"')) {
+        cleanedString = cleanedString.substring(1, cleanedString.length - 1);
+      }
+
+      try {
+        final parsed = jsonDecode(cleanedString);
+        if (parsed is List) {
+          accuracies =
+              parsed.map((e) => (e is num) ? e.toDouble() : 0.0).toList();
+          debugPrint('Parsed ${accuracies.length} accuracy values from string');
+        }
+      } catch (e) {
+        debugPrint('Error parsing boundaryAccuracies JSON: $e');
+        debugPrint('Failed string: $cleanedString');
+        return null;
+      }
+    }
+    // Falls boundaryAccuracies bereits eine Liste ist (altes Format)
+    else if (accuraciesRaw is List && accuraciesRaw.isNotEmpty) {
+      accuracies =
+          accuraciesRaw.map((e) => (e is num) ? e.toDouble() : 0.0).toList();
+      debugPrint('Got ${accuracies.length} accuracy values from list');
+    } else {
+      debugPrint('boundaryAccuracies in unsupported format');
+      return null;
+    }
+
+    if (accuracies.isNotEmpty) {
+      debugPrint('Accuracy values: ${accuracies.join(", ")}');
+    }
+
+    return accuracies.isEmpty ? null : accuracies;
+  }
+
+  /// Berechnet Farbe basierend auf GPS-Genauigkeit (Grün=gut, Gelb=mittel, Rot=schlecht)
+  Color _getAccuracyColor(double accuracy) {
+    if (accuracy <= 5.0) {
+      return Colors.green; // Sehr gut
+    } else if (accuracy <= 10.0) {
+      return Colors.lightGreen; // Gut
+    } else if (accuracy <= 15.0) {
+      return Colors.orange; // Mittel
+    } else {
+      return Colors.red; // Schlecht
+    }
+  }
+
+  /// Erstellt Kreise für GPS-Qualitätsvisualisierung (farbcodierte Kreise an Eckpunkten)
+  Set<Circle> _createAccuracyCircles(
+      List<LatLng> boundaries, List<double> accuracies) {
+    debugPrint(
+        'Creating accuracy circles: ${boundaries.length} boundaries, ${accuracies.length} accuracies');
+    Set<Circle> circles = {};
+
+    // Erstelle einen Kreis für jeden Punkt (außer dem letzten, falls Duplikat)
+    final pointsToMark = (boundaries.isNotEmpty &&
+            boundaries.first.latitude == boundaries.last.latitude &&
+            boundaries.first.longitude == boundaries.last.longitude)
+        ? boundaries.length - 1 // Überspringe dupliziertes Ende
+        : boundaries.length;
+
+    for (int i = 0; i < pointsToMark; i++) {
+      final accuracy = (i < accuracies.length) ? accuracies[i] : 0.0;
+      final color = _getAccuracyColor(accuracy);
+
+      debugPrint(
+          'Point $i: accuracy=${accuracy.toStringAsFixed(2)}m, color=$color');
+
+      circles.add(Circle(
+        circleId: CircleId('accuracy_point_$i'),
+        center: boundaries[i],
+        radius: 3, // 3 Meter Radius
+        fillColor: color.withOpacity(0.8),
+        strokeColor: color,
+        strokeWidth: 2,
+      ));
+    }
+
+    debugPrint('Created ${circles.length} accuracy circles');
+    return circles;
+  }
+
+  /// Extrahiert Polygon-Koordinaten aus boundaries (nur für Field-Objekte)
   List<LatLng>? _getBoundariesFromObject(Map<String, dynamic> obj) {
+    // Nur für Field-Objekte verfügbar
+    final ralType = obj['template']?['RALType'] ?? '';
+    if (ralType != 'field') return null;
+
     final boundaries = getSpecificPropertyfromJSON(obj, 'boundaries');
     if (boundaries == null) return null;
 
@@ -1383,6 +1522,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     final l10n = AppLocalizations.of(context)!;
     final location = _getLocationFromObject(obj);
     final boundaries = _getBoundariesFromObject(obj);
+    final accuracies = _getBoundaryAccuracies(obj);
 
     // Berechne Kamera-Position (Center)
     LatLng center;
@@ -1430,6 +1570,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                               position: location,
                             ),
                           }
+                        : {},
+                    circles: (boundaries != null &&
+                            accuracies != null &&
+                            (accuracies.length == boundaries.length ||
+                                accuracies.length == boundaries.length - 1))
+                        ? _createAccuracyCircles(boundaries, accuracies)
                         : {},
                     polygons: boundaries != null
                         ? {
@@ -1488,6 +1634,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     final l10n = AppLocalizations.of(context)!;
     final location = _getLocationFromObject(obj);
     final boundaries = _getBoundariesFromObject(obj);
+    final accuracies = _getBoundaryAccuracies(obj);
 
     // Berechne Kamera-Position
     LatLng center;
@@ -1529,6 +1676,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       ),
                     }
                   : {},
+              circles: (boundaries != null &&
+                      accuracies != null &&
+                      (accuracies.length == boundaries.length ||
+                          accuracies.length == boundaries.length - 1))
+                  ? _createAccuracyCircles(boundaries, accuracies)
+                  : {},
               polygons: boundaries != null
                   ? {
                       Polygon(
@@ -1543,6 +1696,49 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               myLocationButtonEnabled: true,
               zoomControlsEnabled: true,
             ),
+            // GPS-Qualitäts-Legende (nur wenn Accuracies vorhanden)
+            if (accuracies != null && accuracies.isNotEmpty)
+              Positioned(
+                bottom: 100,
+                left: 16,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        l10n.gpsQualityLegend,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildLegendItem(
+                          Colors.green, '≤ 5m', l10n.gpsQualityExcellent),
+                      _buildLegendItem(
+                          Colors.lightGreen, '≤ 10m', l10n.gpsQualityGood),
+                      _buildLegendItem(
+                          Colors.orange, '≤ 15m', l10n.gpsQualityMedium),
+                      _buildLegendItem(
+                          Colors.red, '> 15m', l10n.gpsQualityPoor),
+                    ],
+                  ),
+                ),
+              ),
             // Schließen-Button
             Positioned(
               top: 40,
@@ -1585,6 +1781,161 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         ),
       ),
     );
+  }
+
+  /// Ändert den objectState aller verknüpften image-Objekte
+  /// [parentObject] - Das Eltern-Objekt (Farmer, Farm, Field)
+  /// [newState] - Der neue Status (z.B. 'active', 'qcRejected')
+  /// [changeType] - Art der Änderung (z.B. 'qc_approval', 'qc_rejection')
+  /// [notes] - Optionale Notizen
+  Future<void> _updateLinkedImageStatus(
+    Map<String, dynamic> parentObject,
+    String newState,
+    String changeType,
+    String? notes,
+  ) async {
+    try {
+      final linkedObjectRef = parentObject['linkedObjectRef'];
+      if (linkedObjectRef == null || linkedObjectRef is! List) {
+        return;
+      }
+
+      // Finde alle image-Objekte
+      final imageRefs =
+          linkedObjectRef.where((ref) => ref['RALType'] == 'image').toList();
+
+      if (imageRefs.isEmpty) {
+        debugPrint('No linked image objects found');
+        return;
+      }
+
+      debugPrint('Updating ${imageRefs.length} linked image object(s)');
+
+      // Aktualisiere jedes image-Objekt
+      for (final imageRef in imageRefs) {
+        final imageUID = imageRef['UID']?.toString();
+        if (imageUID == null || imageUID.isEmpty) continue;
+
+        try {
+          // Lade image-Objekt aus Firestore
+          final imageDoc = await FirebaseFirestore.instance
+              .collection('TFC_objects')
+              .doc(imageUID)
+              .get();
+
+          if (!imageDoc.exists) {
+            debugPrint('Image object not found: $imageUID');
+            continue;
+          }
+
+          final imageObj = Map<String, dynamic>.from(imageDoc.data()!);
+          final currentState = imageObj['objectState'] ?? 'unknown';
+
+          debugPrint(
+              'Updating image $imageUID from $currentState to $newState');
+
+          // Output: Neues image-Objekt mit geändertem Status
+          Map<String, dynamic> updatedImage =
+              Map<String, dynamic>.from(imageObj);
+          updatedImage['objectState'] = newState;
+          updatedImage =
+              jsonFullDoubleToInt(sortJsonAlphabetically(updatedImage));
+
+          await changeObjectData(updatedImage);
+
+          debugPrint('Image $imageUID updated successfully');
+        } catch (e) {
+          debugPrint('Error updating image $imageUID: $e');
+          // Fahre mit nächstem Bild fort
+          continue;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in _updateLinkedImageStatus: $e');
+      // Werfe Fehler nicht weiter, da Haupt-Objekt bereits gespeichert wurde
+    }
+  }
+
+  /// Lädt downloadURL aus image-Objekt über linkedObjectRef
+  /// [obj] - Das Objekt (Farmer, Farm, Field)
+  /// [role] - Die Rolle des image-Objekts ('nationalIDPhoto', 'consentFormPhoto', 'fieldRegistrationPhoto')
+  /// Returns: Map mit 'url' (downloadURL) und 'isLocal' (bool ob lokaler Pfad)
+  Future<Map<String, dynamic>?> _getImageURLFromLinkedObject(
+      Map<String, dynamic> obj, String role) async {
+    try {
+      final linkedObjectRef = obj['linkedObjectRef'];
+      if (linkedObjectRef == null || linkedObjectRef is! List) {
+        return null;
+      }
+
+      // Finde image-Objekt mit passender role
+      final imageRef = linkedObjectRef.firstWhere(
+        (ref) => ref['RALType'] == 'image' && ref['role'] == role,
+        orElse: () => null,
+      );
+
+      if (imageRef == null || imageRef['UID'] == null) {
+        debugPrint('No image found with role: $role');
+        return null;
+      }
+
+      final imageUID = imageRef['UID'].toString();
+      debugPrint('Loading image object with UID: $imageUID for role: $role');
+
+      // Lade image-Objekt aus Firestore
+      final imageDoc = await FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .doc(imageUID)
+          .get();
+
+      if (!imageDoc.exists) {
+        debugPrint('Image object not found: $imageUID');
+        return null;
+      }
+
+      final imageObj = imageDoc.data();
+      if (imageObj == null) {
+        return null;
+      }
+
+      // Extrahiere downloadURL aus specificProperties (Cloud URL)
+      var downloadURL = getSpecificPropertyfromJSON(imageObj, 'downloadURL');
+
+      debugPrint('Raw downloadURL type: ${downloadURL.runtimeType}');
+      debugPrint('Raw downloadURL value: $downloadURL');
+
+      // Fallback auf localDownloadURL wenn downloadURL leer ist
+      if (downloadURL == null ||
+          downloadURL.toString().isEmpty ||
+          downloadURL == '-no data found-') {
+        downloadURL = getSpecificPropertyfromJSON(imageObj, 'localDownloadURL');
+        debugPrint('Using localDownloadURL: $downloadURL');
+      }
+
+      if (downloadURL == null ||
+          downloadURL.toString().isEmpty ||
+          downloadURL == '-no data found-') {
+        debugPrint(
+            'No downloadURL or localDownloadURL found in image object: $imageUID');
+        return null;
+      }
+
+      // Konvertiere zu String und entferne mögliche Anführungszeichen
+      String url = downloadURL.toString().trim();
+      if (url.startsWith('"') && url.endsWith('"')) {
+        url = url.substring(1, url.length - 1);
+        debugPrint('Removed surrounding quotes from URL');
+      }
+
+      // Prüfe ob es sich um lokalen Pfad oder Cloud URL handelt
+      final isLocal = !url.startsWith('http');
+
+      debugPrint('Final image URL: $url (isLocal: $isLocal)');
+      return {'url': url, 'isLocal': isLocal};
+    } catch (e) {
+      debugPrint('Error loading image from linkedObjectRef: $e');
+      return null;
+    }
   }
 }
 

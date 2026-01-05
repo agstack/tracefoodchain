@@ -240,7 +240,7 @@ class PolygonPainter extends CustomPainter {
 /// Widget für die GPS-basierte Aufzeichnung von Feldgrenzen
 /// Speichert Punkte während der Aufzeichnung in Hive für Crash-Resistenz
 class PolygonRecorderWidget extends StatefulWidget {
-  final Function(List<List<double>>, double) onPolygonComplete;
+  final Function(List<List<double>>, double, List<double>) onPolygonComplete;
   final String?
       draftKey; // Optional: Zum Fortsetzen einer unterbrochenen Aufzeichnung
   final int minDistanceMeters; // Minimaler Abstand zwischen Punkten
@@ -418,6 +418,24 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     final l10n = AppLocalizations.of(context)!;
 
     Position? positionToAdd = _currentPosition;
+
+    // If stream hasn't provided position yet, try to get current position immediately
+    if (positionToAdd == null && !kDebugMode) {
+      try {
+        positionToAdd = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+        debugPrint(
+            'Fetched current position directly: ${positionToAdd.latitude}, ${positionToAdd.longitude}');
+        // Update _currentPosition for UI
+        setState(() => _currentPosition = positionToAdd);
+      } catch (e) {
+        debugPrint('Error getting current position: $e');
+      }
+    }
 
     // Debug-Modus: Simuliere Punkte mit mindestens 15m Abstand
     if (kDebugMode && _lastAddedPosition != null) {
@@ -694,8 +712,8 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     // Lösche Draft
     await _deleteDraft();
 
-    // Callback mit finalen Punkten und Fläche
-    widget.onPolygonComplete(finalPoints, area);
+    // Callback mit finalen Punkten, Fläche und GPS-Genauigkeiten
+    widget.onPolygonComplete(finalPoints, area, _accuracies);
   }
 
   /// Sortiert Punkte zu einem sinnvollen Polygon mittels Nearest-Neighbor-Algorithmus

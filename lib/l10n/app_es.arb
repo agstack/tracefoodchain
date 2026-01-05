@@ -733,6 +733,20 @@
   "roleRequestMustBeApproved": "Su solicitud de rol debe ser aprobada por un administrador",
   "cropImage": "Recortar imagen",
   "imageUploadError": "Error al subir la imagen. Por favor, inténtalo de nuevo.",
+  "uploadingFile": "Subiendo archivo...",
+  "uploadProgress": "{progress}% subido",
+  "@uploadProgress": {
+    "description": "Muestra el progreso de la subida en porcentaje",
+    "placeholders": {
+      "progress": {
+        "type": "String",
+        "example": "75.5"
+      }
+    }
+  },
+  "uploadSuccess": "Subida exitosa",
+  "uploadFailed": "Subida fallida. Por favor, inténtalo de nuevo.",
+  "uploadCanceled": "Subida cancelada",
   "imageProcessingError": "Error al procesar la imagen: {error}",
   "@imageProcessingError": {
     "placeholders": {
@@ -943,6 +957,14 @@
   "owner": "Propietario",
   "country": "País",
   "polygonPoints": "Puntos del Polígono",
+  "gpsQualityAverage": "Calidad GPS (Prom.)",
+  "gpsQualityRange": "Calidad GPS (Rango)",
+  "gpsQualityWarning": "Calidad GPS pobre detectada (precisión >10m)",
+  "gpsQualityLegend": "Calidad GPS",
+  "gpsQualityExcellent": "Excelente",
+  "gpsQualityGood": "Buena",
+  "gpsQualityMedium": "Media",
+  "gpsQualityPoor": "Pobre",
   "takeIDPhoto": "Tomar Foto de Identificación",
   "retakeIDPhoto": "Volver a Tomar Foto de Identificación",
   "farmID": "ID de Finca",
@@ -973,7 +995,7 @@
   "fieldPhoto": "Foto del Campo",
   "takeFieldPhoto": "Tomar Foto del Campo",
   "retakeFieldPhoto": "Volver a Tomar Foto del Campo",
-  "fieldPhotoRequired": "Se recomienda encarecidamente la foto del campo",
+  "fieldPhotoRequired": "Se requiere una foto del campo para completar el registro",
   "fieldPhotoTaken": "Foto del campo tomada exitosamente",
   "photoTaken": "Foto tomada exitosamente",
   "pleasePhotoField": "Por favor, tome una foto del campo antes de completar el registro",

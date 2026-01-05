@@ -2970,6 +2970,36 @@ abstract class AppLocalizations {
   /// **'Error uploading image. Please try again.'**
   String get imageUploadError;
 
+  /// No description provided for @uploadingFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading your file...'**
+  String get uploadingFile;
+
+  /// Shows upload progress percentage
+  ///
+  /// In en, this message translates to:
+  /// **'{progress}% uploaded'**
+  String uploadProgress(String progress);
+
+  /// No description provided for @uploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload successful'**
+  String get uploadSuccess;
+
+  /// No description provided for @uploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed. Please try again.'**
+  String get uploadFailed;
+
+  /// No description provided for @uploadCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload canceled'**
+  String get uploadCanceled;
+
   /// No description provided for @imageProcessingError.
   ///
   /// In en, this message translates to:
@@ -3684,6 +3714,54 @@ abstract class AppLocalizations {
   /// **'Polygon Points'**
   String get polygonPoints;
 
+  /// No description provided for @gpsQualityAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Quality (Avg)'**
+  String get gpsQualityAverage;
+
+  /// No description provided for @gpsQualityRange.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Quality (Range)'**
+  String get gpsQualityRange;
+
+  /// No description provided for @gpsQualityWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Poor GPS quality detected (>10m accuracy)'**
+  String get gpsQualityWarning;
+
+  /// No description provided for @gpsQualityLegend.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS Quality'**
+  String get gpsQualityLegend;
+
+  /// No description provided for @gpsQualityExcellent.
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent'**
+  String get gpsQualityExcellent;
+
+  /// No description provided for @gpsQualityGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get gpsQualityGood;
+
+  /// No description provided for @gpsQualityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get gpsQualityMedium;
+
+  /// No description provided for @gpsQualityPoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Poor'**
+  String get gpsQualityPoor;
+
   /// No description provided for @takeIDPhoto.
   ///
   /// In en, this message translates to:
@@ -3855,7 +3933,7 @@ abstract class AppLocalizations {
   /// No description provided for @fieldPhotoRequired.
   ///
   /// In en, this message translates to:
-  /// **'Field photo is strongly recommended'**
+  /// **'A field photo is required to complete the registration'**
   String get fieldPhotoRequired;
 
   /// No description provided for @fieldPhotoTaken.

@@ -105,6 +105,9 @@ class AppState extends ChangeNotifier {
         isSyncing.value = true;
 
         final databaseHelper = DatabaseHelper();
+        // Upload pending photos first to avoid internal loops
+        await cloudSyncService.uploadPendingPhotos();
+
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
             syncStatusNotifier.value = "Synchronisierung mit $cloudKey";

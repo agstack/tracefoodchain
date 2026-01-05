@@ -739,6 +739,20 @@
   "roleRequestMustBeApproved": "Your role request must be approved by an admin",
   "cropImage": "Crop Image",
   "imageUploadError": "Error uploading image. Please try again.",
+  "uploadingFile": "Uploading your file...",
+  "uploadProgress": "{progress}% uploaded",
+  "@uploadProgress": {
+    "description": "Shows upload progress percentage",
+    "placeholders": {
+      "progress": {
+        "type": "String",
+        "example": "75.5"
+      }
+    }
+  },
+  "uploadSuccess": "Upload successful",
+  "uploadFailed": "Upload failed. Please try again.",
+  "uploadCanceled": "Upload canceled",
   "imageProcessingError": "Error processing image: {error}",
   "@imageProcessingError": {
     "placeholders": {
@@ -949,6 +963,14 @@
   "owner": "Owner",
   "country": "Country",
   "polygonPoints": "Polygon Points",
+  "gpsQualityAverage": "GPS Quality (Avg)",
+  "gpsQualityRange": "GPS Quality (Range)",
+  "gpsQualityWarning": "Poor GPS quality detected (>10m accuracy)",
+  "gpsQualityLegend": "GPS Quality",
+  "gpsQualityExcellent": "Excellent",
+  "gpsQualityGood": "Good",
+  "gpsQualityMedium": "Medium",
+  "gpsQualityPoor": "Poor",
   "takeIDPhoto": "Take ID Photo",
   "retakeIDPhoto": "Retake ID Photo",
   "farmID": "Farm ID",
@@ -979,7 +1001,7 @@
   "fieldPhoto": "Field Photo",
   "takeFieldPhoto": "Take Field Photo",
   "retakeFieldPhoto": "Retake Field Photo",
-  "fieldPhotoRequired": "Field photo is strongly recommended",
+  "fieldPhotoRequired": "A field photo is required to complete the registration",
   "fieldPhotoTaken": "Field photo taken successfully",
   "photoTaken": "Photo taken successfully",
   "pleasePhotoField": "Please take a photo of the field before completing the recording",

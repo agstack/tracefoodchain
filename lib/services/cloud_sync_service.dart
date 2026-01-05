@@ -1,6 +1,7 @@
 ﻿// This service syncs local hive database to/from the clouds
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -189,8 +190,122 @@ class CloudSyncService {
   final CloudApiClient apiClient;
   bool _isSyncing =
       false; // Neues Flag, um parallele Sync-Aufrufe zu verhindern
+  bool _isUploadingPhotos = false; // Flag to prevent parallel photo uploads
 
   CloudSyncService(String domain) : apiClient = CloudApiClient(domain: domain);
+
+  /// Professional file upload with progress tracking for both Web and Native platforms
+  /// Returns a Map with 'downloadURL' and 'storagePath' on success, or null on failure
+  Future<Map<String, String?>?> _uploadFileWithProgress({
+    required String fileName,
+    required String contentType,
+    File? file, // For native platforms
+    Uint8List? bytes, // For web platform or when bytes are available
+  }) async {
+    try {
+      // Reset upload progress
+      uploadProgress.value = 0.0;
+
+      final Reference storageRef = FirebaseStorage.instance.ref(fileName);
+      final SettableMetadata metadata =
+          SettableMetadata(contentType: contentType);
+
+      String? downloadURL;
+      String? storagePath;
+      bool uploadFinishedOrFailed = false;
+      TaskState? finalState;
+
+      // Platform-specific upload
+      late UploadTask uploadTask;
+
+      if (kIsWeb) {
+        // Web: Use putData with bytes
+        if (bytes == null) {
+          debugPrint('Error: bytes required for web upload');
+          return null;
+        }
+        uploadTask = storageRef.putData(bytes, metadata);
+      } else {
+        // Native: Use putFile
+        if (file == null) {
+          debugPrint('Error: file required for native upload');
+          return null;
+        }
+        uploadTask = storageRef.putFile(file, metadata);
+      }
+
+      // Listen to upload progress
+      final subscription = uploadTask.snapshotEvents.listen(
+        (TaskSnapshot taskSnapshot) async {
+          switch (taskSnapshot.state) {
+            case TaskState.running:
+              final progress = taskSnapshot.totalBytes > 0
+                  ? (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) *
+                      100.0
+                  : 0.0;
+              uploadProgress.value = progress;
+              debugPrint('Upload progress: ${progress.toStringAsFixed(2)}%');
+              break;
+
+            case TaskState.paused:
+              debugPrint('Upload paused');
+              break;
+
+            case TaskState.success:
+              try {
+                downloadURL = await taskSnapshot.ref.getDownloadURL();
+                storagePath = taskSnapshot.ref.fullPath;
+                uploadProgress.value = 100.0;
+                debugPrint('Upload successful: $downloadURL');
+              } catch (e) {
+                debugPrint('Error getting download URL: $e');
+              }
+              uploadFinishedOrFailed = true;
+              finalState = TaskState.success;
+              break;
+
+            case TaskState.canceled:
+              debugPrint('Upload canceled');
+              uploadFinishedOrFailed = true;
+              finalState = TaskState.canceled;
+              break;
+
+            case TaskState.error:
+              debugPrint('Upload error');
+              uploadFinishedOrFailed = true;
+              finalState = TaskState.error;
+              break;
+          }
+        },
+        onError: (error) {
+          debugPrint('Upload stream error: $error');
+          uploadFinishedOrFailed = true;
+          finalState = TaskState.error;
+        },
+      );
+
+      // Wait for upload to complete
+      while (!uploadFinishedOrFailed) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      // Cancel subscription
+      await subscription.cancel();
+
+      // Return result based on final state
+      if (finalState == TaskState.success && downloadURL != null) {
+        return {
+          'downloadURL': downloadURL,
+          'storagePath': storagePath,
+        };
+      } else {
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error in _uploadFileWithProgress: $e');
+      return null;
+    }
+  }
 
   Future<void> syncOpenRALTemplates(String domain,
       {Function(int current, int total)? onProgress}) async {
@@ -212,10 +327,16 @@ class CloudSyncService {
   }
 
   /// Upload local photos to Firebase Storage and replace local paths with cloud URLs
-  /// This is called before syncing objects to cloud
-  Future<void> _uploadPendingPhotosAndUpdateObjects() async {
+  /// This must be called before syncMethods() to avoid internal loops
+  Future<void> uploadPendingPhotos() async {
+    if (_isUploadingPhotos) {
+      debugPrint(
+          'Photo upload already in progress, skipping new upload request');
+      return;
+    }
+    _isUploadingPhotos = true;
+
     try {
-      debugPrint('=== START PHOTO UPLOAD PROCESS ===');
       final User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         debugPrint('No authenticated user found, skipping photo upload');
@@ -224,104 +345,117 @@ class CloudSyncService {
 
       // Iterate through all objects in localStorage
       for (var doc in localStorage!.values) {
-        final doc2 = Map<String, dynamic>.from(doc);
+        var doc2 = Map<String, dynamic>.from(doc);
 
         // Only process objects (not methods)
         if (doc2["methodHistoryRef"] != null) {
           bool objectModified = false;
 
-          // Check specificProperties for local photo paths
-          if (doc2["specificProperties"] != null) {
-            final specificProps = doc2["specificProperties"];
-            // debugPrint(specificProps.toString());
-            // Look for properties ending with "LocalPath" (e.g., nationalIDPhotoLocalPath)
-            for (var prop in specificProps) {
-              // Support both "key" (current) and "name" (legacy) for property names
-              final String? propertyKey = prop["key"] ?? prop["name"];
-              if (propertyKey != null &&
-                  propertyKey.endsWith('LocalPath') &&
-                  prop["value"] != null &&
-                  prop["value"] != "") {
-                final localPath = prop["value"].toString();
+          // Check if this is an image object with localDownloadURL that needs upload
+          final isImageObject = doc2["template"]?["RALType"] == "image";
 
-                // Check if this is a local file path (not a URL)
-                if (!localPath.startsWith('http://') &&
-                    !localPath.startsWith('https://')) {
-                  debugPrint(
-                      'Found local photo path in object ${doc2["identity"]["UID"]}: $localPath');
+          if (isImageObject) {
+            // Find localDownloadURL and downloadURL properties
+            var localPath =
+                getSpecificPropertyfromJSON(doc2, "localDownloadURL");
+            var cloudPath = getSpecificPropertyfromJSON(doc2, "downloadURL");
 
-                  try {
-                    // Upload photo to Firebase Storage
-                    String? cloudUrl;
+            // Check if we need to upload (local path exists but cloud URL is empty)
+            if ((localPath != "-no data found-" && localPath != "") &&
+                (cloudPath == "" || cloudPath == "-no data found-")) {
+              // Check if this is a local file path (not already a URL)
+              if (!localPath.startsWith('http://') &&
+                  !localPath.startsWith('https://')) {
+                debugPrint(
+                    'Found image object with local path: $localPath, UID: ${doc2["identity"]["UID"]}');
 
-                    if (!kIsWeb && localPath.isNotEmpty) {
-                      final file = File(localPath);
-                      if (await file.exists()) {
-                        // Determine storage path based on property name
-                        final propertyBaseName =
-                            propertyKey.replaceAll('LocalPath', '');
-                        final userId = user.uid;
-                        final objectUid = doc2["identity"]["UID"];
-                        final timestamp = DateTime.now().millisecondsSinceEpoch;
-                        final fileName =
-                            'documents/$userId/$propertyBaseName/${objectUid}_$timestamp.jpg';
+                try {
+                  final userId = user.uid;
+                  final objectUid = doc2["identity"]["UID"];
+                  final timestamp = DateTime.now().millisecondsSinceEpoch;
+                  final imageName = doc2["identity"]["name"] ?? "image";
+                  final fileName =
+                      'images/$userId/$imageName/${objectUid}_$timestamp.jpg';
 
+                  debugPrint('Uploading image to Firebase Storage: $fileName');
+
+                  // Determine file or bytes based on platform
+                  File? file;
+                  Uint8List? bytes;
+
+                  if (kIsWeb) {
+                    // Web: Read bytes from blob URL via HTTP
+                    // On web, localPath contains a blob URL from XFile
+                    try {
+                      final response = await http.get(Uri.parse(localPath));
+                      if (response.statusCode == 200) {
+                        bytes = response.bodyBytes;
                         debugPrint(
-                            'Uploading photo to Firebase Storage: $fileName');
-
-                        final bytes = await file.readAsBytes();
-                        final ref =
-                            FirebaseStorage.instance.ref().child(fileName);
-                        final uploadTask = ref.putData(
-                          bytes,
-                          SettableMetadata(contentType: 'image/jpeg'),
-                        );
-
-                        final snapshot = await uploadTask;
-                        cloudUrl = await snapshot.ref.getDownloadURL();
-
-                        debugPrint('Photo uploaded successfully: $cloudUrl');
+                            'Web: Read ${bytes.length} bytes from blob URL');
                       } else {
-                        debugPrint('Local file does not exist: $localPath');
+                        debugPrint(
+                            'Error reading blob URL: HTTP ${response.statusCode}');
+                        continue;
                       }
+                    } catch (e) {
+                      debugPrint('Error reading bytes from web blob URL: $e');
+                      continue;
                     }
-
-                    // Replace local path with cloud URL if upload was successful
-                    if (cloudUrl != null) {
-                      // Remove the LocalPath property
-                      specificProps.remove(propertyKey);
-
-                      // Add the URL property (e.g., nationalIDPhotoURL)
-                      final urlPropertyName =
-                          propertyKey.replaceAll('LocalPath', 'URL');
-                      specificProps[urlPropertyName] = cloudUrl;
-
-                      objectModified = true;
-                      debugPrint(
-                          'Replaced $propertyKey with $urlPropertyName in object');
+                  } else {
+                    // Native: use File
+                    file = File(localPath);
+                    if (!await file.exists()) {
+                      debugPrint('Local image file does not exist: $localPath');
+                      continue;
                     }
-                  } catch (e) {
-                    debugPrint(
-                        'Error uploading photo for key $propertyKey: $e');
-                    // Continue with other photos even if one fails
                   }
+
+                  // Use new professional upload function
+                  final uploadResult = await _uploadFileWithProgress(
+                    fileName: fileName,
+                    contentType: 'image/jpeg',
+                    file: file,
+                    bytes: bytes,
+                  );
+
+                  if (uploadResult != null &&
+                      uploadResult['downloadURL'] != null) {
+                    final cloudUrl = uploadResult['downloadURL']!;
+
+                    // Update downloadURL if upload was successful
+                    // CRITICAL: setSpecificPropertyJSON returns a new copy, must reassign!
+                    doc2 = setSpecificPropertyJSON(
+                        doc2, "downloadURL", cloudUrl, "URL");
+                    doc2 = setSpecificPropertyJSON(doc2, "storagePath",
+                        uploadResult['storagePath'], "URL");
+
+                    objectModified = true;
+                    debugPrint(
+                        'Updated downloadURL for image object ${doc2["identity"]["UID"]}');
+                  } else {
+                    debugPrint('Upload failed or returned null result');
+                  }
+                } catch (e) {
+                  debugPrint('Error uploading image: $e');
                 }
               }
             }
           }
 
-          // Save the modified object back to localStorage
+          // Save the modified object back to localStorage using changeObjectData
+          // to properly document the change with method history
           if (objectModified) {
-            await setObjectMethod(doc2, true, false); // Mark for sync
-            debugPrint('Object updated with cloud photo URLs');
+            await changeObjectData(doc2);
+            debugPrint(
+                'Object updated with cloud photo URLs via changeObjectData');
           }
         }
       }
-
-      debugPrint('=== PHOTO UPLOAD PROCESS COMPLETED ===');
     } catch (e) {
       debugPrint('Error in photo upload process: $e');
       // Don't throw - allow sync to continue even if photo upload fails
+    } finally {
+      _isUploadingPhotos = false;
     }
   }
 
@@ -331,14 +465,12 @@ class CloudSyncService {
       {Function(int current, int total)? onProgress}) async {
     List<String> failedSyncedOutputObjects = [];
     if (_isSyncing) {
+      debugPrint('Sync already in progress, skipping new sync request');
       return false;
     }
     _isSyncing = true;
     final databaseHelper = DatabaseHelper();
     try {
-      // FIRST: Upload any pending local photos and replace paths with cloud URLs
-      await _uploadPendingPhotosAndUpdateObjects();
-
       //****** 1. SYNC METHODS TO CLOUD - and build hash map for later syncing from cloud *********
       List<Map<String, dynamic>> methodsToSyncToCloud = [];
       Map<String, dynamic> deviceHashes = {
@@ -401,9 +533,12 @@ class CloudSyncService {
           Map<String, dynamic> syncresult =
               await apiClient.syncMethodToCloud(domain, doc2);
           if (syncresult["response"] == "success") {
-            setObjectMethod(
+            debugPrint('Method $methodUid synced successfully to cloud');
+            await setObjectMethod(
                 doc2, false, false); //persists removal of sync flag from method
           } else {
+            debugPrint(
+                'Error syncing method $methodUid to cloud: ${syncresult["response"].toString()}');
             if (doc2.containsKey("outputObjects") &&
                 doc2["outputObjects"] is List) {
               for (final output in doc2["outputObjects"]) {

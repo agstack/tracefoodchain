@@ -733,6 +733,20 @@
   "roleRequestMustBeApproved": "Votre demande de rôle doit être approuvée par un administrateur",
   "cropImage": "Recadrer l'image",
   "imageUploadError": "Erreur lors du téléchargement de l'image. Veuillez réessayer.",
+  "uploadingFile": "Téléchargement du fichier en cours...",
+  "uploadProgress": "{progress}% téléchargé",
+  "@uploadProgress": {
+    "description": "Affiche la progression du téléchargement en pourcentage",
+    "placeholders": {
+      "progress": {
+        "type": "String",
+        "example": "75.5"
+      }
+    }
+  },
+  "uploadSuccess": "Téléchargement réussi",
+  "uploadFailed": "Échec du téléchargement. Veuillez réessayer.",
+  "uploadCanceled": "Téléchargement annulé",
   "imageProcessingError": "Erreur lors du traitement de l'image : {error}",
   "@imageProcessingError": {
     "placeholders": {
@@ -943,6 +957,14 @@
   "owner": "Propriétaire",
   "country": "Pays",
   "polygonPoints": "Points du Polygone",
+  "gpsQualityAverage": "Qualité GPS (Moy.)",
+  "gpsQualityRange": "Qualité GPS (Plage)",
+  "gpsQualityWarning": "Mauvaise qualité GPS détectée (précision >10m)",
+  "gpsQualityLegend": "Qualité GPS",
+  "gpsQualityExcellent": "Excellente",
+  "gpsQualityGood": "Bonne",
+  "gpsQualityMedium": "Moyenne",
+  "gpsQualityPoor": "Faible",
   "takeIDPhoto": "Prendre une Photo d'Identité",
   "retakeIDPhoto": "Reprendre une Photo d'Identité",
   "farmID": "ID de la Ferme",
@@ -973,7 +995,7 @@
   "fieldPhoto": "Photo du Champ",
   "takeFieldPhoto": "Prendre une Photo du Champ",
   "retakeFieldPhoto": "Reprendre une Photo du Champ",
-  "fieldPhotoRequired": "La photo du champ est fortement recommandée",
+  "fieldPhotoRequired": "Une photo du champ est requise pour compléter l'enregistrement",
   "fieldPhotoTaken": "Photo du champ prise avec succès",
   "photoTaken": "Photo prise avec succès",
   "pleasePhotoField": "Veuillez prendre une photo du champ avant de compléter l'enregistrement",

@@ -52,6 +52,7 @@ class _StepperRegistrarRegistrationState
   // National ID Photo
   XFile? _nationalIDPhoto;
   String? _nationalIDPhotoLocalPath;
+  Position? _nationalIDPhotoPosition;
   final ImagePicker _imagePicker = ImagePicker();
   camera_plugin.CameraController? _cameraController;
   List<camera_plugin.CameraDescription>? _cameras;
@@ -60,6 +61,7 @@ class _StepperRegistrarRegistrationState
   // Consent Form Photo
   XFile? _consentFormPhoto;
   String? _consentFormPhotoLocalPath;
+  Position? _consentFormPhotoPosition;
 
   @override
   void initState() {
@@ -260,15 +262,26 @@ class _StepperRegistrarRegistrationState
         debugPrint('farmer email set');
       }
 
-      // Save local photo path - will be replaced with cloud URL during sync
+      // Create image object for National ID Photo
+      Map<String, dynamic>? nationalIDImage;
       if (_nationalIDPhotoLocalPath != null &&
           _nationalIDPhotoLocalPath!.isNotEmpty) {
-        debugPrint('Setting local nationalIDPhotoPath...');
-        farmer = setSpecificPropertyJSON(farmer, 'nationalIDPhotoLocalPath',
-            _nationalIDPhotoLocalPath!, 'String');
-        debugPrint('nationalIDPhotoLocalPath set: $_nationalIDPhotoLocalPath');
+        debugPrint('Creating image object for National ID photo...');
+        nationalIDImage = await createImageObject(
+          localPath: _nationalIDPhotoLocalPath!,
+          position: _nationalIDPhotoPosition,
+          imageName: 'National ID - ${farmer['identity']['name']}',
+        );
+
+        // Link image to farmer
+        farmer['linkedObjectRef'].add({
+          'UID': getObjectMethodUID(nationalIDImage),
+          'RALType': 'image',
+          'role': 'nationalIDPhoto',
+        });
+        debugPrint('National ID image object created and linked to farmer');
       } else {
-        debugPrint('No national ID photo path to save');
+        debugPrint('No national ID photo to create image object for');
       }
 
       // Position
@@ -300,7 +313,7 @@ class _StepperRegistrarRegistrationState
       ];
       farmer['linkedObjectRef'].add({
         'UID': getObjectMethodUID(appUserDoc!),
-        'RALType': 'user',
+        'RALType': 'human',
         'role': 'registrar',
       });
       debugPrint('Registrar added to farmer');
@@ -373,16 +386,26 @@ class _StepperRegistrarRegistrationState
         debugPrint('farm email set');
       }
 
-      // Save consent form photo path - will be replaced with cloud URL during sync
+      // Create image object for Consent Form Photo
+      Map<String, dynamic>? consentFormImage;
       if (_consentFormPhotoLocalPath != null &&
           _consentFormPhotoLocalPath!.isNotEmpty) {
-        debugPrint('Setting local consentFormPhotoPath...');
-        farm = setSpecificPropertyJSON(farm, 'consentFormPhotoLocalPath',
-            _consentFormPhotoLocalPath!, 'String');
-        debugPrint(
-            'consentFormPhotoLocalPath set: $_consentFormPhotoLocalPath');
+        debugPrint('Creating image object for Consent Form photo...');
+        consentFormImage = await createImageObject(
+          localPath: _consentFormPhotoLocalPath!,
+          position: _consentFormPhotoPosition,
+          imageName: 'Consent Form - ${farm['identity']['name']}',
+        );
+
+        // Link image to farm
+        farm['linkedObjectRef'].add({
+          'UID': getObjectMethodUID(consentFormImage),
+          'RALType': 'image',
+          'role': 'consentFormPhoto',
+        });
+        debugPrint('Consent Form image object created and linked to farm');
       } else {
-        debugPrint('No consent form photo path to save');
+        debugPrint('No consent form photo to create image object for');
       }
 
       // Add registrar as currentOwner and in linkedObjectRef
@@ -393,7 +416,7 @@ class _StepperRegistrarRegistrationState
       ];
       farm['linkedObjectRef'].add({
         'UID': getObjectMethodUID(appUserDoc!),
-        'RALType': 'user',
+        'RALType': 'human',
         'role': 'registrar',
       });
       debugPrint('Registrar added to farm');
@@ -436,6 +459,41 @@ class _StepperRegistrarRegistrationState
       await setObjectMethod(farmerRegisterMethod, true, true); //sign it!
       debugPrint('Farmer method saved and signed successfully');
 
+      // Create separate generateDigitalSibling method for National ID Image
+      if (nationalIDImage != null) {
+        debugPrint(
+            'Creating separate generateDigitalSibling method for National ID Image');
+        Map<String, dynamic> nationalIDImageMethod =
+            await getOpenRALTemplate('generateDigitalSibling');
+
+        nationalIDImageMethod['identity']['name'] =
+            'National ID Image - ${farmer['identity']['name']}';
+        nationalIDImageMethod['methodState'] = 'finished';
+        nationalIDImageMethod['executor'] = appUserDoc!;
+        nationalIDImageMethod['existenceStarts'] =
+            DateTime.now().toUtc().toIso8601String();
+
+        setObjectMethodUID(nationalIDImageMethod, const Uuid().v4());
+        debugPrint('National ID Image Method UID set');
+
+        await setObjectMethod(nationalIDImage, false, false);
+        debugPrint('National ID Image saved first time');
+
+        addOutputobject(nationalIDImageMethod, nationalIDImage, 'image');
+        debugPrint('National ID Image added to method');
+
+        await updateMethodHistories(nationalIDImageMethod);
+        debugPrint('National ID Image method history updated');
+
+        nationalIDImage =
+            await getLocalObjectMethod(getObjectMethodUID(nationalIDImage));
+        addOutputobject(nationalIDImageMethod, nationalIDImage, 'image');
+        debugPrint('National ID Image re-added to method with updated history');
+
+        await setObjectMethod(nationalIDImageMethod, true, true);
+        debugPrint('National ID Image method saved and signed successfully');
+      }
+
       //* ****************  4. Erstelle generateDigitalSibling Methode für FARM (EXAKTE SEQUENZ WIE IN STEPPER_FIRST_SALE) *****************
       debugPrint('Step 4: Creating generateDigitalSibling method for FARM');
       Map<String, dynamic> farmRegisterMethod =
@@ -473,6 +531,42 @@ class _StepperRegistrarRegistrationState
       //Step 6: persist process
       await setObjectMethod(farmRegisterMethod, true, true); //sign it!
       debugPrint('Farm method saved and signed successfully');
+
+      // Create separate generateDigitalSibling method for Consent Form Image
+      if (consentFormImage != null) {
+        debugPrint(
+            'Creating separate generateDigitalSibling method for Consent Form Image');
+        Map<String, dynamic> consentFormImageMethod =
+            await getOpenRALTemplate('generateDigitalSibling');
+
+        consentFormImageMethod['identity']['name'] =
+            'Consent Form Image - ${farm['identity']['name']}';
+        consentFormImageMethod['methodState'] = 'finished';
+        consentFormImageMethod['executor'] = appUserDoc!;
+        consentFormImageMethod['existenceStarts'] =
+            DateTime.now().toUtc().toIso8601String();
+
+        setObjectMethodUID(consentFormImageMethod, const Uuid().v4());
+        debugPrint('Consent Form Image Method UID set');
+
+        await setObjectMethod(consentFormImage, false, false);
+        debugPrint('Consent Form Image saved first time');
+
+        addOutputobject(consentFormImageMethod, consentFormImage, 'image');
+        debugPrint('Consent Form Image added to method');
+
+        await updateMethodHistories(consentFormImageMethod);
+        debugPrint('Consent Form Image method history updated');
+
+        consentFormImage =
+            await getLocalObjectMethod(getObjectMethodUID(consentFormImage));
+        addOutputobject(consentFormImageMethod, consentFormImage, 'image');
+        debugPrint(
+            'Consent Form Image re-added to method with updated history');
+
+        await setObjectMethod(consentFormImageMethod, true, true);
+        debugPrint('Consent Form Image method saved and signed successfully');
+      }
 
       // Aktualisiere UI
       debugPrint('Step 9: Updating UI');
@@ -584,6 +678,21 @@ class _StepperRegistrarRegistrationState
       debugPrint(
           '${isConsentForm ? "Consent Form" : "National ID"} Photo taken: ${photo.path}');
 
+      // Get current GPS position when photo is taken
+      Position? photoPosition;
+      try {
+        photoPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+        debugPrint(
+            'Photo GPS: ${photoPosition.latitude}, ${photoPosition.longitude}');
+      } catch (e) {
+        debugPrint('Warning: Could not get GPS position for photo: $e');
+      }
+
       // Save photo locally for offline access
       if (!kIsWeb) {
         final appDir = await getApplicationDocumentsDirectory();
@@ -607,23 +716,31 @@ class _StepperRegistrarRegistrationState
           if (isConsentForm) {
             _consentFormPhoto = photo;
             _consentFormPhotoLocalPath = localPath;
+            _consentFormPhotoPosition = photoPosition;
           } else {
             _nationalIDPhoto = photo;
             _nationalIDPhotoLocalPath = localPath;
+            _nationalIDPhotoPosition = photoPosition;
           }
         });
 
         debugPrint(
             '${isConsentForm ? "Consent Form" : "National ID"} Photo saved locally: $localPath');
+        if (photoPosition != null) {
+          debugPrint(
+              'Photo GPS stored: ${photoPosition.latitude}, ${photoPosition.longitude}');
+        }
       } else {
-        // Web: Just store the XFile
+        // Web: Just store the XFile (use path which contains the blob URL)
         setState(() {
           if (isConsentForm) {
             _consentFormPhoto = photo;
-            _consentFormPhotoLocalPath = photo.name;
+            _consentFormPhotoLocalPath = photo.path;
+            _consentFormPhotoPosition = photoPosition;
           } else {
             _nationalIDPhoto = photo;
-            _nationalIDPhotoLocalPath = photo.name;
+            _nationalIDPhotoLocalPath = photo.path;
+            _nationalIDPhotoPosition = photoPosition;
           }
         });
       }
@@ -863,7 +980,7 @@ class _StepperRegistrarRegistrationState
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  Column(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       ElevatedButton.icon(
@@ -877,11 +994,15 @@ class _StepperRegistrarRegistrationState
                           foregroundColor: Colors.white,
                         ),
                       ),
+                      const SizedBox(height: 8),
                       ElevatedButton.icon(
                         onPressed: () async {
                           try {
                             final image =
                                 await _cameraController!.takePicture();
+                            // Dispose controller immediately after taking picture to avoid CameraException
+                            await _cameraController?.dispose();
+                            _cameraController = null;
                             Navigator.of(dialogContext).pop();
                             await _savePhoto(image,
                                 isConsentForm: isConsentForm);

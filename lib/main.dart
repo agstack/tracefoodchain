@@ -53,6 +53,10 @@ TrackedValueNotifier<String?> syncStatusNotifier =
 TrackedValueNotifier<bool> isSyncing =
     TrackedValueNotifier<bool>(false, "isSyncing");
 
+// ValueNotifier für Upload-Fortschritt
+TrackedValueNotifier<double> uploadProgress =
+    TrackedValueNotifier<double>(0.0, "uploadProgress");
+
 // Debug-Wrapper für ValueNotifiers
 class DebugValueNotifier<T> extends ValueNotifier<T> {
   final String name;
@@ -345,14 +349,25 @@ void main() async {
 
 // Neue Funktion zum Initialisieren des User-spezifischen LocalStorage
 Future<void> initializeUserLocalStorage(String userId) async {
-  // Schließe vorherige Box falls vorhanden
+  final boxName = 'localStorage_$userId';
+
+  // Prüfe ob Box bereits für diesen User geöffnet ist
+  if (Hive.isBoxOpen(boxName)) {
+    // Box ist bereits geöffnet, hole Referenz ohne erneutes Öffnen
+    localStorage = Hive.box<Map<dynamic, dynamic>>(boxName);
+    debugPrint('localStorage for $userId already open, reusing existing box');
+    return;
+  }
+
+  // Schließe vorherige Box falls vorhanden (anderer User)
   if (localStorage != null && localStorage!.isOpen) {
     await localStorage!.close();
   }
 
   // Öffne neue Box für den spezifischen User
-  localStorage =
-      await Hive.openBox<Map<dynamic, dynamic>>('localStorage_$userId');
+  debugPrint('Opening new localStorage box for $userId');
+  localStorage = await Hive.openBox<Map<dynamic, dynamic>>(boxName);
+  // await localStorage!.deleteFromDisk(); //DEBUG: DELETE DATABASE
 
   // Lade cloudConnectors für diesen User
   cloudConnectors = await getCloudConnectors();

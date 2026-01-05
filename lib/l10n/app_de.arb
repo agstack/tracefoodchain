@@ -739,6 +739,20 @@
   "roleRequestMustBeApproved": "Ihre Rollenanfrage muss von einem Admin genehmigt werden",
   "cropImage": "Bild zuschneiden",
   "imageUploadError": "Fehler beim Hochladen des Bildes. Bitte versuchen Sie es erneut.",
+  "uploadingFile": "Datei wird hochgeladen...",
+  "uploadProgress": "{progress}% hochgeladen",
+  "@uploadProgress": {
+    "description": "Zeigt den Upload-Fortschritt in Prozent",
+    "placeholders": {
+      "progress": {
+        "type": "String",
+        "example": "75.5"
+      }
+    }
+  },
+  "uploadSuccess": "Upload erfolgreich",
+  "uploadFailed": "Upload fehlgeschlagen. Bitte erneut versuchen.",
+  "uploadCanceled": "Upload abgebrochen",
   "imageProcessingError": "Fehler beim Verarbeiten des Bildes: {error}",
   "@imageProcessingError": {
     "placeholders": {
@@ -949,6 +963,14 @@
   "owner": "Eigentümer",
   "country": "Land",
   "polygonPoints": "Polygonpunkte",
+  "gpsQualityAverage": "GPS-Qualität (Durchschn.)",
+  "gpsQualityRange": "GPS-Qualität (Bereich)",
+  "gpsQualityWarning": "Schlechte GPS-Qualität erkannt (>10m Genauigkeit)",
+  "gpsQualityLegend": "GPS-Qualität",
+  "gpsQualityExcellent": "Ausgezeichnet",
+  "gpsQualityGood": "Gut",
+  "gpsQualityMedium": "Mittel",
+  "gpsQualityPoor": "Schlecht",
   "takeIDPhoto": "Ausweis-Foto aufnehmen",
   "retakeIDPhoto": "Ausweis-Foto erneut aufnehmen",
   "farmID": "Farm-ID",
@@ -979,7 +1001,7 @@
   "fieldPhoto": "Feld-Foto",
   "takeFieldPhoto": "Feld-Foto aufnehmen",
   "retakeFieldPhoto": "Feld-Foto erneut aufnehmen",
-  "fieldPhotoRequired": "Feld-Foto wird dringend empfohlen",
+  "fieldPhotoRequired": "Ein Feld-Foto ist erforderlich, um die Registrierung abzuschließen",
   "fieldPhotoTaken": "Feld-Foto erfolgreich aufgenommen",
   "photoTaken": "Foto erfolgreich aufgenommen",
   "pleasePhotoField": "Bitte machen Sie ein Foto vom Feld bevor Sie die Aufzeichnung abschließen",

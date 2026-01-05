@@ -263,7 +263,7 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
     //successful auth, initialize Hive
-    await initializeUserLocalStorage(FirebaseAuth.instance.currentUser!.uid);
+    // await initializeUserLocalStorage(FirebaseAuth.instance.currentUser!.uid);
 
     // At this stage, we have to sync first with the cloud, e.g. to download an existing user doc!
 
@@ -285,6 +285,9 @@ class _SplashScreenState extends State<SplashScreen>
       );
 
       // sync all non-open-ral methods with it's clouds on startup
+      // Upload pending photos first to avoid internal loops
+      await cloudSyncService.uploadPendingPhotos();
+
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
           syncStatusNotifier.value =
@@ -350,6 +353,8 @@ class _SplashScreenState extends State<SplashScreen>
       //User profile does not yet exist
       if (secureCommunicationEnabled) {
         //Do we get one from cloud?
+        // Upload pending photos first to avoid internal loops
+        await cloudSyncService.uploadPendingPhotos();
         await cloudSyncService.syncMethods("tracefoodchain.org");
         for (var doc in localStorage!.values) {
           if (doc['template'] != null &&
@@ -511,7 +516,8 @@ class _SplashScreenState extends State<SplashScreen>
     } else {
       // Navigiere basierend auf Benutzerrolle
       final userRole = appState.userRole?.toLowerCase() ?? '';
-      if (userRole == 'registrar') {
+      if (userRole == 'registrar'
+) {
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {
         Navigator.of(context).pushReplacement(

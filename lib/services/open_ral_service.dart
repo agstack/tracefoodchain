@@ -7,6 +7,7 @@ import 'package:trace_foodchain_app/helpers/deep_copy_map.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_path/json_path.dart';
@@ -259,6 +260,7 @@ Future<Map<String, dynamic>> setObjectMethod(Map<String, dynamic> objectMethod,
   if (objectMethod["needsSync"] != null) {
     if ((objectMethod["needsSync"] == true) &&
         (!connectivityResult.contains(ConnectivityResult.none))) {
+      await cloudSyncService.uploadPendingPhotos();
       await cloudSyncService.syncMethods('tracefoodchain.org');
     }
   }
@@ -651,13 +653,62 @@ void _convertSpecialTypes(dynamic obj) {
   }
 }
 
+// Helper-Funktion um sicherzustellen, dass appUserDoc initialisiert ist
+Future<Map<String, dynamic>?> _ensureAppUserDoc() async {
+  if (appUserDoc != null) {
+    return appUserDoc;
+  }
+
+  // Versuche appUserDoc aus localStorage zu laden
+  if (localStorage != null && FirebaseAuth.instance.currentUser != null) {
+    final currentUserUID = FirebaseAuth.instance.currentUser!.uid;
+
+    for (var doc in localStorage!.values) {
+      if (doc['template'] != null && doc['template']["RALType"] == "human") {
+        final doc2 = Map<String, dynamic>.from(doc);
+        if (getObjectMethodUID(doc2) == currentUserUID) {
+          appUserDoc = doc2;
+          debugPrint('appUserDoc successfully loaded from localStorage');
+          return appUserDoc;
+        }
+      }
+    }
+  }
+
+  // Wenn nicht in localStorage, versuche aus Firestore zu laden
+  if (FirebaseAuth.instance.currentUser != null) {
+    try {
+      final currentUserUID = FirebaseAuth.instance.currentUser!.uid;
+      final userDoc = await FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .doc(currentUserUID)
+          .get();
+
+      if (userDoc.exists) {
+        appUserDoc = Map<String, dynamic>.from(userDoc.data()!);
+        debugPrint('appUserDoc successfully loaded from Firestore');
+        return appUserDoc;
+      }
+    } catch (e) {
+      debugPrint('Error loading appUserDoc from Firestore: $e');
+    }
+  }
+
+  debugPrint('Warning: appUserDoc could not be loaded');
+  return null;
+}
+
 Future<String> generateDigitalSibling(Map<String, dynamic> newItem) async {
   if (getObjectMethodUID(newItem) == "") {
     setObjectMethodUID(newItem, const Uuid().v4());
   }
   final generateDSJob = await getOpenRALTemplate("generateDigitalSibling");
   //Add Executor
-  generateDSJob["executor"] = appUserDoc!;
+  final userDoc = await _ensureAppUserDoc();
+  if (userDoc == null) {
+    throw Exception('appUserDoc is null and could not be loaded');
+  }
+  generateDSJob["executor"] = userDoc;
   generateDSJob["methodState"] = "finished";
   //Step 1: get method an uuid (for method history entries)
   setObjectMethodUID(generateDSJob, const Uuid().v4());
@@ -704,7 +755,11 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion) async {
   //Get the changeObjectData job template
   final changeObjectDataJob = await getOpenRALTemplate("changeObjectData");
   //Add Executor
-  changeObjectDataJob["executor"] = appUserDoc!;
+  final userDoc = await _ensureAppUserDoc();
+  if (userDoc == null) {
+    throw Exception('appUserDoc is null and could not be loaded');
+  }
+  changeObjectDataJob["executor"] = userDoc;
   changeObjectDataJob["methodState"] = "finished";
   //get method an uuid (for method history entries)
   setObjectMethodUID(changeObjectDataJob, const Uuid().v4());
@@ -729,6 +784,8 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion) async {
   //Step 6: persist process
   await setObjectMethod(
       changeObjectDataJob, true, true); //including signing and syncing to cloud
+debugPrint(
+      'Object data change process using method ${getObjectMethodUID(changeObjectDataJob)} completed successfully');
 }
 
 Map<String, dynamic> addLinkedObjectRef(
@@ -1018,5 +1075,60 @@ class OpenRALService {
       debugPrint('Error getting user profile: $e');
       return {};
     }
+  }
+}
+
+/// Creates an openRAL image object with GPS coordinates and separate local/cloud URLs
+///
+/// [localPath] - Local file path of the image (stored in localDownloadURL)
+/// [position] - GPS position where photo was taken
+/// [imageName] - Name/description of the image
+/// Returns a Map representing the image object
+/// Note: downloadURL will be set to cloud URL after successful upload via CloudSyncService
+Future<Map<String, dynamic>> createImageObject({
+  required String localPath,
+  required Position? position,
+  required String imageName,
+}) async {
+  try {
+    // Get image template
+    Map<String, dynamic> imageObj = await getOpenRALTemplate('image');
+
+    // Set UID
+    final imageUID = uuid.v4();
+    setObjectMethodUID(imageObj, imageUID);
+
+    // Set name
+    imageObj['identity']['name'] = imageName;
+    imageObj['objectState'] = 'qcPending';
+
+    // Set localDownloadURL with local path (used for upload)
+    imageObj = setSpecificPropertyJSON(
+        imageObj, 'localDownloadURL', localPath, 'String');
+
+    // Keep downloadURL empty - will be set after successful cloud upload
+    imageObj = setSpecificPropertyJSON(imageObj, 'downloadURL', '', 'String');
+
+    // Set capture timestamp
+    final timestamp = DateTime.now().toUtc().toIso8601String();
+    imageObj = setSpecificPropertyJSON(
+        imageObj, 'captureTimestamp', timestamp, 'String');
+
+    // Set GPS coordinates if available
+    if (position != null) {
+      imageObj['currentGeolocation']['geoCoordinates'] = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+      };
+      debugPrint('Image GPS: ${position.latitude}, ${position.longitude}');
+    } else {
+      debugPrint('Warning: No GPS position for image $imageName');
+    }
+
+    debugPrint('Created image object: $imageUID for $imageName');
+    return imageObj;
+  } catch (e) {
+    debugPrint('Error creating image object: $e');
+    rethrow;
   }
 }

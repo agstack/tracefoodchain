@@ -126,7 +126,8 @@ Map<String, dynamic> initialObjectTemplatePlot = {
   },
   "specificProperties": [
     {"name": "area", "value": "", "unit": "ha"},
-    {"name": "boundaries", "value": "", "unit": "vector_list"},
+    {"name": "boundaries", "value": "", "unit": "geojson"},
+    {"name": "boundaryAccuracies", "value": "", "unit": "String"},
     {"name": "soil type", "value": "", "unit": "soil_type"},
     {"name": "soil value", "value": "", "unit": "soil_value_germany"}
   ],
@@ -694,6 +695,52 @@ Map<String, dynamic> initialObjectTemplateRoleTemplate = {
   "linkedObjectRef": []
 };
 
+Map<String, dynamic> initialObjectTemplateImage = {
+  "identity": {
+    "UID": "",
+    "name": "",
+    "siteTag": "",
+    "alternateIDs": [],
+    "alternateNames": []
+  },
+  "currentOwners": [],
+  "definition": {
+    "definitionText":
+        "A digital image file captured as photographic evidence or documentation, including metadata such as location and timestamp.",
+    "definitionURL": ""
+  },
+  "objectState": "qcPending",
+  "template": {
+    "RALType": "image",
+    "version": "1",
+    "objectStateTemplates": "generalObjectState"
+  },
+  "specificProperties": [
+    {"name": "localDownloadURL", "value": "", "unit": "String"},
+    {"name": "downloadURL", "value": "", "unit": "String"},
+    {"name": "captureTimestamp", "value": "", "unit": "String"},
+    {"name": "fileSize", "value": 0, "unit": "int"},
+    {"name": "imageFormat", "value": "", "unit": "String"}
+  ],
+  "currentGeolocation": {
+    "container": {"UID": "unknown"},
+    "postalAddress": {
+      "country": "",
+      "cityName": "",
+      "cityNumber": "",
+      "streetName": "",
+      "streetNumber": ""
+    },
+    "3WordCode": "unknown",
+    "geoCoordinates": {"longitude": 0.0, "latitude": 0.0},
+    "plusCode": "unknown"
+  },
+  "locationHistoryRef": [],
+  "ownerHistoryRef": [],
+  "methodHistoryRef": [],
+  "linkedObjectRef": []
+};
+
 List<Map<String, dynamic>> initialTemplates = [
   initialObjectTemplateFarm,
   initialObjectTemplateHuman,
@@ -704,6 +751,7 @@ List<Map<String, dynamic>> initialTemplates = [
   initialObjectTemplateBag,
   initialObjectTemplateBuilding,
   initialObjectTemplateTransportVehicle,
+  initialObjectTemplateImage,
   initialMethodTemplateHarvest,
   initialMethodTemplateChangeContainer,
   initialMethodTemplateChangeOwner,

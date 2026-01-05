@@ -1579,6 +1579,23 @@ class AppLocalizationsDe extends AppLocalizations {
       'Fehler beim Hochladen des Bildes. Bitte versuchen Sie es erneut.';
 
   @override
+  String get uploadingFile => 'Datei wird hochgeladen...';
+
+  @override
+  String uploadProgress(String progress) {
+    return '$progress% hochgeladen';
+  }
+
+  @override
+  String get uploadSuccess => 'Upload erfolgreich';
+
+  @override
+  String get uploadFailed => 'Upload fehlgeschlagen. Bitte erneut versuchen.';
+
+  @override
+  String get uploadCanceled => 'Upload abgebrochen';
+
+  @override
   String imageProcessingError(String error) {
     return 'Fehler beim Verarbeiten des Bildes: $error';
   }
@@ -1968,6 +1985,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get polygonPoints => 'Polygonpunkte';
 
   @override
+  String get gpsQualityAverage => 'GPS-Qualität (Durchschn.)';
+
+  @override
+  String get gpsQualityRange => 'GPS-Qualität (Bereich)';
+
+  @override
+  String get gpsQualityWarning =>
+      'Schlechte GPS-Qualität erkannt (>10m Genauigkeit)';
+
+  @override
+  String get gpsQualityLegend => 'GPS-Qualität';
+
+  @override
+  String get gpsQualityExcellent => 'Ausgezeichnet';
+
+  @override
+  String get gpsQualityGood => 'Gut';
+
+  @override
+  String get gpsQualityMedium => 'Mittel';
+
+  @override
+  String get gpsQualityPoor => 'Schlecht';
+
+  @override
   String get takeIDPhoto => 'Ausweis-Foto aufnehmen';
 
   @override
@@ -2058,7 +2100,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get retakeFieldPhoto => 'Feld-Foto erneut aufnehmen';
 
   @override
-  String get fieldPhotoRequired => 'Feld-Foto wird dringend empfohlen';
+  String get fieldPhotoRequired =>
+      'Ein Feld-Foto ist erforderlich, um die Registrierung abzuschließen';
 
   @override
   String get fieldPhotoTaken => 'Feld-Foto erfolgreich aufgenommen';

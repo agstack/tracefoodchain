@@ -1587,6 +1587,23 @@ class AppLocalizationsEs extends AppLocalizations {
       'Error al subir la imagen. Por favor, inténtalo de nuevo.';
 
   @override
+  String get uploadingFile => 'Subiendo archivo...';
+
+  @override
+  String uploadProgress(String progress) {
+    return '$progress% subido';
+  }
+
+  @override
+  String get uploadSuccess => 'Subida exitosa';
+
+  @override
+  String get uploadFailed => 'Subida fallida. Por favor, inténtalo de nuevo.';
+
+  @override
+  String get uploadCanceled => 'Subida cancelada';
+
+  @override
   String imageProcessingError(String error) {
     return 'Error al procesar la imagen: $error';
   }
@@ -1975,6 +1992,31 @@ class AppLocalizationsEs extends AppLocalizations {
   String get polygonPoints => 'Puntos del Polígono';
 
   @override
+  String get gpsQualityAverage => 'Calidad GPS (Prom.)';
+
+  @override
+  String get gpsQualityRange => 'Calidad GPS (Rango)';
+
+  @override
+  String get gpsQualityWarning =>
+      'Calidad GPS pobre detectada (precisión >10m)';
+
+  @override
+  String get gpsQualityLegend => 'Calidad GPS';
+
+  @override
+  String get gpsQualityExcellent => 'Excelente';
+
+  @override
+  String get gpsQualityGood => 'Buena';
+
+  @override
+  String get gpsQualityMedium => 'Media';
+
+  @override
+  String get gpsQualityPoor => 'Pobre';
+
+  @override
   String get takeIDPhoto => 'Tomar Foto de Identificación';
 
   @override
@@ -2069,7 +2111,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fieldPhotoRequired =>
-      'Se recomienda encarecidamente la foto del campo';
+      'Se requiere una foto del campo para completar el registro';
 
   @override
   String get fieldPhotoTaken => 'Foto del campo tomada exitosamente';

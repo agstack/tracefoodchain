@@ -45,6 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (appState.isConnected && appState.isAuthenticated) {
         isSyncing.value = true;
 
+        // Upload pending photos first to avoid internal loops
+        await cloudSyncService.uploadPendingPhotos();
+
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
             final l10n = AppLocalizations.of(context)!;
@@ -75,6 +78,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     if (appState.isConnected && appState.isAuthenticated) {
       isSyncing.value = true;
+
+      // Upload pending photos first to avoid internal loops
+      await cloudSyncService.uploadPendingPhotos();
 
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
@@ -185,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return Container(
                   width: double.infinity,
-                  color:  const Color(0xFF35DB00),
+                  color: const Color(0xFF35DB00),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
                     vertical: 12.0,

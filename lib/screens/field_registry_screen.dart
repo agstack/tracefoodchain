@@ -863,8 +863,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             final coordinates_geojson = json.encode({
               "coordinates": _convertWKTToGeoJSON(coordinates),
             });
-            setSpecificPropertyJSON(newField, "boundaries",
-                json.encode(coordinates_geojson), "geoJSON");
+            setSpecificPropertyJSON(
+                newField, "boundaries", coordinates_geojson, "String");
             //Registrator UID => currentOwners
             newField["currentOwners"] = [
               {
