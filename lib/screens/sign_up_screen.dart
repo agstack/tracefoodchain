@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../screens/user_profile_setup_screen.dart';
 import '../services/open_ral_service.dart';
 import '../main.dart'; // Für appUserDoc
+import '../constants.dart'; // Für APP_VERSION
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -218,6 +219,17 @@ class _AuthScreenState extends State<AuthScreen> {
                     top: 16,
                     left: 16,
                     child: LanguageSelector(),
+                  ),
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Text(
+                      APP_VERSION,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
                   ),
                   Center(
                     child: SingleChildScrollView(

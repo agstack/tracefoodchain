@@ -830,42 +830,6 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       });
       debugPrint('Registrar added to field');
 
-//************ Update Farm mit neuem Field-Link ZUERST (bevor Methode erstellt wird) ***
-//ToDo: changed Farm needs persistence via changeObject Method!!!
-      debugPrint('Updating farm with field link');
-      Map<String, dynamic> updatedFarm =
-          Map<String, dynamic>.from(_selectedFarm!);
-      updatedFarm['linkedObjectRef'].add({
-        'UID': fieldUID,
-        'RALType': 'field',
-        'role': 'parcel', //TODo: Check if correct
-      });
-
-      // Aktualisiere totalAreaHa der Farm
-      final currentAreaRaw =
-          getSpecificPropertyfromJSON(updatedFarm, 'totalAreaHa');
-      debugPrint(
-          'Current farm area raw: $currentAreaRaw (type: ${currentAreaRaw.runtimeType})');
-
-      // Parse current area - handle "-no data found-" string
-      double currentArea = 0.0;
-      if (currentAreaRaw != null && currentAreaRaw is num) {
-        currentArea = currentAreaRaw.toDouble();
-      } else if (currentAreaRaw is String &&
-          currentAreaRaw != '-no data found-') {
-        currentArea = double.tryParse(currentAreaRaw) ?? 0.0;
-      }
-
-      debugPrint('Current farm area parsed: $currentArea, adding: $area');
-      final newTotalArea = currentArea + area;
-      debugPrint('New total area: $newTotalArea');
-
-      updatedFarm = setSpecificPropertyJSON(
-          updatedFarm, 'totalAreaHa', newTotalArea, 'double');
-      debugPrint('Farm area updated');
-
-//ToDo: ChangeObject Methode aufrufen um Farm zu speichern
-
       // Erstelle generateDigitalSibling Methode (EXAKTE SEQUENZ WIE IN STEPPER_FIRST_SALE)
       debugPrint('Creating generateDigitalSibling method for field');
       Map<String, dynamic> fieldRegisterMethod =
@@ -938,6 +902,45 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
         debugPrint(
             'Field Image method ${getObjectMethodUID(fieldImageMethod)} saved and signed successfully');
       }
+
+//************ Update Farm with new Field Link ***
+
+      debugPrint('Updating farm with field link');
+      Map<String, dynamic> updatedFarm =
+          Map<String, dynamic>.from(_selectedFarm!);
+      updatedFarm['linkedObjectRef'].add({
+        'UID': fieldUID,
+        'RALType': 'field',
+        'role': 'parcel', 
+      });
+
+      // Aktualisiere totalAreaHa der Farm
+      final currentAreaRaw =
+          getSpecificPropertyfromJSON(updatedFarm, 'totalAreaHa');
+      debugPrint(
+          'Current farm area raw: $currentAreaRaw (type: ${currentAreaRaw.runtimeType})');
+
+      // Parse current area - handle "-no data found-" string
+      double currentArea = 0.0;
+      if (currentAreaRaw != null && currentAreaRaw is num) {
+        currentArea = currentAreaRaw.toDouble();
+      } else if (currentAreaRaw is String &&
+          currentAreaRaw != '-no data found-') {
+        currentArea = double.tryParse(currentAreaRaw) ?? 0.0;
+      }
+
+      debugPrint('Current farm area parsed: $currentArea, adding: $area');
+      final newTotalArea = currentArea + area;
+      debugPrint('New total area: $newTotalArea');
+
+      updatedFarm = setSpecificPropertyJSON(
+          updatedFarm, 'totalAreaHa', newTotalArea, 'double');
+      debugPrint('Farm area updated');
+
+//ChangeObject Methode aufrufen um Farm zu speichern
+      await changeObjectData(updatedFarm);
+      debugPrint('Farm updated with new field link and area');
+
 //**************************************************************** */
 
       // UI aktualisieren
