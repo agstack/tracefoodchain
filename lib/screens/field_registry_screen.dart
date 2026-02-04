@@ -564,9 +564,21 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         debugPrint('Trennzeichen erkannt: Komma (,)');
       }
 
+      // Erkenne Zeilenendezeichen automatisch (Windows: \r\n, Mac/Unix: \n, alte Mac: \r)
+      String detectedEol = '\n';
+      if (csvContent.contains('\r\n')) {
+        detectedEol = '\r\n';
+        debugPrint('Zeilenendezeichen erkannt: \\r\\n (Windows)');
+      } else if (csvContent.contains('\r')) {
+        detectedEol = '\r';
+        debugPrint('Zeilenendezeichen erkannt: \\r (alte Mac)');
+      } else {
+        debugPrint('Zeilenendezeichen erkannt: \\n (Unix/Mac)');
+      }
+
       List<List<dynamic>> csvData = CsvToListConverter(
         fieldDelimiter: fieldDelimiter,
-        eol: '\n',
+        eol: detectedEol,
       ).convert(csvContent);
 
       debugPrint(
@@ -845,7 +857,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         try {
           final responseData =
               jsonDecode(registerResponse.body) as Map<String, dynamic>;
-          final extractedGeoId = responseData['geoid'] as String?;
+          // Die API gibt "Geo Id" (mit Leerzeichen und Großbuchstaben) zurück
+          final extractedGeoId = responseData['Geo Id'] as String?;
 
           if (extractedGeoId != null) {
             geoId = extractedGeoId;
@@ -874,7 +887,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             final newFieldUID = await generateDigitalSibling(newField);
           } else {
             // GeoID-Extraktion fehlgeschlagen
-            return ('registrationError: Could not extract geoID from response: No geoID in response');
+            return ('registrationError: Could not extract geoID from response: No geoID in response. Response body: ${registerResponse.body}');
           }
         } catch (e) {
           await _showRegistrationResult(
