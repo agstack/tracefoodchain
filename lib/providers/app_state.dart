@@ -62,8 +62,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setUserRole(String role) async {
+    print('👤 [AppState] setUserRole aufgerufen');
+    print('👤 [AppState] - Alte Rolle: $_userRole');
+    print('👤 [AppState] - Neue Rolle: $role');
     _userRole = role;
     notifyListeners();
+    print('👤 [AppState] - Rolle gesetzt und notifyListeners() aufgerufen');
   }
 
   void setUserId(String id) {
@@ -165,6 +169,10 @@ class AppState extends ChangeNotifier {
 
         // Lade Benutzerrolle
         if (appUserDoc != null) {
+          print('🔍 [AppState.checkAuthStatus] Lade Benutzerrolle');
+          print(
+              '🔍 [AppState.checkAuthStatus] - appUserDoc vorhanden: ${appUserDoc != null}');
+          print('🔍 [AppState.checkAuthStatus] - isConnected: $_isConnected');
           String finalRole = '';
 
           if (_isConnected) {
@@ -174,21 +182,28 @@ class AppState extends ChangeNotifier {
               final cloudRole = await roleService.getCurrentUserRoleFromCloud();
 
               if (cloudRole.isNotEmpty) {
+                print(
+                    '✅ [AppState.checkAuthStatus] Cloud-Rolle gefunden: $cloudRole');
                 finalRole = cloudRole;
 
                 // Aktualisiere das lokale appUserDoc mit der Cloud-Rolle
                 if (cloudRole !=
                     getSpecificPropertyfromJSON(appUserDoc!, "userRole")) {
+                  print(
+                      '🔄 [AppState.checkAuthStatus] Aktualisiere lokale Rolle von ${getSpecificPropertyfromJSON(appUserDoc!, "userRole")} auf $cloudRole');
                   appUserDoc = setSpecificPropertyJSON(
                       appUserDoc!, "userRole", cloudRole, "String");
                 }
               } else {
                 // Fallback auf lokale Rolle
+                print(
+                    '⚠️ [AppState.checkAuthStatus] Keine Cloud-Rolle, nutze lokale Rolle');
                 final localRole =
                     getSpecificPropertyfromJSON(appUserDoc!, "userRole");
                 finalRole = (localRole != "" && localRole != "-no data found-")
                     ? localRole
                     : '';
+                print('📋 [AppState.checkAuthStatus] Lokale Rolle: $finalRole');
               }
             } catch (e) {
               final localRole =
@@ -199,15 +214,22 @@ class AppState extends ChangeNotifier {
             }
           } else {
             // Offline - nutze lokale Rolle
+            print('📴 [AppState.checkAuthStatus] Offline - nutze lokale Rolle');
             final localRole =
                 getSpecificPropertyfromJSON(appUserDoc!, "userRole");
             finalRole = (localRole != "" && localRole != "-no data found-")
                 ? localRole
                 : '';
+            print(
+                '📋 [AppState.checkAuthStatus] Lokale Rolle (offline): $finalRole');
           }
 
           if (finalRole.isNotEmpty) {
+            print(
+                '✅ [AppState.checkAuthStatus] Setze finale Rolle: $finalRole');
             await setUserRole(finalRole);
+          } else {
+            print('❌ [AppState.checkAuthStatus] KEINE Rolle gefunden!');
           }
         }
       }

@@ -83,12 +83,16 @@ class RoleManagementService {
 
   /// Lädt die aktuellste Rolle des aktuellen Users aus der Cloud
   Future<String> getCurrentUserRoleFromCloud() async {
+    print('☁️ [RoleManagementService] getCurrentUserRoleFromCloud aufgerufen');
     if (!await isOnline()) {
+      print('📴 [RoleManagementService] Offline - nutze lokale Rolle');
       return getCurrentUserRole(); // Fallback auf lokale Rolle
     }
 
     final currentUserUID = FirebaseAuth.instance.currentUser?.uid;
+    print('🆔 [RoleManagementService] currentUserUID: $currentUserUID');
     if (currentUserUID == null) {
+      print('❌ [RoleManagementService] Kein currentUserUID!');
       return '';
     }
 
@@ -99,9 +103,11 @@ class RoleManagementService {
           .get();
 
       if (userDoc.exists) {
+        print('✅ [RoleManagementService] User-Dokument in Cloud gefunden');
         final userData = userDoc.data()!;
         final role = getSpecificPropertyfromJSON(userData, "userRole");
         final finalRole = (role != "" && role != "-no data found-") ? role : '';
+        print('📋 [RoleManagementService] Cloud-Rolle: $finalRole');
 
         // Aktualisiere das lokale appUserDoc falls es nicht synchron ist
         if (appUserDoc != null) {
@@ -161,12 +167,15 @@ class RoleManagementService {
 
   /// Holt die aktuelle Rolle des eingeloggten Users
   String getCurrentUserRole() {
+    print('📖 [RoleManagementService] getCurrentUserRole aufgerufen');
     if (appUserDoc == null) {
+      print('❌ [RoleManagementService] appUserDoc ist null!');
       return '';
     }
 
     final role = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
     final finalRole = (role != "" && role != "-no data found-") ? role : '';
+    print('📋 [RoleManagementService] Lokale Rolle aus appUserDoc: $finalRole');
 
     return finalRole;
   }

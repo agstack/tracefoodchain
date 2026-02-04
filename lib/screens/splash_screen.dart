@@ -423,6 +423,9 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     //Get user role - synchronize with cloud first if connected
+    print('🚀 [SplashScreen] Ermittle Benutzerrolle');
+    print('🚀 [SplashScreen] - isConnected: ${appState.isConnected}');
+    print('🚀 [SplashScreen] - appUserDoc vorhanden: ${appUserDoc != null}');
     String finalRole = '';
 
     if (appState.isConnected) {
@@ -432,21 +435,27 @@ class _SplashScreenState extends State<SplashScreen>
         final cloudRole = await roleService.getCurrentUserRoleFromCloud();
 
         if (cloudRole.isNotEmpty) {
+          print('✅ [SplashScreen] Cloud-Rolle gefunden: $cloudRole');
           finalRole = cloudRole;
 
           // Aktualisiere das lokale appUserDoc mit der Cloud-Rolle
           if (cloudRole !=
               getSpecificPropertyfromJSON(appUserDoc!, "userRole")) {
+            print(
+                '🔄 [SplashScreen] Aktualisiere lokale Rolle auf Cloud-Rolle');
             appUserDoc = setSpecificPropertyJSON(
                 appUserDoc!, "userRole", cloudRole, "String");
           }
         } else {
           // Fallback auf lokale Rolle
+          print(
+              '⚠️ [SplashScreen] Keine Cloud-Rolle, Fallback auf lokale Rolle');
           final localRole =
               getSpecificPropertyfromJSON(appUserDoc!, "userRole");
           finalRole = (localRole != "" && localRole != "-no data found-")
               ? localRole
               : '';
+          print('📋 [SplashScreen] Lokale Rolle: $finalRole');
         }
       } catch (e) {
         final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
@@ -456,20 +465,26 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } else {
       // Offline - nutze lokale Rolle
+      print('📴 [SplashScreen] Offline - nutze lokale Rolle');
       final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
       finalRole =
           (localRole != "" && localRole != "-no data found-") ? localRole : '';
+      print('📋 [SplashScreen] Lokale Rolle (offline): $finalRole');
     }
 
     if (finalRole.isNotEmpty) {
+      print('✅ [SplashScreen] Setze finale Rolle in AppState: $finalRole');
       appState.setUserRole(finalRole);
     } else {
       // Neuer User ohne Rolle - setze Standard-Rolle "Trader"
+      print(
+          '⚠️ [SplashScreen] Keine Rolle gefunden - setze Standard-Rolle "Trader"');
       final newUser =
           setSpecificPropertyJSON(appUserDoc!, "userRole", 'Trader', "String");
       await changeObjectData(newUser); // Nutze changeObjectData für Logging
       appState.setUserRole("Trader");
       finalRole = "Trader";
+      print('✅ [SplashScreen] Standard-Rolle "Trader" gesetzt');
     }
 
     // Invalidiere Permission-Cache nach Rollenupdate
@@ -516,8 +531,7 @@ class _SplashScreenState extends State<SplashScreen>
     } else {
       // Navigiere basierend auf Benutzerrolle
       final userRole = appState.userRole?.toLowerCase() ?? '';
-      if (userRole == 'registrar'
-) {
+      if (userRole == 'registrar') {
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {
         Navigator.of(context).pushReplacement(

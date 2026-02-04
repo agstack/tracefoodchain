@@ -52,11 +52,27 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
     final appState = Provider.of<AppState>(context);
     final l10n = AppLocalizations.of(context)!;
 
+    // DEBUG: Build-Methode wird aufgerufen
+    print('🔧 [SpeedDial] build() aufgerufen');
+    print('🔧 [SpeedDial] userRole: ${appState.userRole}');
+    print('🔧 [SpeedDial] isConnected: ${appState.isConnected}');
+    print('🔧 [SpeedDial] displayContext: ${widget.displayContext}');
+
     return ValueListenableBuilder(
         valueListenable: rebuildSpeedDial,
         builder: (context, bool value, child) {
-          if (!mounted) return Container();
+          if (!mounted) {
+            print(
+                '⚠️ [SpeedDial] Widget nicht mounted, gebe leeren Container zurück');
+            return Container();
+          }
           rebuildSpeedDial.value = false;
+
+          final children = _getSpeedDialChildren(appState.userRole,
+              appState.isConnected, widget.displayContext, l10n);
+
+          print(
+              '🔧 [SpeedDial] Anzahl der Menüeinträge (ohne Hilfe): ${children.length}');
           return SpeedDial(
             backgroundColor: const Color(0xFF35DB00),
             foregroundColor: Colors.white,
@@ -75,8 +91,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
                 labelStyle: const TextStyle(color: Colors.black54),
                 onTap: _launchHelp,
               ),
-              ...(_getSpeedDialChildren(appState.userRole, appState.isConnected,
-                  widget.displayContext, l10n)),
+              ...children,
             ],
           );
         });
@@ -84,23 +99,66 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
 
   List<SpeedDialChild> _getSpeedDialChildren(String? userRole,
       bool? isConnected, String displayContext, AppLocalizations l10n) {
+    print('📋 [SpeedDial] _getSpeedDialChildren aufgerufen');
+    print('📋 [SpeedDial] - userRole: "$userRole"');
+    print('📋 [SpeedDial] - userRole Typ: ${userRole.runtimeType}');
+    print('📋 [SpeedDial] - userRole Länge: ${userRole?.length}');
+    print('📋 [SpeedDial] - isConnected: $isConnected');
+    print('📋 [SpeedDial] - displayContext: $displayContext');
+    print('📋 [SpeedDial] ');
+    print('📋 [SpeedDial] Unterstützte Rollen im Switch:');
+    print('📋 [SpeedDial]   - "Farmer"');
+    print('📋 [SpeedDial]   - "Farm Manager"');
+    print('📋 [SpeedDial]   - "Trader"');
+    print('📋 [SpeedDial]   - "Processor"');
+    print('📋 [SpeedDial]   - "Importer"');
+    print('📋 [SpeedDial] ');
+
+    // String-Vergleich Tests
+    if (userRole != null) {
+      print('📋 [SpeedDial] String-Vergleiche:');
+      print('📋 [SpeedDial]   userRole == "Trader": ${userRole == "Trader"}');
+      print('📋 [SpeedDial]   userRole == "Farmer": ${userRole == "Farmer"}');
+      print(
+          '📋 [SpeedDial]   userRole == "Processor": ${userRole == "Processor"}');
+      print(
+          '📋 [SpeedDial]   userRole == "Importer": ${userRole == "Importer"}');
+      print(
+          '📋 [SpeedDial]   userRole.trim() == "Trader": ${userRole.trim() == "Trader"}');
+      print('📋 [SpeedDial] ');
+    }
+
     switch (userRole) {
       case 'Farmer':
+        print('✅ [SpeedDial] Rolle: Farmer erkannt');
         return _getFarmerSpeedDialChildren(displayContext, l10n, isConnected!);
       case 'Farm Manager':
+        print('✅ [SpeedDial] Rolle: Farm Manager erkannt');
         return _getFarmManagerSpeedDialChildren(
             displayContext, l10n, isConnected!);
       case 'Trader':
+        print('✅ [SpeedDial] Rolle: Trader erkannt');
+        return _getTraderSpeedDialChildren(displayContext, l10n, isConnected!);
+      case 'SUPERADMIN':
+        print('✅ [SpeedDial] Rolle: SUPERADMIN erkannt (behandelt wie Trader)');
+        return _getTraderSpeedDialChildren(displayContext, l10n, isConnected!);
+      case 'tfcAdmin':
+        print('✅ [SpeedDial] Rolle: tfcAdmin erkannt (behandelt wie Trader)');
         return _getTraderSpeedDialChildren(displayContext, l10n, isConnected!);
 
       case 'Processor':
+        print('✅ [SpeedDial] Rolle: Processor erkannt');
         return _getProcessorSpeedDialChildren(
             displayContext, l10n, isConnected!);
       case 'Importer':
+        print('✅ [SpeedDial] Rolle: Importer erkannt');
         return _getImporterSpeedDialChildren(
             displayContext, l10n, isConnected!);
       //ToDo Add more cases for other roles
       default:
+        print(
+            '❌ [SpeedDial] KEINE passende Rolle gefunden! userRole war: "$userRole"');
+        print('❌ [SpeedDial] Gebe leere Liste zurück');
         return [];
     }
   }
@@ -109,6 +167,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
 
   List<SpeedDialChild> _getFarmerSpeedDialChildren(
       String displayContext, AppLocalizations l10n, bool isConnected) {
+    print('🌾 [Farmer] Erstelle Farmer-Menüeinträge');
     return [
       SpeedDialChild(
         child: const Icon(Icons.agriculture),
@@ -132,6 +191,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
   //!########################## FARM MANAGER OPTIONS ####################
   List<SpeedDialChild> _getFarmManagerSpeedDialChildren(
       String displayContext, AppLocalizations l10n, bool isConnected) {
+    print('👨‍🌾 [FarmManager] Erstelle Farm Manager-Menüeinträge');
     return [
       SpeedDialChild(
         child: const Icon(Icons.person_add),
@@ -155,7 +215,11 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
   //!########################## TRADER OPTIONS ####################
   List<SpeedDialChild> _getTraderSpeedDialChildren(
       String displayContext, AppLocalizations l10n, bool isConnected) {
-    return [
+    print('🏪 [Trader] Erstelle Trader-Menüeinträge');
+    print('🏪 [Trader] - batchSalePossible: $batchSalePossible');
+    print('🏪 [Trader] - selectedItems.length: ${selectedItems.length}');
+
+    final items = [
       SpeedDialChild(
         child: const Icon(Icons.shopping_basket),
         label: l10n.buyCoffee,
@@ -184,13 +248,19 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
         },
       )
     ];
+
+    print('🏪 [Trader] Anzahl erstellter Menüeinträge: ${items.length}');
+    return items;
   }
 
 //!########################## PROCESSOR OPTIONS ####################
 
   List<SpeedDialChild> _getProcessorSpeedDialChildren(
       String displayContext, AppLocalizations l10n, bool isConnected) {
-    return [
+    print('🏭 [Processor] Erstelle Processor-Menüeinträge');
+    print('🏭 [Processor] - batchSalePossible: $batchSalePossible');
+
+    final items = [
       SpeedDialChild(
         child: const Icon(Icons.shopping_basket),
         label: l10n.buyCoffee,
@@ -218,13 +288,25 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
         },
       ),
     ];
+
+    print('🏭 [Processor] Anzahl erstellter Menüeinträge: ${items.length}');
+    return items;
   }
 
 //!########################## IMPORTER OPTIONS ####################
 
   List<SpeedDialChild> _getImporterSpeedDialChildren(
       String displayContext, AppLocalizations l10n, bool isConnected) {
+    print('🚢 [Importer] Erstelle Importer-Menüeinträge');
+    print('🚢 [Importer] - displayContext: $displayContext');
+    print('🚢 [Importer] - isConnected: $isConnected');
+    print(
+        '🚢 [Importer] - Bedingung (displayContext == "action"): ${displayContext == "action"}');
+    print(
+        '🚢 [Importer] - Bedingung erfüllt? ${displayContext == "action" && isConnected}');
+
     if (displayContext == 'action' && isConnected) {
+      print('✅ [Importer] Bedingungen erfüllt, erstelle Menüeinträge');
       return [
         SpeedDialChild(
           child: const Icon(Icons.shopping_basket),
@@ -236,6 +318,14 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
         ),
       ];
     } else {
+      print('❌ [Importer] Bedingungen NICHT erfüllt!');
+      if (displayContext != 'action') {
+        print('   ❌ displayContext ist "$displayContext" statt "action"');
+      }
+      if (!isConnected) {
+        print('   ❌ isConnected ist false');
+      }
+      print('   ⚠️ Gebe LEERE LISTE zurück!');
       return [];
     }
   }
@@ -297,7 +387,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
 
   //                           // await fshowInfoDialog(
   //                           //     context, "Not implemented yet.");
-  //                           // 
+  //                           //
   //                         },
   //                       ),
   //                     ),
@@ -311,7 +401,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
   //                 //   onTap: () {
   //                 //     Navigator.of(context).pop();
   //                 //     // TODO: Implement device-to-cloud process
-  //                 //     
+  //                 //
   //                 //   },
   //                 // ),
   //               ],
@@ -413,7 +503,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
         return AddEmptyItemDialog(
           onItemAdded: (Map<String, dynamic> newItem) {
             // Handle the newly added item
-            
+
             repaintContainerList.value = true;
           },
         );
