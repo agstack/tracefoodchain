@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/open_ral_service.dart';
 import '../l10n/app_localizations.dart';
+import '../repositories/roles.dart';
 import 'user_profile_setup_screen.dart';
 
 class UserProfileViewScreen extends StatefulWidget {
@@ -56,7 +57,12 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.profileSetup),
+        backgroundColor: const Color(0xFF35DB00),
+        title: Text(
+          l10n.profileSetup,
+          style: const TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -108,7 +114,10 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _navigateToEditProfile,
                       icon: const Icon(Icons.edit),
-                      label: Text(l10n.editProfile),
+                      label: Text(
+                        l10n.editProfile,
+                        style: const TextStyle(color: Colors.black),
+                      ),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -148,6 +157,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
             fullName,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
             textAlign: TextAlign.center,
           ),
@@ -158,6 +168,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   Widget _buildInfoCard(
       {required String title, required List<Widget> children}) {
     return Card(
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -167,6 +178,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
             ),
             const SizedBox(height: 16),
@@ -188,7 +200,10 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
             flex: 2,
             child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
           ),
           Expanded(
@@ -198,7 +213,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                   ? AppLocalizations.of(context)!.notSpecified
                   : value,
               style: TextStyle(
-                color: value.isEmpty ? Colors.grey[600] : null,
+                color: value.isEmpty ? Colors.grey[600] : Colors.black,
               ),
             ),
           ),
@@ -208,21 +223,17 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   }
 
   String _getRoleDisplayName(String? role) {
-    if (role == null || role.isEmpty)
-      return AppLocalizations.of(context)!.notSpecified;
+    final l10n = AppLocalizations.of(context)!;
+    if (role == null || role.isEmpty) return l10n.notSpecified;
 
-    // Map English role names to German display names
-    switch (role) {
-      case 'Farmer':
-        return 'Landwirt';
-      case 'Trader':
-        return 'Händler';
-      case 'Processor':
-        return 'Verarbeiter';
-      case 'Importer':
-        return 'Importeur';
-      default:
-        return role;
-    }
+    final roleObject = roles.firstWhere(
+      (r) => r.key == role,
+      orElse: () => Role(
+        key: role,
+        icon: Icons.work,
+        getLocalizedName: (_) => role,
+      ),
+    );
+    return roleObject.getLocalizedName(l10n);
   }
 }

@@ -217,8 +217,12 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text(widget.isFromSettings ? l10n.editProfile : l10n.profileSetup),
+        backgroundColor: const Color(0xFF35DB00),
+        title: Text(
+          widget.isFromSettings ? l10n.editProfile : l10n.profileSetup,
+          style: const TextStyle(color: Colors.black),
+        ),
+        iconTheme: const IconThemeData(color: Colors.black),
         automaticallyImplyLeading:
             widget.isFromSettings, // Back-Button nur in Settings
       ),
@@ -232,6 +236,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
               // Welcome text
               if (!widget.isFromSettings)
                 Card(
+                  color: Colors.white,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -241,13 +246,19 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                         const SizedBox(height: 16),
                         Text(
                           l10n.welcomeCompleteProfile,
-                          style: Theme.of(context).textTheme.headlineSmall,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(color: Colors.black),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           l10n.profileSetupDescription,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Colors.black87),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -288,14 +299,16 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                           const SizedBox(width: 12),
-                          Text(l10n.saving),
+                          Text(l10n.saving,
+                              style: const TextStyle(color: Colors.black)),
                         ],
                       )
                     : Text(
                         widget.isFromSettings
                             ? l10n.saveChanges
                             : l10n.completeProfile,
-                        style: const TextStyle(fontSize: 16),
+                        style:
+                            const TextStyle(fontSize: 16, color: Colors.black),
                       ),
               ),
               const SizedBox(height: 16),
@@ -304,7 +317,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
               if (!widget.isFromSettings)
                 TextButton(
                   onPressed: _isSaving ? null : _skipForNow,
-                  child: Text(l10n.skipForNow),
+                  child: Text(
+                    l10n.skipForNow,
+                    style: const TextStyle(color: Colors.black87),
+                  ),
                 ),
             ],
           ),
@@ -315,6 +331,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
 
   Widget _buildAvatarSection(AppLocalizations l10n) {
     return Card(
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -322,7 +339,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           children: [
             Text(
               l10n.profilePicture,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: Colors.black),
             ),
             const SizedBox(height: 16),
             Center(
@@ -361,7 +381,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
             Center(
               child: Text(
                 l10n.tapToAddPhoto,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.black87),
               ),
             ),
           ],
@@ -372,6 +395,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
 
   Widget _buildPersonalInfoSection(AppLocalizations l10n) {
     return Card(
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -379,14 +403,19 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           children: [
             Text(
               l10n.personalInformation,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: Colors.black),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _firstNameController,
+              style: const TextStyle(color: Colors.black),
               decoration: InputDecoration(
                 labelText: l10n.firstName,
-                prefixIcon: const Icon(Icons.person),
+                labelStyle: const TextStyle(color: Colors.black87),
+                prefixIcon: const Icon(Icons.person, color: Colors.black87),
                 border: const OutlineInputBorder(),
               ),
               validator: (value) {
@@ -399,9 +428,12 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _lastNameController,
+              style: const TextStyle(color: Colors.black),
               decoration: InputDecoration(
                 labelText: l10n.lastName,
-                prefixIcon: const Icon(Icons.person_outline),
+                labelStyle: const TextStyle(color: Colors.black87),
+                prefixIcon:
+                    const Icon(Icons.person_outline, color: Colors.black87),
                 border: const OutlineInputBorder(),
               ),
               validator: (value) {
@@ -419,6 +451,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
 
   Widget _buildCountrySection(AppLocalizations l10n) {
     return Card(
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -426,7 +459,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           children: [
             Text(
               l10n.nationality,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: Colors.black),
             ),
             const SizedBox(height: 16),
             InkWell(
@@ -440,7 +476,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.flag),
+                    const Icon(Icons.flag, color: Colors.black87),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -452,7 +488,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                         ),
                       ),
                     ),
-                    const Icon(Icons.arrow_drop_down),
+                    const Icon(Icons.arrow_drop_down, color: Colors.black87),
                   ],
                 ),
               ),
@@ -465,6 +501,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
 
   Widget _buildRoleSection(AppLocalizations l10n) {
     return Card(
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -472,7 +509,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           children: [
             Text(
               _currentUserRole != null ? l10n.role : l10n.selectRole,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: Colors.black),
             ),
             const SizedBox(height: 16),
 
@@ -499,12 +539,13 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
+                              color: Colors.black,
                             ),
                           ),
                           Text(
                             l10n.yourAssignedRole,
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Colors.grey[700],
                               fontSize: 12,
                             ),
                           ),
@@ -537,6 +578,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
+                              color: Colors.black,
                             ),
                           ),
                           Text(
@@ -569,7 +611,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                           Expanded(
                             child: Text(
                               l10n.rolesLoading,
-                              style: TextStyle(color: Colors.grey[600]),
+                              style: TextStyle(color: Colors.grey[700]),
                             ),
                           ),
                         ],
@@ -579,11 +621,16 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                       children: [
                         DropdownButtonFormField<String>(
                           value: _selectedRole,
+                          style: const TextStyle(color: Colors.black),
+                          dropdownColor: Colors.white,
                           decoration: InputDecoration(
                             labelText: l10n.requestDesiredRole,
-                            prefixIcon: const Icon(Icons.work),
+                            labelStyle: const TextStyle(color: Colors.black87),
+                            prefixIcon:
+                                const Icon(Icons.work, color: Colors.black87),
                             border: const OutlineInputBorder(),
                             helperText: l10n.roleRequestMustBeApproved,
+                            helperStyle: const TextStyle(color: Colors.black54),
                           ),
                           items: _availableRoles.map((role) {
                             final roleObject = roles.firstWhere(
@@ -594,9 +641,12 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
                               value: role,
                               child: Row(
                                 children: [
-                                  Icon(roleObject.icon),
+                                  Icon(roleObject.icon, color: Colors.black87),
                                   const SizedBox(width: 8),
-                                  Text(roleObject.getLocalizedName(l10n)),
+                                  Text(
+                                    roleObject.getLocalizedName(l10n),
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
                                 ],
                               ),
                             );
@@ -785,7 +835,10 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(
+            message,
+            style: const TextStyle(color: Colors.white),
+          ),
           backgroundColor: Colors.red,
         ),
       );
