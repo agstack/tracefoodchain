@@ -13,6 +13,7 @@ import '../services/open_ral_service.dart';
 import '../services/firebase_storage_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
+import '../repositories/honduras_specifics.dart';
 
 /// Multi-Step Stepper für die Registrierung von Farmer, Farm und Feldern
 /// Speichert alle Daten mit objectState "qcPending" und verwendet generateDigitalSibling
@@ -45,6 +46,9 @@ class _StepperRegistrarRegistrationState
   final TextEditingController _farmCityController = TextEditingController();
   final TextEditingController _farmStateController = TextEditingController();
   final TextEditingController _farmEmailController = TextEditingController();
+  final TextEditingController _farmEstimatedAreaController =
+      TextEditingController();
+  String _selectedAreaUnit = 'ha';
 
   // Position cache
   Position? _currentPosition;
@@ -378,6 +382,22 @@ class _StepperRegistrarRegistrationState
       debugPrint('Setting farm specific properties...');
       farm = setSpecificPropertyJSON(farm, 'farmerCount', 1, 'int');
       debugPrint('farmerCount set');
+
+      if (_farmEstimatedAreaController.text.isNotEmpty) {
+        final rawValue = double.tryParse(_farmEstimatedAreaController.text);
+        if (rawValue != null) {
+          final unitData = areaUnitsHonduras.firstWhere(
+            (u) => u['symbol'] == _selectedAreaUnit,
+            orElse: () => areaUnitsHonduras.first,
+          );
+          final factor = (unitData['toHectareFactor'] as num).toDouble();
+          final estimatedHa = rawValue * factor;
+          farm = setSpecificPropertyJSON(
+              farm, 'totalAreaEstimatedHa', estimatedHa, 'double');
+          debugPrint(
+              'totalAreaEstimatedHa set: $estimatedHa ha (from $rawValue $_selectedAreaUnit)');
+        }
+      }
 
       if (_farmEmailController.text.isNotEmpty) {
         debugPrint('Setting farm email...');
@@ -1054,6 +1074,7 @@ class _StepperRegistrarRegistrationState
     _farmCityController.dispose();
     _farmStateController.dispose();
     _farmEmailController.dispose();
+    _farmEstimatedAreaController.dispose();
     _cameraController?.dispose();
     super.dispose();
   }
@@ -1071,7 +1092,8 @@ class _StepperRegistrarRegistrationState
         _farmIDController.text.isNotEmpty ||
         _farmCityController.text.isNotEmpty ||
         _farmStateController.text.isNotEmpty ||
-        _farmEmailController.text.isNotEmpty;
+        _farmEmailController.text.isNotEmpty ||
+        _farmEstimatedAreaController.text.isNotEmpty;
 
     if (!hasData || _isProcessing) {
       return true; // Erlaube Zurück wenn keine Daten oder während Processing
@@ -1602,6 +1624,55 @@ class _StepperRegistrarRegistrationState
             hintText: 'farm@example.com',
           ),
           keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _farmEstimatedAreaController,
+                style: const TextStyle(color: Colors.black),
+                decoration: InputDecoration(
+                  labelText: l10n.estimatedCoffeeAreaQuestion,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.area_chart),
+                  hintText: 'e.g., 2.5',
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedAreaUnit,
+                  style: const TextStyle(color: Colors.black),
+                  items: areaUnitsHonduras
+                      .map((u) => DropdownMenuItem<String>(
+                            value: u['symbol'] as String,
+                            child: Text(
+                              '${u['name']} (${u['symbol']})',
+                              style: const TextStyle(color: Colors.black),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedAreaUnit = val);
+                    }
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

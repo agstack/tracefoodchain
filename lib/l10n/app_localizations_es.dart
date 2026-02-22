@@ -2026,6 +2026,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get farmID => 'ID de Finca';
 
   @override
+  String get estimatedCoffeeAreaQuestion => 'Área estimada cultivada con café';
+
+  @override
+  String get areaUnit => 'Unidad';
+
+  @override
   String get nationalIDPhotoRequired =>
       'Se requiere foto de identificación nacional';
 
@@ -2129,4 +2135,26 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fieldPhotoInvalid => '¡La ubicación de la foto es INVÁLIDA!';
+
+  @override
+  String get areaUnitSetting => 'Unidad de área';
+
+  @override
+  String get areaUnitSettingSubtitle =>
+      'Unidad para mostrar el tamaño del campo';
+
+  @override
+  String get unitHectares => 'Hectáreas (ha)';
+
+  @override
+  String get unitManzanas => 'Manzanas (mz)';
+
+  @override
+  String get unitAcres => 'Acres (ac)';
+
+  @override
+  String get areaCompletionOverlayTitle => 'Área calculada del campo';
+
+  @override
+  String get tapToSwitchUnit => 'Toque para cambiar unidad';
 }

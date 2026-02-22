@@ -3780,6 +3780,18 @@ abstract class AppLocalizations {
   /// **'Farm ID'**
   String get farmID;
 
+  /// No description provided for @estimatedCoffeeAreaQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated coffee-planted area'**
+  String get estimatedCoffeeAreaQuestion;
+
+  /// No description provided for @areaUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get areaUnit;
+
   /// No description provided for @nationalIDPhotoRequired.
   ///
   /// In en, this message translates to:
@@ -3965,6 +3977,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photo location is INVALID!'**
   String get fieldPhotoInvalid;
+
+  /// No description provided for @areaUnitSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Area Unit'**
+  String get areaUnitSetting;
+
+  /// No description provided for @areaUnitSettingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit for displaying field size'**
+  String get areaUnitSettingSubtitle;
+
+  /// No description provided for @unitHectares.
+  ///
+  /// In en, this message translates to:
+  /// **'Hectares (ha)'**
+  String get unitHectares;
+
+  /// No description provided for @unitManzanas.
+  ///
+  /// In en, this message translates to:
+  /// **'Manzanas (mz)'**
+  String get unitManzanas;
+
+  /// No description provided for @unitAcres.
+  ///
+  /// In en, this message translates to:
+  /// **'Acres (ac)'**
+  String get unitAcres;
+
+  /// No description provided for @areaCompletionOverlayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated Field Area'**
+  String get areaCompletionOverlayTitle;
+
+  /// No description provided for @tapToSwitchUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to switch unit'**
+  String get tapToSwitchUnit;
 }
 
 class _AppLocalizationsDelegate

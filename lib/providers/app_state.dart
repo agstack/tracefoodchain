@@ -31,6 +31,22 @@ class AppState extends ChangeNotifier {
   Locale? _locale = window.locale; // Initialize with system locale
   Locale? get locale => _locale;
 
+  // Bevorzugte Flächeneinheit (symbol, z.B. "ha" oder "mz")
+  String _preferredAreaUnitSymbol = 'ha';
+  String get preferredAreaUnitSymbol => _preferredAreaUnitSymbol;
+
+  Future<void> setPreferredAreaUnit(String symbol) async {
+    _preferredAreaUnitSymbol = symbol;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('preferredAreaUnit', symbol);
+    notifyListeners();
+  }
+
+  Future<void> loadAreaUnitPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    _preferredAreaUnitSymbol = prefs.getString('preferredAreaUnit') ?? 'ha';
+  }
+
   void setLocale(Locale? newLocale) {
     _locale = newLocale;
     notifyListeners();
@@ -47,6 +63,9 @@ class AppState extends ChangeNotifier {
     } else {
       _locale = const Locale('en');
     }
+
+    // Lade gespeicherte Flächeneinheit-Präferenz
+    await loadAreaUnitPreference();
 
     notifyListeners();
   }

@@ -12,6 +12,7 @@ import '../screens/view_history_screen.dart';
 import '../providers/app_state.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
+import '../services/service_functions.dart';
 
 class RegistrarScreen extends StatefulWidget {
   const RegistrarScreen({super.key});
@@ -257,6 +258,63 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                                         fontSize: 12,
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Flächeneinheit-Umschalter
+                                  Consumer<AppState>(
+                                    builder: (ctx, appState, _) {
+                                      final l10nCtx = AppLocalizations.of(ctx)!;
+                                      final units = getAreaUnits(country);
+                                      final currentUnit = units.firstWhere(
+                                        (u) =>
+                                            u['symbol'] ==
+                                            appState.preferredAreaUnitSymbol,
+                                        orElse: () => units.first,
+                                      );
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '${l10nCtx.areaUnitSetting}:',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          OutlinedButton.icon(
+                                            onPressed: () {
+                                              final idx = units.indexWhere(
+                                                  (u) =>
+                                                      u['symbol'] ==
+                                                      currentUnit['symbol']);
+                                              final nextUnit = units[
+                                                  (idx + 1) % units.length];
+                                              appState.setPreferredAreaUnit(
+                                                  nextUnit['symbol'] as String);
+                                            },
+                                            icon: const Icon(Icons.swap_horiz,
+                                                size: 18),
+                                            label: Text(
+                                              currentUnit['symbol'] as String,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: Colors.blue[700],
+                                              side: BorderSide(
+                                                  color: Colors.blue[400]!),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ],
                               ),

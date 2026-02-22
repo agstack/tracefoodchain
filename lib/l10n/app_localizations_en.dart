@@ -1997,6 +1997,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get farmID => 'Farm ID';
 
   @override
+  String get estimatedCoffeeAreaQuestion => 'Estimated coffee-planted area';
+
+  @override
+  String get areaUnit => 'Unit';
+
+  @override
   String get nationalIDPhotoRequired => 'National ID Photo is required';
 
   @override
@@ -2094,4 +2100,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fieldPhotoInvalid => 'Photo location is INVALID!';
+
+  @override
+  String get areaUnitSetting => 'Area Unit';
+
+  @override
+  String get areaUnitSettingSubtitle => 'Unit for displaying field size';
+
+  @override
+  String get unitHectares => 'Hectares (ha)';
+
+  @override
+  String get unitManzanas => 'Manzanas (mz)';
+
+  @override
+  String get unitAcres => 'Acres (ac)';
+
+  @override
+  String get areaCompletionOverlayTitle => 'Calculated Field Area';
+
+  @override
+  String get tapToSwitchUnit => 'Tap to switch unit';
 }

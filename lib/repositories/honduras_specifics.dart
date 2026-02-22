@@ -1,3 +1,8 @@
+List<Map<String, dynamic>> areaUnitsHonduras = [
+  {"name": "hectares", "symbol": "ha", "toHectareFactor": 1.0},
+  {"name": "manzanas", "symbol": "mz", "toHectareFactor": 0.70259},
+];
+
 List<Map<String, dynamic>> weightsHonduras = [
   {"name": "libras", "toKgFactor": 0.453592},
   {"name": "latas", "toKgFactor": 14.968536},
@@ -80,20 +85,20 @@ List<Map<String, dynamic>> coffeeReducedQualityCriteria = [
       "french": "trop fermenté",
       "german": "überfermentiert"
     },
-    },
-    {
+  },
+  {
     "name": {
       "spanish": "color extraño",
       "english": "strange color",
       "french": "couleur étrange",
       "german": "ungewöhnliche Farbe"
     },
-    },
-    {
+  },
+  {
     "name": {
       "spanish": "olor extraño",
       "english": "strange odor",
-      "french": "odeur étrange", 
+      "french": "odeur étrange",
       "german": "ungewöhnlicher Geruch"
     },
   }

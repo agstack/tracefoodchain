@@ -68,6 +68,52 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
+          // Flächeneinheit-Auswahl
+          Consumer<AppState>(
+            builder: (context, appState, _) {
+              final availableUnits = getAreaUnits(country);
+              final currentSymbol = appState.preferredAreaUnitSymbol;
+              // Sicherstellen dass aktueller Wert in der Liste ist
+              final validUnit =
+                  availableUnits.any((u) => u['symbol'] == currentSymbol)
+                      ? currentSymbol
+                      : (availableUnits.first['symbol'] as String);
+              return ListTile(
+                contentPadding: const EdgeInsets.all(12),
+                leading: const Icon(Icons.straighten),
+                title: Text(
+                  l10n.areaUnitSetting,
+                  style: const TextStyle(color: Colors.black87),
+                ),
+                subtitle: Text(
+                  l10n.areaUnitSettingSubtitle,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                trailing: DropdownButton<String>(
+                  value: validUnit,
+                  underline: const SizedBox(),
+                  items: availableUnits
+                      .map((unit) => DropdownMenuItem<String>(
+                            value: unit['symbol'] as String,
+                            child: Text(
+                              unit['symbol'] == 'ha'
+                                  ? l10n.unitHectares
+                                  : unit['symbol'] == 'mz'
+                                      ? l10n.unitManzanas
+                                      : l10n.unitAcres,
+                              style: const TextStyle(color: Colors.black87),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (String? symbol) {
+                    if (symbol != null) {
+                      appState.setPreferredAreaUnit(symbol);
+                    }
+                  },
+                ),
+              );
+            },
+          ),
           // User Profile
           ListTile(
             contentPadding: const EdgeInsets.all(12),

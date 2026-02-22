@@ -974,6 +974,8 @@
   "takeIDPhoto": "Ausweis-Foto aufnehmen",
   "retakeIDPhoto": "Ausweis-Foto erneut aufnehmen",
   "farmID": "Farm-ID",
+  "estimatedCoffeeAreaQuestion": "Geschätzte Kaffeeanbaufläche",
+  "areaUnit": "Einheit",
   "nationalIDPhotoRequired": "Ausweis-Foto ist erforderlich",
   "idPhotoTaken": "Ausweis-Foto erfolgreich aufgenommen",
   "placeIDCardInFrame": "Platzieren Sie die Ausweiskarte im Rahmen",
@@ -1006,5 +1008,12 @@
   "photoTaken": "Foto erfolgreich aufgenommen",
   "pleasePhotoField": "Bitte machen Sie ein Foto vom Feld bevor Sie die Aufzeichnung abschließen",
   "fieldPhotoNotInPolygon": "Foto wurde nicht innerhalb des Feldes aufgenommen! Bitte machen Sie das Foto innerhalb der Feldgrenzen (Toleranz: 50m).",
-  "fieldPhotoInvalid": "Foto-Position ist UNGÜLTIG!"
+  "fieldPhotoInvalid": "Foto-Position ist UNGÜLTIG!",
+  "areaUnitSetting": "Flächeneinheit",
+  "areaUnitSettingSubtitle": "Einheit für die Anzeige der Feldgröße",
+  "unitHectares": "Hektar (ha)",
+  "unitManzanas": "Manzanas (mz)",
+  "unitAcres": "Acres (ac)",
+  "areaCompletionOverlayTitle": "Berechnete Feldfläche",
+  "tapToSwitchUnit": "Tippen zum Einheitenwechsel"
 }

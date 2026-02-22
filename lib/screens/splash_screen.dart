@@ -532,7 +532,6 @@ class _SplashScreenState extends State<SplashScreen>
       // Navigiere basierend auf Benutzerrolle
       final userRole = appState.userRole?.toLowerCase() ?? '';
       if (userRole == 'registrar' 
-|| userRole == 'superadmin'
 ) {
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {

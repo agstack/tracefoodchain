@@ -968,6 +968,8 @@
   "takeIDPhoto": "Prendre une Photo d'Identité",
   "retakeIDPhoto": "Reprendre une Photo d'Identité",
   "farmID": "ID de la Ferme",
+  "estimatedCoffeeAreaQuestion": "Superficie estimée plantée en café",
+  "areaUnit": "Unité",
   "nationalIDPhotoRequired": "Photo d'identité nationale requise",
   "idPhotoTaken": "Photo d'identité prise avec succès",
   "placeIDCardInFrame": "Placez la carte d'identité dans le cadre",
@@ -1000,5 +1002,12 @@
   "photoTaken": "Photo prise avec succès",
   "pleasePhotoField": "Veuillez prendre une photo du champ avant de compléter l'enregistrement",
   "fieldPhotoNotInPolygon": "La photo n'a pas été prise dans le champ! Veuillez reprendre la photo à l'intérieur des limites du champ (tolérance: 50m).",
-  "fieldPhotoInvalid": "La position de la photo est INVALIDE!"
+  "fieldPhotoInvalid": "La position de la photo est INVALIDE!",
+  "areaUnitSetting": "Unité de surface",
+  "areaUnitSettingSubtitle": "Unité pour afficher la taille du champ",
+  "unitHectares": "Hectares (ha)",
+  "unitManzanas": "Manzanas (mz)",
+  "unitAcres": "Acres (ac)",
+  "areaCompletionOverlayTitle": "Surface calculée du champ",
+  "tapToSwitchUnit": "Appuyez pour changer d'unité"
 }

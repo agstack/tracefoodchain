@@ -968,6 +968,8 @@
   "takeIDPhoto": "Tomar Foto de Identificación",
   "retakeIDPhoto": "Volver a Tomar Foto de Identificación",
   "farmID": "ID de Finca",
+  "estimatedCoffeeAreaQuestion": "Área estimada cultivada con café",
+  "areaUnit": "Unidad",
   "nationalIDPhotoRequired": "Se requiere foto de identificación nacional",
   "idPhotoTaken": "Foto de identificación tomada exitosamente",
   "placeIDCardInFrame": "Coloque la tarjeta de identificación dentro del marco",
@@ -1000,5 +1002,12 @@
   "photoTaken": "Foto tomada exitosamente",
   "pleasePhotoField": "Por favor, tome una foto del campo antes de completar el registro",
   "fieldPhotoNotInPolygon": "¡La foto no fue tomada dentro del campo! Por favor, vuelva a tomar la foto dentro de los límites del campo (tolerancia: 50m).",
-  "fieldPhotoInvalid": "¡La ubicación de la foto es INVÁLIDA!"
+  "fieldPhotoInvalid": "¡La ubicación de la foto es INVÁLIDA!",
+  "areaUnitSetting": "Unidad de área",
+  "areaUnitSettingSubtitle": "Unidad para mostrar el tamaño del campo",
+  "unitHectares": "Hectáreas (ha)",
+  "unitManzanas": "Manzanas (mz)",
+  "unitAcres": "Acres (ac)",
+  "areaCompletionOverlayTitle": "Área calculada del campo",
+  "tapToSwitchUnit": "Toque para cambiar unidad"
 }

@@ -2019,6 +2019,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get farmID => 'Farm-ID';
 
   @override
+  String get estimatedCoffeeAreaQuestion => 'Geschätzte Kaffeeanbaufläche';
+
+  @override
+  String get areaUnit => 'Einheit';
+
+  @override
   String get nationalIDPhotoRequired => 'Ausweis-Foto ist erforderlich';
 
   @override
@@ -2119,4 +2125,25 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get fieldPhotoInvalid => 'Foto-Position ist UNGÜLTIG!';
+
+  @override
+  String get areaUnitSetting => 'Flächeneinheit';
+
+  @override
+  String get areaUnitSettingSubtitle => 'Einheit für die Anzeige der Feldgröße';
+
+  @override
+  String get unitHectares => 'Hektar (ha)';
+
+  @override
+  String get unitManzanas => 'Manzanas (mz)';
+
+  @override
+  String get unitAcres => 'Acres (ac)';
+
+  @override
+  String get areaCompletionOverlayTitle => 'Berechnete Feldfläche';
+
+  @override
+  String get tapToSwitchUnit => 'Tippen zum Einheitenwechsel';
 }

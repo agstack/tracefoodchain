@@ -974,6 +974,8 @@
   "takeIDPhoto": "Take ID Photo",
   "retakeIDPhoto": "Retake ID Photo",
   "farmID": "Farm ID",
+  "estimatedCoffeeAreaQuestion": "Estimated coffee-planted area",
+  "areaUnit": "Unit",
   "nationalIDPhotoRequired": "National ID Photo is required",
   "idPhotoTaken": "ID Photo taken successfully",
   "placeIDCardInFrame": "Place ID card within the frame",
@@ -1006,5 +1008,12 @@
   "photoTaken": "Photo taken successfully",
   "pleasePhotoField": "Please take a photo of the field before completing the recording",
   "fieldPhotoNotInPolygon": "Photo was not taken within the field! Please retake the photo inside the field boundaries (tolerance: 50m).",
-  "fieldPhotoInvalid": "Photo location is INVALID!"
+  "fieldPhotoInvalid": "Photo location is INVALID!",
+  "areaUnitSetting": "Area Unit",
+  "areaUnitSettingSubtitle": "Unit for displaying field size",
+  "unitHectares": "Hectares (ha)",
+  "unitManzanas": "Manzanas (mz)",
+  "unitAcres": "Acres (ac)",
+  "areaCompletionOverlayTitle": "Calculated Field Area",
+  "tapToSwitchUnit": "Tap to switch unit"
 }

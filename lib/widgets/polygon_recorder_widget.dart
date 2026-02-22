@@ -4,6 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
+import 'package:provider/provider.dart';
+import 'package:trace_foodchain_app/main.dart' show country;
+import 'package:trace_foodchain_app/providers/app_state.dart';
+import 'package:trace_foodchain_app/services/service_functions.dart';
 import '../l10n/app_localizations.dart';
 
 /// CustomPainter für die Polygon-Visualisierung mit Transformation
@@ -712,6 +716,67 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     // Lösche Draft
     await _deleteDraft();
 
+    // Zeige Abschluss-Overlay mit Flächenangabe in allen verfügbaren Einheiten
+    if (context.mounted) {
+      final l10nOverlay = AppLocalizations.of(context)!;
+      final appState = Provider.of<AppState>(context, listen: false);
+      final availableUnits = getAreaUnits(country);
+      await showDialog(
+        context: context,
+        builder: (ctx) {
+          final overlayL10n = AppLocalizations.of(ctx)!;
+          return AlertDialog(
+            title: Text(
+              overlayL10n.areaCompletionOverlayTitle,
+              style: const TextStyle(
+                  color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: availableUnits.map((unit) {
+                final symbol = unit['symbol'] as String;
+                final factor = (unit['toHectareFactor'] as num).toDouble();
+                final converted = area / factor;
+                final isPreferred = symbol == appState.preferredAreaUnitSymbol;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      if (isPreferred)
+                        const Icon(Icons.star, size: 16, color: Colors.orange)
+                      else
+                        const SizedBox(width: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${converted.toStringAsFixed(4)} $symbol',
+                        style: TextStyle(
+                          fontSize: isPreferred ? 18 : 15,
+                          fontWeight:
+                              isPreferred ? FontWeight.bold : FontWeight.normal,
+                          color: isPreferred ? Colors.black : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(overlayL10n.confirm),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
     // Callback mit finalen Punkten, Fläche und GPS-Genauigkeiten
     widget.onPolygonComplete(finalPoints, area, _accuracies);
   }
@@ -1260,14 +1325,45 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                   if (_points.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        '${_points.length} ${l10n.points} • ${estimatedArea.toStringAsFixed(2)} ha',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                        textAlign: TextAlign.center,
+                      child: Consumer<AppState>(
+                        builder: (ctx, appState, _) {
+                          final units = getAreaUnits(country);
+                          final currentUnit = units.firstWhere(
+                            (u) =>
+                                u['symbol'] == appState.preferredAreaUnitSymbol,
+                            orElse: () => units.first,
+                          );
+                          final symbol = currentUnit['symbol'] as String;
+                          final factor = (currentUnit['toHectareFactor'] as num)
+                              .toDouble();
+                          final displayArea = estimatedArea / factor;
+                          return GestureDetector(
+                            onTap: () {
+                              // Nächste verfügbare Einheit wählen
+                              final idx = units
+                                  .indexWhere((u) => u['symbol'] == symbol);
+                              final nextUnit = units[(idx + 1) % units.length];
+                              appState.setPreferredAreaUnit(
+                                  nextUnit['symbol'] as String);
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${_points.length} ${l10n.points} • ${displayArea.toStringAsFixed(2)} $symbol',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.swap_horiz,
+                                    size: 16, color: Colors.grey[500]),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
 

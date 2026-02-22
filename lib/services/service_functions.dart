@@ -136,21 +136,36 @@ void showSnackbar(
   );
 }
 
+List<String> loadCoffeeSpecies() {
+  return coffee_species.species;
+}
 
-  List<String> loadCoffeeSpecies() {
-    return coffee_species.species;
+List<Map<String, dynamic>> getWeightUnits(String country) {
+  if (country.toLowerCase() == 'honduras') {
+    return weightsHonduras;
   }
+  return [
+    {"name": "kg", "toKgFactor": 1.0},
+    {"name": "t", "toKgFactor": 1000.0},
+  ];
+}
 
-  List<Map<String, dynamic>> getWeightUnits(String country) {
-    if (country.toLowerCase() == 'honduras') {
-      return weightsHonduras;
-    }
-    return [
-      {"name": "kg", "toKgFactor": 1.0},
-      {"name": "t", "toKgFactor": 1000.0},
-    ];
+List<Map<String, dynamic>> getAreaUnits(String country) {
+  if (country.toLowerCase() == 'honduras') {
+    return areaUnitsHonduras;
   }
+  return [
+    {"name": "hectares", "symbol": "ha", "toHectareFactor": 1.0},
+    {"name": "acres", "symbol": "ac", "toHectareFactor": 0.404686},
+  ];
+}
 
+/// Konvertiert Hektar in die angegebene Einheit (anhand des toHectareFactor).
+/// [areaUnit] ist eine Map aus getAreaUnits(), z.B. {"name":"manzanas","symbol":"mz","toHectareFactor":0.70259}
+double convertFromHectares(double hectares, Map<String, dynamic> areaUnit) {
+  final factor = (areaUnit['toHectareFactor'] as num).toDouble();
+  return hectares / factor;
+}
 
 class DecimalTextInputFormatter extends TextInputFormatter {
   @override
