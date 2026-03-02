@@ -315,11 +315,9 @@ Map<String, dynamic> setSpecificPropertyJSON(
         "unit": newUnit
       };
 
-      Map<String, String> stringMap = myAdd.cast<String, String>();
-      List<Map<String, dynamic>> sp = jdoc["specificProperties"];
-      sp.add(stringMap);
-    }
-  }
+      (jdoc["specificProperties"] as List).add(myAdd);
+        }
+      }
   return jdoc;
 }
 // e) LINKED OBJECTS / OBJECT REFERENCES
@@ -460,12 +458,13 @@ Future<List<Map<String, dynamic>>> getFirebaseObjectsByAlternateUID(
 
 // ToDo: Convert to API call - this is a helper function to get all objects of the current user - self-registred fields!
 Stream<QuerySnapshot> getMyObjectsStream() {
+
   String? currentUserUID = appUserDoc?["identity"]["UID"];
   if (currentUserUID == null) {
     throw Exception('User not authenticated');
   }
 
-  // currentUserUID = "";
+  debugPrint('Getting objects for user UID: $currentUserUID');
 
   return FirebaseFirestore.instance.collection('TFC_objects').where(
       'currentOwners',

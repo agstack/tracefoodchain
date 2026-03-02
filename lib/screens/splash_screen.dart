@@ -330,8 +330,24 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
 
-    // DEBUG: Anderen User für Testzwecke laden
-
+    //!###########  DEBUG: Anderen User für Testzwecke laden ##############
+    if (appState.isConnected) {
+      try {
+        const String debugUserUID = 'xxx'; // Replace 'xxx' with actual UID
+        final userDocRef = FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .doc(debugUserUID);
+        
+        final userDocSnapshot = await userDocRef.get();
+        
+        if (userDocSnapshot.exists) {
+          appUserDoc = userDocSnapshot.data() as Map<String, dynamic>;
+          print('🔄 [SplashScreen] DEBUG: Lade User aus Firebase: $debugUserUID');
+        }
+      } catch (e) {
+        print('❌ [SplashScreen] DEBUG: Fehler beim Laden des Debug-Users: $e');
+      }
+    }
     // Check if private key exists, if not generate new keypair
     final privateKey = await keyManager.getPrivateKey();
     if (privateKey == null) {

@@ -126,61 +126,85 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       final completer = Completer<void>();
 
       streamSubscription = getMyObjectsStream().listen(
-        (querySnapshot) {
+        (querySnapshot) async {
           fields.clear(); // Lösche vorherige Einträge
-
+          int count = 0;
           for (final doc in querySnapshot.docs) {
+            count++;
             final fieldData = doc.data() as Map<String, dynamic>;
 
-            // Filtere nur "field" Objekte
-            if (fieldData['template']?["RALType"] != "field") {
-              continue;
-            }
-
-            // Skip fields with objectState qcPending or qcRejected
-            final objectState = fieldData["objectState"];
-            if (objectState == "qcPending" || objectState == "qcRejected") {
-              continue;
-            }
-
-            // Prüfe ob es sich um ein testmode-Objekt handelt, wenn wir nicht im Testmodus sind
-            if (!isTestmode &&
-                fieldData.containsKey("isTestmode") &&
-                fieldData["isTestmode"] == true) {
-              continue;
-            }
-            if (isTestmode && !fieldData.containsKey("isTestmode")) {
-              continue;
-            }
-
-            // Extrahiere relevante Informationen
-            final String fieldName = fieldData["identity"]?["name"] ??
-                "Unnamed Field"; // Will be localized later
-            final String fieldUID = fieldData["identity"]?["UID"] ?? "";
-            String geoId = "";
-
-            // Versuche geoID aus alternateIDs zu extrahieren
-            if (fieldData["identity"]?["alternateIDs"] != null) {
-              for (final altId in fieldData["identity"]["alternateIDs"]) {
-                if (altId["issuedBy"] == "Asset Registry") {
-                  geoId = altId["UID"];
-                  break;
-                }
+            try {
+              // Filtere nur "field" Objekte
+              final ralType = fieldData['template']?["RALType"];
+              if (ralType != "field") {
+                continue;
               }
+
+              // Skip fields with objectState qcPending or qcRejected
+              final objectState = fieldData["objectState"];
+              if (objectState == "qcPending" || objectState == "qcRejected") {
+                continue;
+              }
+
+              // Prüfe ob es sich um ein testmode-Objekt handelt
+              final isFieldTestmode = fieldData.containsKey("isTestmode") &&
+                  fieldData["isTestmode"] == true;
+              if (!isTestmode && isFieldTestmode) {
+                continue;
+              }
+              if (isTestmode && !fieldData.containsKey("isTestmode")) {
+                continue;
+              }
+
+              // Extrahiere relevante Informationen
+              try {
+                final String fieldName =
+                    fieldData["identity"]?["name"] ?? "Unnamed Field";
+
+                final String fieldUID = fieldData["identity"]?["UID"] ?? "";
+
+                String geoId = "";
+
+                // Versuche geoID aus alternateIDs zu extrahieren
+                try {
+                  if (fieldData["identity"]?["alternateIDs"] != null) {
+                    for (final altId in fieldData["identity"]["alternateIDs"]) {
+                      if (altId["issuedBy"] == "Asset Registry") {
+                        geoId = altId["UID"];
+                        break;
+                      }
+                    }
+                  }
+                } catch (e) {
+                  debugPrint("ERROR extracting geoID: $e");
+                }
+
+                // Extrahiere Fläche
+                String area = "";
+                try {
+                  final areaValue =
+                      getSpecificPropertyfromJSON(fieldData, "area");
+                  area = areaValue?.toString() ?? "";
+                } catch (e) {
+                  debugPrint("ERROR extracting area: $e");
+                }
+
+                // Extrahiere methodHistoryRef
+                final methodHistoryRef = fieldData["methodHistoryRef"] ?? [];
+
+                fields.add({
+                  "name": fieldName,
+                  "uid": fieldUID,
+                  "geoId": geoId,
+                  "area": area,
+                  "methodHistoryRef": methodHistoryRef,
+                });
+              } catch (e) {
+                debugPrint("❌ ERROR extracting field data: $e");
+              }
+            } catch (e) {
+              debugPrint("❌ CRITICAL ERROR processing field ${doc.id}: $e");
             }
-
-            // Extrahiere Fläche
-            String area =
-                getSpecificPropertyfromJSON(fieldData, "area")?.toString() ??
-                    "";
-
-            fields.add({
-              "name": fieldName,
-              "uid": fieldUID,
-              "geoId": geoId,
-              "area": area,
-              "methodHistoryRef": fieldData["methodHistoryRef"] ?? [],
-            });
           }
 
           // Schließe den Stream nach dem ersten Datenempfang
@@ -869,6 +893,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             Map<String, dynamic> newField = await getOpenRALTemplate("field");
             //Name
             newField["identity"]["name"] = fieldName; //GeoID
+            newField["objectState"] = "undefined";
             newField["identity"]["alternateIDs"] = [
               {"UID": geoId, "issuedBy": "Asset Registry"}
             ];
@@ -947,12 +972,29 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       if (existingFirebaseObjects.isNotEmpty) {
         //  - adding user as owner');
         //Add the appuser UID as owner to currentOwners list
-        final existingField = existingFirebaseObjects.first;
+        Map<String, dynamic> existingField =
+            Map<String, dynamic>.from(existingFirebaseObjects.first);
         //Check the currentOwners list and add the appUserDoc UID if not already present
-        final currentOwners = existingField["currentOwners"] ?? [];
+        final currentOwners =
+            List<dynamic>.from(existingField["currentOwners"] ?? []);
         final appUserUID = appUserDoc!["identity"]["UID"];
-        if (!currentOwners.any((owner) => owner["UID"] == appUserUID)) {
-          currentOwners.add({"UID": appUserUID});
+        final hasBoundaries =
+            (getSpecificPropertyfromJSON(existingField, "boundaries") ?? "")
+          .toString()
+          .isNotEmpty;
+        final coordinatesGeojson = json.encode({
+          "coordinates": _convertWKTToGeoJSON(coordinates),
+        });
+        if (!hasBoundaries) {
+          existingField = setSpecificPropertyJSON(
+              existingField, "boundaries", coordinatesGeojson, "geojson");
+        }
+        
+        if (!currentOwners.any((owner) => owner["UID"] == appUserUID) ||
+            !hasBoundaries) {
+          if (!currentOwners.any((owner) => owner["UID"] == appUserUID)) {
+            currentOwners.add({"UID": appUserUID});
+          }
           existingField["currentOwners"] = currentOwners;
           // Update the field in the database
           await changeObjectData(existingField);
@@ -976,8 +1018,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         "coordinates": _convertWKTToGeoJSON(coordinates),
       });
 
-      setSpecificPropertyJSON(
-          newField, "boundaries", json.encode(coordinates_geojson), "geoJSON");
+      newField =setSpecificPropertyJSON(
+          newField, "boundaries", coordinates_geojson, "geojson");
       //Registrator UID => currentOwners
       newField["currentOwners"] = [
         {
