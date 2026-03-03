@@ -30,6 +30,10 @@ class UserRegistryService {
   /// Refresh token for obtaining new access tokens
   String? _refreshToken;
 
+  /// Stored credentials for automatic re-login on token expiry
+  String? _loginEmail;
+  String? _loginPassword;
+
   /// Creates a new instance of the UserRegistryService.
   UserRegistryService({
     this.baseUrl = 'https://user-registry.agstack.org',
@@ -111,6 +115,10 @@ class UserRegistryService {
       _accessToken = data['access_token'] as String?;
       _refreshToken = data['refresh_token'] as String?;
 
+      // Store credentials for automatic re-login on token expiry
+      _loginEmail = email;
+      _loginPassword = password;
+
       // Save tokens to persistent storage
       if (_accessToken != null && _refreshToken != null) {
         final prefs = await SharedPreferences.getInstance();
@@ -119,9 +127,7 @@ class UserRegistryService {
       }
 
       return true;
-    } else{
-      
-    }
+    } else {}
 
     return false;
   }
@@ -152,20 +158,20 @@ class UserRegistryService {
 
   /// Get List of allowed domains
   Future<List<String>> getDomains() async {
-
-final uri = Uri.parse('$baseUrl/domains');
-    final response = await http.get(
-      uri,
-      
-    ).timeout(timeout);
+    final uri = Uri.parse('$baseUrl/domains');
+    final response = await http
+        .get(
+          uri,
+        )
+        .timeout(timeout);
 
     // Clear tokens regardless of the response
 
-if (response.statusCode == 200) {
+    if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return (data['Domains'] as List<dynamic>).cast<String>();
     }
-    
+
     throw http.ClientException(
       'Failed to get domains: HTTP ${response.statusCode}: ${response.body}',
       uri,
@@ -187,12 +193,37 @@ if (response.statusCode == 200) {
     // Clear tokens regardless of the response
     _accessToken = null;
     _refreshToken = null;
+    _loginEmail = null;
+    _loginPassword = null;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('agstack_access_token');
     await prefs.remove('agstack_refresh_token');
 
     return response.statusCode == 200;
+  }
+
+  /// Refresh the access token by re-logging in with stored credentials.
+  /// Returns true if the token was successfully refreshed.
+  /// This is called automatically by AssetRegistryService when a 401 is received.
+  Future<bool> refreshAccessToken() async {
+    debugPrint('🔄 Refreshing access token...');
+
+    // Try re-login with stored credentials
+    if (_loginEmail != null && _loginPassword != null) {
+      debugPrint('🔄 Re-logging in with stored credentials...');
+      final success = await login(
+        email: _loginEmail!,
+        password: _loginPassword!,
+      );
+      if (success) {
+        debugPrint('✅ Token refreshed successfully via re-login');
+        return true;
+      }
+    }
+
+    debugPrint('❌ Failed to refresh access token');
+    return false;
   }
 
   /// Get an authority token for a specific domain

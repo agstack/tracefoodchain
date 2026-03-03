@@ -11,6 +11,7 @@
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'user_registry_api_service.dart';
 
@@ -91,13 +92,13 @@ class AssetRegistryService {
     required String wkt,
   }) async {
     final body = jsonEncode(<String, dynamic>{
-     // 's2_index': s2Index, // Example: "8, 13"
+      // 's2_index': s2Index, // Example: "8, 13"
       'wkt': wkt,
     });
 
     // Debug: Print payload to console
 
-return _post(
+    return _post(
       '/register-field-boundary',
       query: {},
       body: body,
@@ -233,6 +234,29 @@ return _post(
     required Map<String, dynamic> query,
     required Object body,
   }) async {
+    final response = await _doPost(path, query: query, body: body);
+
+    // If we get a 401 and have a UserRegistryService, try refreshing the token and retry once
+    if (response.statusCode == 401 &&
+        userRegistryService != null &&
+        useBearerAuth) {
+      debugPrint(
+          '\u26a0\ufe0f Asset Registry 401 - attempting token refresh...');
+      final refreshed = await userRegistryService!.refreshAccessToken();
+      if (refreshed) {
+        debugPrint('\u2705 Token refreshed, retrying request...');
+        return _doPost(path, query: query, body: body);
+      }
+    }
+
+    return response;
+  }
+
+  Future<http.Response> _doPost(
+    String path, {
+    required Map<String, dynamic> query,
+    required Object body,
+  }) async {
     query = {...query};
     final authInfo = await _getAuthInfo();
 
@@ -260,9 +284,9 @@ return _post(
     }
 
     // Debug: Print request details
-    // 
-    // 
-    // 
+    //
+    //
+    //
 
     return http
         .post(
@@ -274,6 +298,25 @@ return _post(
   }
 
   Future<http.Response> _get(String path, Map<String, dynamic> query) async {
+    final response = await _doGet(path, query);
+
+    // If we get a 401 and have a UserRegistryService, try refreshing the token and retry once
+    if (response.statusCode == 401 &&
+        userRegistryService != null &&
+        useBearerAuth) {
+      debugPrint(
+          '\u26a0\ufe0f Asset Registry 401 - attempting token refresh...');
+      final refreshed = await userRegistryService!.refreshAccessToken();
+      if (refreshed) {
+        debugPrint('\u2705 Token refreshed, retrying request...');
+        return _doGet(path, query);
+      }
+    }
+
+    return response;
+  }
+
+  Future<http.Response> _doGet(String path, Map<String, dynamic> query) async {
     query = {...query};
     final authInfo = await _getAuthInfo();
 
@@ -296,7 +339,7 @@ return _post(
       );
     }
 
-return http.get(uri, headers: headers).timeout(timeout);
+    return http.get(uri, headers: headers).timeout(timeout);
   }
 
   Future<void> _appendAuth(

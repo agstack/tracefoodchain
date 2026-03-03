@@ -127,6 +127,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
       streamSubscription = getMyObjectsStream().listen(
         (querySnapshot) async {
+          debugPrint(
+              'Daten aus Cloud-Datenbank empfangen: ${querySnapshot.docs.length} Dokumente');
           fields.clear(); // Lösche vorherige Einträge
           int count = 0;
           for (final doc in querySnapshot.docs) {
@@ -189,8 +191,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                   debugPrint("ERROR extracting area: $e");
                 }
 
-                // Extrahiere methodHistoryRef
+                // Extrahiere methodHistoryRef und existenceStarts
                 final methodHistoryRef = fieldData["methodHistoryRef"] ?? [];
+                final existenceStarts = fieldData["existenceStarts"];
 
                 fields.add({
                   "name": fieldName,
@@ -198,6 +201,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                   "geoId": geoId,
                   "area": area,
                   "methodHistoryRef": methodHistoryRef,
+                  "existenceStarts": existenceStarts,
                 });
               } catch (e) {
                 debugPrint("❌ ERROR extracting field data: $e");
@@ -206,7 +210,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               debugPrint("❌ CRITICAL ERROR processing field ${doc.id}: $e");
             }
           }
-
+          debugPrint(
+              'Fertig mit Verarbeiten der Dokumente. Insgesamt ${fields.length} Felder extrahiert.');
           // Schließe den Stream nach dem ersten Datenempfang
           if (!completer.isCompleted) {
             completer.complete();
@@ -229,9 +234,22 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       await streamSubscription.cancel();
 
       // Für jedes Feld das Registrierungsdatum laden
+      debugPrint(
+          'Beginne mit Laden der Registrierungsdaten für ${fields.length} Felder...');
       for (final field in fields) {
-        final registrationDate =
-            await _getRegistrationDate(field["methodHistoryRef"]);
+        // Zuerst versuchen, das Datum aus existenceStarts (ISO 8601) zu lesen
+        DateTime? registrationDate;
+        final existenceStarts = field["existenceStarts"];
+        if (existenceStarts != null &&
+            existenceStarts is String &&
+            existenceStarts.isNotEmpty) {
+          registrationDate = DateTime.tryParse(existenceStarts);
+        }
+        // Nur wenn existenceStarts nicht funktioniert hat, aus methodHistoryRef laden
+        if (registrationDate == null) {
+          registrationDate =
+              await _getRegistrationDate(field["methodHistoryRef"]);
+        }
         field["registrationDate"] = registrationDate;
       }
 
@@ -726,13 +744,13 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         }
 
         // Extrahiere Werte basierend auf Header-Mapping
-        final String registrar = row[nameIndex]?.toString().trim() ?? '';
+        final String fieldName = row[nameIndex]?.toString().trim() ?? '';
         final String fieldNameDNI = row[dniIndex]?.toString().trim() ?? '';
         final String coordinatesRaw =
             row[polygonIndex]?.toString().trim() ?? '';
 
-        debugPrint('Registrar/Name: $registrar');
-        debugPrint('Feldname/DNI: $fieldNameDNI');
+        debugPrint('Name: $fieldName');
+        debugPrint('DNI: $fieldNameDNI');
         debugPrint('Koordinaten (roh): $coordinatesRaw');
 
         // Konvertiere Koordinaten vom CSV-Format zu WKT-Format
@@ -741,8 +759,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             'Koordinaten (WKT): ${coordinates.substring(0, coordinates.length > 100 ? 100 : coordinates.length)}...');
 
         if (fieldNameDNI.isEmpty || coordinatesRaw.isEmpty) {
-          debugPrint(
-              'FEHLER: Zeile ${i + 1} - Feldname oder Koordinaten fehlen');
+          debugPrint('FEHLER: Zeile ${i + 1} - DNI oder Koordinaten fehlen');
           errors.add(l10n.csvLineNameCoordinatesRequired((i + 1).toString()));
           errorCount++;
           continue;
@@ -750,11 +767,12 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
         try {
           setState(() {
-            currentFieldName = fieldNameDNI;
+            currentFieldName =
+                fieldName; // fieldNameDNI;//!!!!! Check and change if needed
           });
-          debugPrint('Registriere Feld: $fieldNameDNI');
+          debugPrint('Registriere Feld: $currentFieldName');
           final returnCode = await _registerSingleField(
-              fieldNameDNI, coordinates, assetRegistryService);
+              currentFieldName, coordinates, assetRegistryService);
 
           debugPrint('Registrierung returnCode: $returnCode');
 
@@ -893,6 +911,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             Map<String, dynamic> newField = await getOpenRALTemplate("field");
             //Name
             newField["identity"]["name"] = fieldName; //GeoID
+            newField["existenceStarts"] = DateTime.now().toIso8601String();
             newField["objectState"] = "undefined";
             newField["identity"]["alternateIDs"] = [
               {"UID": geoId, "issuedBy": "Asset Registry"}
@@ -980,24 +999,38 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         final appUserUID = appUserDoc!["identity"]["UID"];
         final hasBoundaries =
             (getSpecificPropertyfromJSON(existingField, "boundaries") ?? "")
-          .toString()
-          .isNotEmpty;
+                .toString()
+                .isNotEmpty;
+        final hasStartDate =
+            (existingField["existenceStarts"] ?? "").toString().isNotEmpty;
+
         final coordinatesGeojson = json.encode({
           "coordinates": _convertWKTToGeoJSON(coordinates),
         });
-        if (!hasBoundaries) {
-          existingField = setSpecificPropertyJSON(
-              existingField, "boundaries", coordinatesGeojson, "geojson");
-        }
-        
+
         if (!currentOwners.any((owner) => owner["UID"] == appUserUID) ||
-            !hasBoundaries) {
+            !hasBoundaries ||
+            !hasStartDate ||
+            existingField["identity"]["name"] == "N/A") {
+          if (existingField["identity"]["name"] == "N/A") {
+            existingField["identity"]["name"] = fieldName;
+          }
+
+          if (!hasBoundaries) {
+            existingField = setSpecificPropertyJSON(
+                existingField, "boundaries", coordinatesGeojson, "geojson");
+          }
+
+          if (!hasStartDate) {
+            existingField["existenceStarts"] = DateTime.now().toIso8601String();
+          }
+
           if (!currentOwners.any((owner) => owner["UID"] == appUserUID)) {
             currentOwners.add({"UID": appUserUID});
           }
           existingField["currentOwners"] = currentOwners;
           // Update the field in the database
-          await changeObjectData(existingField);
+          await changeObjectData(existingField, syncFromCloud: false);
         }
         return ('alreadyRegistered');
       }
@@ -1010,6 +1043,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       Map<String, dynamic> newField = await getOpenRALTemplate("field");
       //Name
       newField["identity"]["name"] = fieldName; //GeoID
+      newField["existenceStarts"] = DateTime.now().toIso8601String();
+      newField["objectState"] = "undefined";
       newField["identity"]["alternateIDs"] = [
         {"UID": geoId, "issuedBy": "Asset Registry"}
       ];
@@ -1018,7 +1053,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         "coordinates": _convertWKTToGeoJSON(coordinates),
       });
 
-      newField =setSpecificPropertyJSON(
+      newField = setSpecificPropertyJSON(
           newField, "boundaries", coordinates_geojson, "geojson");
       //Registrator UID => currentOwners
       newField["currentOwners"] = [
@@ -1026,7 +1061,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           "UID": appUserDoc!["identity"]["UID"],
         }
       ];
-      final newFieldUID = await generateDigitalSibling(newField);
+      final newFieldUID =
+          await generateDigitalSibling(newField, syncFromCloud: false);
 
       if (!alreadyExists)
         await _showRegistrationResult(

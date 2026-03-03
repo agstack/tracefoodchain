@@ -89,6 +89,7 @@ TrackedValueNotifier<int> inboxCount =
     TrackedValueNotifier<int>(0, "inboxCount");
 
 bool batchSalePossible = false;
+bool isWebLandscape = false;
 CloudSyncService cloudSyncService = CloudSyncService('tracefoodchain.org');
 late KeyManager keyManager;
 late DigitalSignature digitalSignature;
@@ -333,6 +334,14 @@ void main() async {
 
   final appState = AppState();
   await appState.initializeApp(); // Initialize locale
+
+  // Set isWebLandscape BEFORE _initializeAppState so camera check works correctly
+  if (kIsWeb) {
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final size = view.physicalSize / view.devicePixelRatio;
+    isWebLandscape = size.width > size.height;
+  }
+
   await _initializeAppState(appState);
 
   runApp(
@@ -423,7 +432,7 @@ Future<void> _initializeAppState(AppState appState) async {
   // String userAgent = html.window.navigator.userAgent.toLowerCase();
 
   try {
-    if (1 == 1) {
+    if (!isWebLandscape) {
       // if (!userAgent.contains('macintosh')) {
       final cameras = await availableCameras();
 

@@ -293,7 +293,7 @@ class _SplashScreenState extends State<SplashScreen>
           syncStatusNotifier.value =
               "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey";
           await cloudSyncService.syncMethods(
-            cloudKey,
+            cloudKey,syncFromCloud: !isWebLandscape,
             onProgress: (current, total) {
               syncStatusNotifier.value =
                   "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ($current/$total)";
@@ -371,7 +371,7 @@ class _SplashScreenState extends State<SplashScreen>
         //Do we get one from cloud?
         // Upload pending photos first to avoid internal loops
         await cloudSyncService.uploadPendingPhotos();
-        await cloudSyncService.syncMethods("tracefoodchain.org");
+        await cloudSyncService.syncMethods("tracefoodchain.org", syncFromCloud: !isWebLandscape);
         for (var doc in localStorage!.values) {
           if (doc['template'] != null &&
               doc['template']["RALType"] == "human") {

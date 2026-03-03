@@ -462,7 +462,8 @@ class CloudSyncService {
 //This function syncs all methods and objects to the cloud if tagged as being changed/generated locally only
 
   Future<bool> syncMethods(String domain,
-      {Function(int current, int total)? onProgress}) async {
+      {Function(int current, int total)? onProgress,
+      bool syncFromCloud = true}) async {
     List<String> failedSyncedOutputObjects = [];
     if (_isSyncing) {
       debugPrint('Sync already in progress, skipping new sync request');
@@ -645,6 +646,9 @@ class CloudSyncService {
       //1. Generate a hash list from all objects and methods on the device
 
       //2. Get all objects and methods from the cloud that are not on the device or need to be updated
+      if (!syncFromCloud) {
+        return syncSuccess;
+      }
       final cloudData =
           await apiClient.syncObjectsMethodsFromCloud(domain, deviceHashes);
       // this will return an empty object in case there is an error.

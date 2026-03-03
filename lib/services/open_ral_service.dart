@@ -187,8 +187,9 @@ String getSpecificPropertyUnitfromJSON(
 
 //! 4.#########  setters for working with openRAL objects ########
 
-Future<Map<String, dynamic>> setObjectMethod(Map<String, dynamic> objectMethod,
-    bool signMethod, bool markForSyncToCloud) async {
+Future<Map<String, dynamic>> setObjectMethod(
+    Map<String, dynamic> objectMethod, bool signMethod, bool markForSyncToCloud,
+    {bool syncFromCloud = true}) async {
   //Make sure it gets a valid
   if (getObjectMethodUID(objectMethod) == "") {
     throw ("ERROR: Object or Method has no UID!");
@@ -261,7 +262,8 @@ Future<Map<String, dynamic>> setObjectMethod(Map<String, dynamic> objectMethod,
     if ((objectMethod["needsSync"] == true) &&
         (!connectivityResult.contains(ConnectivityResult.none))) {
       await cloudSyncService.uploadPendingPhotos();
-      await cloudSyncService.syncMethods('tracefoodchain.org');
+      await cloudSyncService.syncMethods('tracefoodchain.org',
+          syncFromCloud: syncFromCloud);
     }
   }
   return objectMethod;
@@ -316,8 +318,8 @@ Map<String, dynamic> setSpecificPropertyJSON(
       };
 
       (jdoc["specificProperties"] as List).add(myAdd);
-        }
-      }
+    }
+  }
   return jdoc;
 }
 // e) LINKED OBJECTS / OBJECT REFERENCES
@@ -458,7 +460,6 @@ Future<List<Map<String, dynamic>>> getFirebaseObjectsByAlternateUID(
 
 // ToDo: Convert to API call - this is a helper function to get all objects of the current user - self-registred fields!
 Stream<QuerySnapshot> getMyObjectsStream() {
-
   String? currentUserUID = appUserDoc?["identity"]["UID"];
   if (currentUserUID == null) {
     throw Exception('User not authenticated');
@@ -697,7 +698,8 @@ Future<Map<String, dynamic>?> _ensureAppUserDoc() async {
   return null;
 }
 
-Future<String> generateDigitalSibling(Map<String, dynamic> newItem) async {
+Future<String> generateDigitalSibling(Map<String, dynamic> newItem,
+    {bool syncFromCloud = true}) async {
   if (getObjectMethodUID(newItem) == "") {
     setObjectMethodUID(newItem, const Uuid().v4());
   }
@@ -712,7 +714,7 @@ Future<String> generateDigitalSibling(Map<String, dynamic> newItem) async {
   //Step 1: get method an uuid (for method history entries)
   setObjectMethodUID(generateDSJob, const Uuid().v4());
   //Step 2: save the object a first time to get it the method history change
-  await setObjectMethod(newItem, false, false);
+  await setObjectMethod(newItem, false, false, syncFromCloud: syncFromCloud);
   //Step 3: add the output objects with updated method history to the method
   addOutputobject(generateDSJob, newItem, "item");
   //Step 4: update method history in all affected objects (will also tag them for syncing)
@@ -721,11 +723,13 @@ Future<String> generateDigitalSibling(Map<String, dynamic> newItem) async {
   newItem = await getLocalObjectMethod(getObjectMethodUID(newItem));
   addOutputobject(generateDSJob, newItem, "item");
   //Step 6: persist process
-  await setObjectMethod(generateDSJob, true, true); //sign it!
+  await setObjectMethod(generateDSJob, true, true,
+      syncFromCloud: syncFromCloud); //sign it!
   return getObjectMethodUID(newItem);
 }
 
-Future<void> changeObjectData(Map<String, dynamic> newObjectVersion) async {
+Future<void> changeObjectData(Map<String, dynamic> newObjectVersion,
+    {bool syncFromCloud = true}) async {
   //Get the old object version (from local storage or from cloud if newer and connected)
   final oldObjectVersion =
       await getLocalObjectMethod(newObjectVersion["identity"]["UID"]);
@@ -749,7 +753,8 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion) async {
         "The object with UID ${newObjectVersion["identity"]["UID"]} could not be found in local storage or cloud!");
   }
   //Save the new version of the object locally
-  await setObjectMethod(newObjectVersion, false, false);
+  await setObjectMethod(newObjectVersion, false, false,
+      syncFromCloud: syncFromCloud);
 
   //Get the changeObjectData job template
   final changeObjectDataJob = await getOpenRALTemplate("changeObjectData");
@@ -767,7 +772,8 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion) async {
   addInputobject(changeObjectDataJob, oldObjectVersion, "item");
 
   //save the object a first time to get it the method history change
-  await setObjectMethod(changeObjectDataJob, false, false);
+  await setObjectMethod(changeObjectDataJob, false, false,
+      syncFromCloud: syncFromCloud);
 
   //add the output objects with updated method history to the method
   addOutputobject(changeObjectDataJob, newObjectVersion, "item");
@@ -781,9 +787,9 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion) async {
   addOutputobject(changeObjectDataJob, newObjectVersion, "item");
 
   //Step 6: persist process
-  await setObjectMethod(
-      changeObjectDataJob, true, true); //including signing and syncing to cloud
-debugPrint(
+  await setObjectMethod(changeObjectDataJob, true, true,
+      syncFromCloud: syncFromCloud); //including signing and syncing to cloud
+  debugPrint(
       'Object data change process using method ${getObjectMethodUID(changeObjectDataJob)} completed successfully');
 }
 

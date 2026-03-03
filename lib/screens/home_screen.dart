@@ -52,7 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (cloudKey != "open-ral.io") {
             final l10n = AppLocalizations.of(context)!;
             syncStatusNotifier.value = "${l10n.syncingWith} $cloudKey";
-            await cloudSyncService.syncMethods(cloudKey);
+            await cloudSyncService.syncMethods(cloudKey,
+                syncFromCloud: !isWebLandscape);
           }
         }
         final databaseHelper = DatabaseHelper();
@@ -85,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
           syncStatusNotifier.value = "${l10n.manuallySyncingWith} $cloudKey";
-          await cloudSyncService.syncMethods(cloudKey);
+          await cloudSyncService.syncMethods(cloudKey,syncFromCloud: !isWebLandscape);
         }
       }
       final databaseHelper = DatabaseHelper();

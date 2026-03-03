@@ -134,7 +134,8 @@ class AppState extends ChangeNotifier {
         for (final cloudKey in cloudConnectors.keys) {
           if (cloudKey != "open-ral.io") {
             syncStatusNotifier.value = "Synchronisierung mit $cloudKey";
-            await cloudSyncService.syncMethods(cloudKey);
+            await cloudSyncService.syncMethods(cloudKey,
+                syncFromCloud: !isWebLandscape);
           }
         }
         //Repaint Container list
