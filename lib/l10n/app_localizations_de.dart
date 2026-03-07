@@ -1298,6 +1298,23 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get loadingConnectingCloud => 'Verbinde mit Cloud-Datenbank...';
+
+  @override
+  String loadingProcessingFields(String count) {
+    return '$count Felder empfangen, verarbeite Daten...';
+  }
+
+  @override
+  String loadingFieldDetailsProgress(
+      String current, String total, String name) {
+    return 'Lade Details: $current / $total – $name';
+  }
+
+  @override
+  String get loadingSortingFields => 'Sortiere Felder nach Datum...';
+
+  @override
   String currentField(String fieldName) {
     return 'Aktuelles Feld: $fieldName';
   }

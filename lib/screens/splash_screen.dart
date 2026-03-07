@@ -293,7 +293,8 @@ class _SplashScreenState extends State<SplashScreen>
           syncStatusNotifier.value =
               "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey";
           await cloudSyncService.syncMethods(
-            cloudKey,syncFromCloud: !isWebLandscape,
+            cloudKey,
+            syncFromCloud: !isWebLandscape,
             onProgress: (current, total) {
               syncStatusNotifier.value =
                   "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ($current/$total)";
@@ -333,16 +334,18 @@ class _SplashScreenState extends State<SplashScreen>
     //!###########  DEBUG: Anderen User für Testzwecke laden ##############
     if (appState.isConnected) {
       try {
-        const String debugUserUID = 'xxx'; // Replace 'xxx' with actual UID
+        const String debugUserUID = "xxx";
+         // Replace 'xxx' with actual UID
         final userDocRef = FirebaseFirestore.instance
             .collection('TFC_objects')
             .doc(debugUserUID);
-        
+
         final userDocSnapshot = await userDocRef.get();
-        
+
         if (userDocSnapshot.exists) {
           appUserDoc = userDocSnapshot.data() as Map<String, dynamic>;
-          print('🔄 [SplashScreen] DEBUG: Lade User aus Firebase: $debugUserUID');
+          print(
+              '🔄 [SplashScreen] DEBUG: Lade User aus Firebase: $debugUserUID');
         }
       } catch (e) {
         print('❌ [SplashScreen] DEBUG: Fehler beim Laden des Debug-Users: $e');
@@ -371,7 +374,8 @@ class _SplashScreenState extends State<SplashScreen>
         //Do we get one from cloud?
         // Upload pending photos first to avoid internal loops
         await cloudSyncService.uploadPendingPhotos();
-        await cloudSyncService.syncMethods("tracefoodchain.org", syncFromCloud: !isWebLandscape);
+        await cloudSyncService.syncMethods("tracefoodchain.org",
+            syncFromCloud: !isWebLandscape);
         for (var doc in localStorage!.values) {
           if (doc['template'] != null &&
               doc['template']["RALType"] == "human") {
@@ -547,8 +551,7 @@ class _SplashScreenState extends State<SplashScreen>
     } else {
       // Navigiere basierend auf Benutzerrolle
       final userRole = appState.userRole?.toLowerCase() ?? '';
-      if (userRole == 'registrar' 
-) {
+      if (userRole == 'registrar') {
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {
         Navigator.of(context).pushReplacement(

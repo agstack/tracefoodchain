@@ -522,6 +522,30 @@
       }
     }
   },
+  "loadingConnectingCloud": "Verbinde mit Cloud-Datenbank...",
+  "loadingProcessingFields": "{count} Felder empfangen, verarbeite Daten...",
+  "@loadingProcessingFields": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingFieldDetailsProgress": "Lade Details: {current} / {total} – {name}",
+  "@loadingFieldDetailsProgress": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingSortingFields": "Sortiere Felder nach Datum...",
   "currentField": "Aktuelles Feld: {fieldName}",
   "@currentField": {
     "placeholders": {

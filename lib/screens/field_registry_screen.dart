@@ -14,6 +14,7 @@ import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
+import 'package:trace_foodchain_app/services/permission_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
@@ -65,6 +66,17 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   int totalFields = 0;
   List<String> progressSteps = [];
 
+  // Dynamic loading status text
+  String _loadingStatusText = '';
+
+  void _setLoadingStatus(String text) {
+    if (mounted) {
+      setState(() {
+        _loadingStatusText = text;
+      });
+    }
+  }
+
   /// Prüft, ob alle erforderlichen globalen Variablen initialisiert sind
   bool _isAppFullyInitialized() {
     try {
@@ -87,7 +99,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   void initState() {
     super.initState();
     filteredFields = []; // Initialisiere die gefilterte Liste
-    _loadRegisteredFields();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRegisteredFields();
+    });
   }
 
   Future<void> _loadRegisteredFields() async {
@@ -95,11 +109,15 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
     setState(() {
       isLoading = true;
+      _loadingStatusText = '';
     });
+
+    final l10n = AppLocalizations.of(context)!;
+    _setLoadingStatus(l10n.loadingConnectingCloud);
 
     try {
       // Lade registrierte Felder aus der Cloud-Datenbank
-      final fields = await _getFieldsFromCloudDatabase();
+      final fields = await _getFieldsFromCloudDatabase(_setLoadingStatus, l10n);
 
       if (!mounted) return; // Prüfe erneut vor setState
 
@@ -117,19 +135,43 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _getFieldsFromCloudDatabase() async {
+  Future<List<Map<String, dynamic>>> _getFieldsFromCloudDatabase(
+    void Function(String) onStatus,
+    AppLocalizations l10n,
+  ) async {
     final List<Map<String, dynamic>> fields = [];
 
     try {
       // Verwende getMyObjectsStream aus open_ral_service
+      // SUPERADMIN sieht alle Felder, andere User nur eigene
+      final permissionService = PermissionService();
+      final isSuperAdmin = permissionService.isSuperAdmin();
+      final objectStream =
+          isSuperAdmin ? getAllFieldsStream() : getMyObjectsStream();
+      if (isSuperAdmin) {
+        debugPrint('SUPERADMIN: Lade alle Felder aus der Datenbank');
+      }
+
       late StreamSubscription streamSubscription;
       final completer = Completer<void>();
 
-      streamSubscription = getMyObjectsStream().listen(
+      streamSubscription = objectStream.listen(
         (querySnapshot) async {
           debugPrint(
               'Daten aus Cloud-Datenbank empfangen: ${querySnapshot.docs.length} Dokumente');
+          onStatus(l10n
+              .loadingProcessingFields(querySnapshot.docs.length.toString()));
           fields.clear(); // Lösche vorherige Einträge
+          // DEBUG: Zähle RALTypes zur Diagnose
+          if (isSuperAdmin) {
+            final Map<String, int> ralTypeCounts = {};
+            for (final d in querySnapshot.docs) {
+              final data = d.data() as Map<String, dynamic>;
+              final t = data['template']?['RALType']?.toString() ?? 'null';
+              ralTypeCounts[t] = (ralTypeCounts[t] ?? 0) + 1;
+            }
+            debugPrint('SUPERADMIN RALType-Verteilung: $ralTypeCounts');
+          }
           int count = 0;
           for (final doc in querySnapshot.docs) {
             count++;
@@ -148,14 +190,16 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                 continue;
               }
 
-              // Prüfe ob es sich um ein testmode-Objekt handelt
-              final isFieldTestmode = fieldData.containsKey("isTestmode") &&
-                  fieldData["isTestmode"] == true;
-              if (!isTestmode && isFieldTestmode) {
-                continue;
-              }
-              if (isTestmode && !fieldData.containsKey("isTestmode")) {
-                continue;
+              // SUPERADMIN sieht alle Felder unabhängig vom Testmode
+              if (!isSuperAdmin) {
+                final isFieldTestmode = fieldData.containsKey("isTestmode") &&
+                    fieldData["isTestmode"] == true;
+                if (!isTestmode && isFieldTestmode) {
+                  continue;
+                }
+                if (isTestmode && !fieldData.containsKey("isTestmode")) {
+                  continue;
+                }
               }
 
               // Extrahiere relevante Informationen
@@ -236,7 +280,12 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       // Für jedes Feld das Registrierungsdatum laden
       debugPrint(
           'Beginne mit Laden der Registrierungsdaten für ${fields.length} Felder...');
-      for (final field in fields) {
+      final totalCount = fields.length;
+      for (int i = 0; i < fields.length; i++) {
+        final field = fields[i];
+        final fieldName = field["name"] as String? ?? '';
+        onStatus(l10n.loadingFieldDetailsProgress(
+            (i + 1).toString(), totalCount.toString(), fieldName));
         // Zuerst versuchen, das Datum aus existenceStarts (ISO 8601) zu lesen
         DateTime? registrationDate;
         final existenceStarts = field["existenceStarts"];
@@ -253,6 +302,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         field["registrationDate"] = registrationDate;
       }
 
+      onStatus(l10n.loadingSortingFields);
       // Sortiere die Felder nach Registrierungsdatum (neueste zuerst)
       fields.sort((a, b) {
         final dateA = a["registrationDate"] as DateTime?;
@@ -1272,7 +1322,29 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               if (isRegistering) const LinearProgressIndicator(),
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            if (_loadingStatusText.isNotEmpty) ...[
+                              const SizedBox(height: 20),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 32),
+                                child: Text(
+                                  _loadingStatusText,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
                     : filteredFields.isEmpty
                         ? Center(
                             child: Column(

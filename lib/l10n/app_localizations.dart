@@ -2508,6 +2508,30 @@ abstract class AppLocalizations {
   /// **'Field {current} of {total}'**
   String fieldXOfTotal(String current, String total);
 
+  /// No description provided for @loadingConnectingCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to cloud database...'**
+  String get loadingConnectingCloud;
+
+  /// No description provided for @loadingProcessingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} fields received, processing data...'**
+  String loadingProcessingFields(String count);
+
+  /// No description provided for @loadingFieldDetailsProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading details: {current} / {total} – {name}'**
+  String loadingFieldDetailsProgress(String current, String total, String name);
+
+  /// No description provided for @loadingSortingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorting fields by date...'**
+  String get loadingSortingFields;
+
   /// No description provided for @currentField.
   ///
   /// In en, this message translates to:

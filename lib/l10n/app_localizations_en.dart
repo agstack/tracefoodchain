@@ -1285,6 +1285,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get loadingConnectingCloud => 'Connecting to cloud database...';
+
+  @override
+  String loadingProcessingFields(String count) {
+    return '$count fields received, processing data...';
+  }
+
+  @override
+  String loadingFieldDetailsProgress(
+      String current, String total, String name) {
+    return 'Loading details: $current / $total – $name';
+  }
+
+  @override
+  String get loadingSortingFields => 'Sorting fields by date...';
+
+  @override
   String currentField(String fieldName) {
     return 'Current field: $fieldName';
   }

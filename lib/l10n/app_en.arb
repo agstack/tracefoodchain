@@ -522,6 +522,30 @@
       }
     }
   },
+  "loadingConnectingCloud": "Connecting to cloud database...",
+  "loadingProcessingFields": "{count} fields received, processing data...",
+  "@loadingProcessingFields": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingFieldDetailsProgress": "Loading details: {current} / {total} – {name}",
+  "@loadingFieldDetailsProgress": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingSortingFields": "Sorting fields by date...",
   "currentField": "Current field: {fieldName}",
   "@currentField": {
     "placeholders": {

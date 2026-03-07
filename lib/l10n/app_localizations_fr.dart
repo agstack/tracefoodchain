@@ -1309,6 +1309,24 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get loadingConnectingCloud =>
+      'Connexion à la base de données cloud...';
+
+  @override
+  String loadingProcessingFields(String count) {
+    return '$count champs reçus, traitement des données...';
+  }
+
+  @override
+  String loadingFieldDetailsProgress(
+      String current, String total, String name) {
+    return 'Chargement des détails: $current / $total – $name';
+  }
+
+  @override
+  String get loadingSortingFields => 'Tri des champs par date...';
+
+  @override
   String currentField(String fieldName) {
     return 'Champ actuel: $fieldName';
   }

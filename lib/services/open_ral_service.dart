@@ -472,6 +472,15 @@ Stream<QuerySnapshot> getMyObjectsStream() {
       arrayContains: {'UID': currentUserUID}).snapshots();
 }
 
+// Returns all field objects from the database regardless of ownership (SUPERADMIN only)
+Stream<QuerySnapshot> getAllFieldsStream() {
+  debugPrint('SUPERADMIN: Getting all field objects from database');
+  return FirebaseFirestore.instance
+      .collection('TFC_objects')
+      .where('template.RALType', isEqualTo: 'field')
+      .snapshots();
+}
+
 Future<Map<String, dynamic>> getObjectOrGenerateNew(
     String uid, List<String> types, String field) async {
   Map<String, dynamic> rDoc = {};

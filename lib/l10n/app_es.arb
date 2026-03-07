@@ -474,6 +474,30 @@
       }
     }
   },
+  "loadingConnectingCloud": "Conectando a la base de datos en la nube...",
+  "loadingProcessingFields": "{count} campos recibidos, procesando datos...",
+  "@loadingProcessingFields": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingFieldDetailsProgress": "Cargando detalles: {current} / {total} – {name}",
+  "@loadingFieldDetailsProgress": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingSortingFields": "Ordenando campos por fecha...",
   "currentField": "Campo actual: {fieldName}",
   "@currentField": {
     "placeholders": {
