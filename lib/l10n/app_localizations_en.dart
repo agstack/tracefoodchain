@@ -1327,6 +1327,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get fieldNameDiscrepancyTitle => 'Field Name Discrepancy';
+
+  @override
+  String fieldNameDiscrepancyMessage(String existingName, String newName) {
+    return 'The GeoID already exists in the database with the name \"$existingName\", but is being uploaded as \"$newName\". Which name should be used?';
+  }
+
+  @override
+  String fieldNameDiscrepancyKeepExisting(String existingName) {
+    return 'Keep existing ($existingName)';
+  }
+
+  @override
+  String fieldNameDiscrepancyUseNew(String newName) {
+    return 'Use new ($newName)';
+  }
+
+  @override
+  String get fieldNameDiscrepancyCancel => 'Cancel import';
+
+  @override
   String fieldRegistrationNewGeoIdExtracted(String geoId) {
     return '✅ New field registered - GeoID successfully extracted: $geoId';
   }
@@ -1404,6 +1425,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noFieldsForSelectedTimeframe =>
       'No fields for the selected timeframe';
+
+  @override
+  String get searchFields => 'Search fields...';
+
+  @override
+  String noFieldsForSearch(String query) {
+    return 'No fields found for \"$query\"';
+  }
+
+  @override
+  String get loadMore => 'Load More';
+
+  @override
+  String get loadAll => 'Load All';
+
+  @override
+  String get loadAllFieldsTitle => 'Load All Fields';
+
+  @override
+  String get loadAllFieldsWarning =>
+      'Loading all fields in the selected timeframe may take a very long time (several minutes). Do you want to continue?';
 
   @override
   String registeredOn(String date) {

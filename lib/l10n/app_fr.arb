@@ -584,6 +584,38 @@
       }
     }
   },
+  "fieldNameDiscrepancyTitle": "Divergence de nom de champ",
+  "fieldNameDiscrepancyMessage": "La GeoID existe déjà dans la base de données sous le nom \"{existingName}\", mais est importée sous \"{newName}\". Quel nom doit être utilisé ?",
+  "@fieldNameDiscrepancyMessage": {
+    "description": "Message quand le nom du champ importé diffère du nom existant dans la base de données",
+    "placeholders": {
+      "existingName": {
+        "type": "String"
+      },
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyKeepExisting": "Garder existant ({existingName})",
+  "@fieldNameDiscrepancyKeepExisting": {
+    "description": "Libellé du bouton pour conserver le nom de champ existant",
+    "placeholders": {
+      "existingName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyUseNew": "Utiliser le nouveau ({newName})",
+  "@fieldNameDiscrepancyUseNew": {
+    "description": "Libellé du bouton pour utiliser le nouveau nom de champ",
+    "placeholders": {
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyCancel": "Annuler l'importation",
   "fieldRegistrationNewGeoIdExtracted": "✅ Nouveau champ enregistré - GeoID extrait avec succès : {geoId}",
   "@fieldRegistrationNewGeoIdExtracted": {
     "description": "Message quand un nouveau champ est enregistré et que la GeoID a été extraite avec succès",
@@ -658,6 +690,19 @@
   "filterByRegistrationDate": "Filtrer par date d'enregistrement",
   "registrationErrors": "Erreurs d'Enregistrement",
   "noFieldsForSelectedTimeframe": "Aucun champ pour la période sélectionnée",
+  "searchFields": "Rechercher des champs...",
+  "noFieldsForSearch": "Aucun champ trouvé pour \"{query}\"",
+  "loadMore": "Charger plus",
+  "loadAll": "Tout charger",
+  "loadAllFieldsTitle": "Charger tous les champs",
+  "loadAllFieldsWarning": "Le chargement de tous les champs de la période sélectionnée peut prendre très longtemps (plusieurs minutes). Voulez-vous continuer?",
+  "@noFieldsForSearch": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "registeredOn": "Enregistré : {date}",
   "@registeredOn": {
     "placeholders": {

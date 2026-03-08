@@ -335,7 +335,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (appState.isConnected) {
       try {
         const String debugUserUID = "xxx";
-         // Replace 'xxx' with actual UID
+        // Replace 'xxx' with actual UID
         final userDocRef = FirebaseFirestore.instance
             .collection('TFC_objects')
             .doc(debugUserUID);
@@ -390,35 +390,38 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
 
-      snackbarMessageNotifier.value = l10n.newUserProfileNeeded;
-      Map<String, dynamic> newUser = await getOpenRALTemplate("human");
-      newUser["identity"]["UID"] = FirebaseAuth.instance.currentUser?.uid;
-      setSpecificPropertyJSON(
-          newUser, "email", FirebaseAuth.instance.currentUser?.email, "String");
-      newUser["email"] = FirebaseAuth.instance.currentUser
-          ?.email; // Necessary to find the user later by email!
+      if (appUserDoc == null) {
+        // User doc was not found even after cloud sync – create a new profile
+        snackbarMessageNotifier.value = l10n.newUserProfileNeeded;
+        Map<String, dynamic> newUser = await getOpenRALTemplate("human");
+        newUser["identity"]["UID"] = FirebaseAuth.instance.currentUser?.uid;
+        setSpecificPropertyJSON(newUser, "email",
+            FirebaseAuth.instance.currentUser?.email, "String");
+        newUser["email"] = FirebaseAuth.instance.currentUser
+            ?.email; // Necessary to find the user later by email!
 
-      final addItem = await getOpenRALTemplate("generateDigitalSibling");
-      //Add Executor
-      addItem["executor"] = newUser;
-      addItem["methodState"] = "finished";
-      //Step 1: get method an uuid (for method history entries)
-      setObjectMethodUID(addItem, const Uuid().v4());
-      //Step 2: save the objects a first time to get it the method history change
-      await setObjectMethod(newUser, false, false);
-      //Step 3: add the output objects with updated method history to the method
-      addOutputobject(addItem, newUser, "item");
-      //Step 4: update method history in all affected objects (will also tag them for syncing)
-      await updateMethodHistories(addItem);
-      //Step 5: again add Outputobjects to generate valid representation in the method
-      newUser = await getLocalObjectMethod(getObjectMethodUID(newUser));
-      addOutputobject(addItem, newUser, "item");
-      //Step 6: persist process
-      await setObjectMethod(addItem, true, true); //sign it!
+        final addItem = await getOpenRALTemplate("generateDigitalSibling");
+        //Add Executor
+        addItem["executor"] = newUser;
+        addItem["methodState"] = "finished";
+        //Step 1: get method an uuid (for method history entries)
+        setObjectMethodUID(addItem, const Uuid().v4());
+        //Step 2: save the objects a first time to get it the method history change
+        await setObjectMethod(newUser, false, false);
+        //Step 3: add the output objects with updated method history to the method
+        addOutputobject(addItem, newUser, "item");
+        //Step 4: update method history in all affected objects (will also tag them for syncing)
+        await updateMethodHistories(addItem);
+        //Step 5: again add Outputobjects to generate valid representation in the method
+        newUser = await getLocalObjectMethod(getObjectMethodUID(newUser));
+        addOutputobject(addItem, newUser, "item");
+        //Step 6: persist process
+        await setObjectMethod(addItem, true, true); //sign it!
 
-      appUserDoc = await getLocalObjectMethod(getObjectMethodUID(newUser));
-    } else {
-      //User mit dieser deviceId schon vorhanden.
+        appUserDoc = await getLocalObjectMethod(getObjectMethodUID(newUser));
+      } else {
+        //User mit dieser deviceId schon vorhanden.
+      }
     }
 
 //DEBUG CHANGE: CHECK IF THE APPUSERDOC CAN BE FOUND IN CLOUD DATABASE. IF NOT WRITE IT DIRECTLY TO THE CLOUD,IF ONLINE

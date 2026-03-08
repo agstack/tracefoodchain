@@ -590,6 +590,38 @@
       }
     }
   },
+  "fieldNameDiscrepancyTitle": "Field Name Discrepancy",
+  "fieldNameDiscrepancyMessage": "The GeoID already exists in the database with the name \"{existingName}\", but is being uploaded as \"{newName}\". Which name should be used?",
+  "@fieldNameDiscrepancyMessage": {
+    "description": "Message shown when uploaded field name differs from existing name in database",
+    "placeholders": {
+      "existingName": {
+        "type": "String"
+      },
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyKeepExisting": "Keep existing ({existingName})",
+  "@fieldNameDiscrepancyKeepExisting": {
+    "description": "Button label to keep the existing field name",
+    "placeholders": {
+      "existingName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyUseNew": "Use new ({newName})",
+  "@fieldNameDiscrepancyUseNew": {
+    "description": "Button label to use the new field name",
+    "placeholders": {
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyCancel": "Cancel import",
   "fieldRegistrationNewGeoIdExtracted": "✅ New field registered - GeoID successfully extracted: {geoId}",
   "@fieldRegistrationNewGeoIdExtracted": {
     "description": "Message when new field is registered and GeoID was successfully extracted",
@@ -664,6 +696,19 @@
   "filterByRegistrationDate": "Filter by registration date",
   "registrationErrors": "Registration Errors",
   "noFieldsForSelectedTimeframe": "No fields for the selected timeframe",
+  "searchFields": "Search fields...",
+  "noFieldsForSearch": "No fields found for \"{query}\"",
+  "loadMore": "Load More",
+  "loadAll": "Load All",
+  "loadAllFieldsTitle": "Load All Fields",
+  "loadAllFieldsWarning": "Loading all fields in the selected timeframe may take a very long time (several minutes). Do you want to continue?",
+  "@noFieldsForSearch": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "registeredOn": "Registered: {date}",
   "@registeredOn": {
     "placeholders": {

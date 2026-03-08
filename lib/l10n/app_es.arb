@@ -542,6 +542,38 @@
       }
     }
   },
+  "fieldNameDiscrepancyTitle": "Discrepancia en el nombre del campo",
+  "fieldNameDiscrepancyMessage": "La GeoID ya existe en la base de datos con el nombre \"{existingName}\", pero se está subiendo como \"{newName}\". ¿Qué nombre se debe usar?",
+  "@fieldNameDiscrepancyMessage": {
+    "description": "Mensaje cuando el nombre del campo subido difiere del nombre existente en la base de datos",
+    "placeholders": {
+      "existingName": {
+        "type": "String"
+      },
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyKeepExisting": "Mantener existente ({existingName})",
+  "@fieldNameDiscrepancyKeepExisting": {
+    "description": "Etiqueta del botón para mantener el nombre del campo existente",
+    "placeholders": {
+      "existingName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyUseNew": "Usar nuevo ({newName})",
+  "@fieldNameDiscrepancyUseNew": {
+    "description": "Etiqueta del botón para usar el nuevo nombre del campo",
+    "placeholders": {
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "fieldNameDiscrepancyCancel": "Cancelar importación",
   "fieldRegistrationNewGeoIdExtracted": "✅ Nuevo campo registrado - GeoID extraído exitosamente: {geoId}",
   "@fieldRegistrationNewGeoIdExtracted": {
     "description": "Mensaje cuando un nuevo campo es registrado y la GeoID fue extraída exitosamente",
@@ -616,6 +648,19 @@
   "filterByRegistrationDate": "Filtrar por fecha de registro",
   "registrationErrors": "Errores de Registro",
   "noFieldsForSelectedTimeframe": "No hay campos para el período seleccionado",
+  "searchFields": "Buscar campos...",
+  "noFieldsForSearch": "No se encontraron campos para \"{query}\"",
+  "loadMore": "Cargar más",
+  "loadAll": "Cargar todo",
+  "loadAllFieldsTitle": "Cargar todos los campos",
+  "loadAllFieldsWarning": "Cargar todos los campos del período seleccionado puede tardar mucho tiempo (varios minutos). ¿Desea continuar?",
+  "@noFieldsForSearch": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "registeredOn": "Registrado: {date}",
   "@registeredOn": {
     "placeholders": {

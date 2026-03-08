@@ -55,8 +55,16 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   bool isLoading = false;
   bool isRegistering = false;
   String selectedDateFilter =
-      'all'; // 'all', 'today', 'week', 'month', 'year', 'specific'
+      'week'; // 'all', 'today', 'week', 'month', 'year', 'specific'
   DateTime? selectedSpecificDate;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // Pagination
+  static const int _pageSize = 50;
+  bool _hasMoreData = false;
+  bool _isLoadingMore = false;
+  QueryDocumentSnapshot? _lastDocument;
 
   // Progress tracking variables
   bool showProgressOverlay = false;
@@ -99,202 +107,337 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   void initState() {
     super.initState();
     filteredFields = []; // Initialisiere die gefilterte Liste
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+        _applySearchFilter();
+      });
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRegisteredFields();
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadRegisteredFields() async {
     if (!mounted) return;
-
     setState(() {
       isLoading = true;
       _loadingStatusText = '';
+      _lastDocument = null;
+      _hasMoreData = false;
+      registeredFields = [];
+      filteredFields = [];
     });
 
     final l10n = AppLocalizations.of(context)!;
     _setLoadingStatus(l10n.loadingConnectingCloud);
 
     try {
-      // Lade registrierte Felder aus der Cloud-Datenbank
-      final fields = await _getFieldsFromCloudDatabase(_setLoadingStatus, l10n);
-
-      if (!mounted) return; // Prüfe erneut vor setState
-
+      final result = await _fetchFieldsPage(
+        _setLoadingStatus,
+        l10n,
+        limit: _pageSize,
+      );
+      if (!mounted) return;
       setState(() {
-        registeredFields = fields;
-        _applyDateFilter(); // Wende den aktuellen Filter an
+        registeredFields = result.$1;
+        _lastDocument = result.$2;
+        _hasMoreData = result.$3;
+        _applySearchFilter();
       });
     } catch (e) {
+      debugPrint('Error loading fields: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  Future<List<Map<String, dynamic>>> _getFieldsFromCloudDatabase(
+  Future<void> _loadMoreFields() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+    setState(() => _isLoadingMore = true);
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final result = await _fetchFieldsPage(
+        _setLoadingStatus,
+        l10n,
+        limit: _pageSize,
+        startAfterDoc: _lastDocument,
+      );
+      if (!mounted) return;
+      setState(() {
+        registeredFields.addAll(result.$1);
+        _lastDocument = result.$2;
+        _hasMoreData = result.$3;
+        _applySearchFilter();
+      });
+    } catch (e) {
+      debugPrint('Error loading more fields: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
+  }
+
+  Future<void> _loadAllFields() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.loadAllFieldsTitle,
+            style: const TextStyle(color: Colors.black)),
+        content: Text(l10n.loadAllFieldsWarning,
+            style: const TextStyle(color: Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.loadAll),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      isLoading = true;
+      _loadingStatusText = '';
+      _lastDocument = null;
+      _hasMoreData = false;
+      registeredFields = [];
+      filteredFields = [];
+    });
+    _setLoadingStatus(l10n.loadingConnectingCloud);
+    try {
+      final result = await _fetchFieldsPage(
+        _setLoadingStatus,
+        l10n,
+        limit: null,
+      );
+      if (!mounted) return;
+      setState(() {
+        registeredFields = result.$1;
+        _lastDocument = result.$2;
+        _hasMoreData = false;
+        _applySearchFilter();
+      });
+    } catch (e) {
+      debugPrint('Error loading all fields: $e');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  /// Gibt den Datumsbereich (fromDate, toDate) für den aktuellen Filter zurück.
+  (DateTime? fromDate, DateTime? toDate) _getDateRangeForFilter() {
+    final now = DateTime.now();
+    switch (selectedDateFilter) {
+      case 'today':
+        final from = DateTime(now.year, now.month, now.day);
+        return (from, from.add(const Duration(days: 1)));
+      case 'week':
+        return (now.subtract(const Duration(days: 7)), null);
+      case 'month':
+        return (DateTime(now.year, now.month - 1, now.day), null);
+      case 'year':
+        return (DateTime(now.year - 1, now.month, now.day), null);
+      case 'specific':
+        if (selectedSpecificDate != null) {
+          final from = DateTime(selectedSpecificDate!.year,
+              selectedSpecificDate!.month, selectedSpecificDate!.day);
+          return (from, from.add(const Duration(days: 1)));
+        }
+        return (null, null);
+      default: // 'all'
+        return (null, null);
+    }
+  }
+
+  /// Filtert [registeredFields] nach dem Suchbegriff und setzt [filteredFields].
+  void _applySearchFilter() {
+    if (_searchQuery.isNotEmpty) {
+      filteredFields = registeredFields.where((field) {
+        final name = (field["name"] as String? ?? '').toLowerCase();
+        return name.contains(_searchQuery);
+      }).toList();
+    } else {
+      filteredFields = List.from(registeredFields);
+    }
+  }
+
+  /// Lädt eine Seite Felder aus Firestore.
+  /// Gibt (felder, letztesDokument, gibtWeitere) zurück.
+  Future<(List<Map<String, dynamic>>, QueryDocumentSnapshot?, bool)>
+      _fetchFieldsPage(
     void Function(String) onStatus,
-    AppLocalizations l10n,
-  ) async {
+    AppLocalizations l10n, {
+    int? limit,
+    QueryDocumentSnapshot? startAfterDoc,
+  }) async {
     final List<Map<String, dynamic>> fields = [];
+    QueryDocumentSnapshot? lastDocument;
+    bool hasMore = false;
 
     try {
-      // Verwende getMyObjectsStream aus open_ral_service
-      // SUPERADMIN sieht alle Felder, andere User nur eigene
       final permissionService = PermissionService();
       final isSuperAdmin = permissionService.isSuperAdmin();
-      final objectStream =
-          isSuperAdmin ? getAllFieldsStream() : getMyObjectsStream();
+      final (fromDate, toDate) = _getDateRangeForFilter();
+
       if (isSuperAdmin) {
-        debugPrint('SUPERADMIN: Lade alle Felder aus der Datenbank');
+        debugPrint(
+            'SUPERADMIN: Lade Felder (limit=$limit, fromDate=$fromDate)');
       }
 
-      late StreamSubscription streamSubscription;
-      final completer = Completer<void>();
+      Query query;
+      if (isSuperAdmin) {
+        query = FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where('template.RALType', isEqualTo: 'field');
+      } else {
+        final currentUserUID = appUserDoc?["identity"]["UID"];
+        if (currentUserUID == null) throw Exception('User not authenticated');
+        query = FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where('currentOwners', arrayContains: {'UID': currentUserUID});
+      }
 
-      streamSubscription = objectStream.listen(
-        (querySnapshot) async {
-          debugPrint(
-              'Daten aus Cloud-Datenbank empfangen: ${querySnapshot.docs.length} Dokumente');
-          onStatus(l10n
-              .loadingProcessingFields(querySnapshot.docs.length.toString()));
-          fields.clear(); // Lösche vorherige Einträge
-          // DEBUG: Zähle RALTypes zur Diagnose
-          if (isSuperAdmin) {
-            final Map<String, int> ralTypeCounts = {};
-            for (final d in querySnapshot.docs) {
-              final data = d.data() as Map<String, dynamic>;
-              final t = data['template']?['RALType']?.toString() ?? 'null';
-              ralTypeCounts[t] = (ralTypeCounts[t] ?? 0) + 1;
-            }
-            debugPrint('SUPERADMIN RALType-Verteilung: $ralTypeCounts');
+      if (fromDate != null) {
+        query = query.where('existenceStarts',
+            isGreaterThanOrEqualTo: fromDate.toIso8601String());
+      }
+      if (toDate != null) {
+        query = query.where('existenceStarts',
+            isLessThan: toDate.toIso8601String());
+      }
+      query = query.orderBy('existenceStarts', descending: true);
+
+      final effectiveLimit = limit != null ? limit + 1 : null;
+      if (effectiveLimit != null) {
+        query = query.limit(effectiveLimit);
+      }
+      if (startAfterDoc != null) {
+        query = query.startAfterDocument(startAfterDoc);
+      }
+
+      QuerySnapshot querySnapshot;
+      try {
+        querySnapshot = await query.get();
+      } catch (e) {
+        // Fallback ohne orderBy falls composite index fehlt
+        debugPrint('Firestore-Query mit orderBy fehlgeschlagen, Fallback: $e');
+        Query fallback = isSuperAdmin
+            ? FirebaseFirestore.instance
+                .collection('TFC_objects')
+                .where('template.RALType', isEqualTo: 'field')
+            : FirebaseFirestore.instance.collection('TFC_objects').where(
+                'currentOwners',
+                arrayContains: {'UID': appUserDoc?["identity"]["UID"] ?? ''});
+        if (effectiveLimit != null) fallback = fallback.limit(effectiveLimit);
+        querySnapshot = await fallback.get();
+      }
+
+      final docs = querySnapshot.docs;
+
+      List<QueryDocumentSnapshot> docsToProcess;
+      if (limit != null && docs.length > limit) {
+        hasMore = true;
+        docsToProcess = docs.take(limit).toList();
+      } else {
+        hasMore = false;
+        docsToProcess = docs;
+      }
+      if (docsToProcess.isNotEmpty) {
+        lastDocument = docsToProcess.last;
+      }
+
+      onStatus(l10n.loadingProcessingFields(docsToProcess.length.toString()));
+
+      for (final doc in docsToProcess) {
+        final fieldData = doc.data() as Map<String, dynamic>;
+        try {
+          final ralType = fieldData['template']?["RALType"];
+          if (ralType != "field") continue;
+
+          final objectState = fieldData["objectState"];
+          if (objectState == "qcPending" || objectState == "qcRejected") {
+            continue;
           }
-          int count = 0;
-          for (final doc in querySnapshot.docs) {
-            count++;
-            final fieldData = doc.data() as Map<String, dynamic>;
 
+          if (!isSuperAdmin) {
+            final isFieldTestmode = fieldData.containsKey("isTestmode") &&
+                fieldData["isTestmode"] == true;
+            if (!isTestmode && isFieldTestmode) continue;
+            if (isTestmode && !fieldData.containsKey("isTestmode")) continue;
+          }
+
+          try {
+            final String fieldName =
+                fieldData["identity"]?["name"] ?? "Unnamed Field";
+            final String fieldUID = fieldData["identity"]?["UID"] ?? "";
+
+            String geoId = "";
             try {
-              // Filtere nur "field" Objekte
-              final ralType = fieldData['template']?["RALType"];
-              if (ralType != "field") {
-                continue;
-              }
-
-              // Skip fields with objectState qcPending or qcRejected
-              final objectState = fieldData["objectState"];
-              if (objectState == "qcPending" || objectState == "qcRejected") {
-                continue;
-              }
-
-              // SUPERADMIN sieht alle Felder unabhängig vom Testmode
-              if (!isSuperAdmin) {
-                final isFieldTestmode = fieldData.containsKey("isTestmode") &&
-                    fieldData["isTestmode"] == true;
-                if (!isTestmode && isFieldTestmode) {
-                  continue;
-                }
-                if (isTestmode && !fieldData.containsKey("isTestmode")) {
-                  continue;
-                }
-              }
-
-              // Extrahiere relevante Informationen
-              try {
-                final String fieldName =
-                    fieldData["identity"]?["name"] ?? "Unnamed Field";
-
-                final String fieldUID = fieldData["identity"]?["UID"] ?? "";
-
-                String geoId = "";
-
-                // Versuche geoID aus alternateIDs zu extrahieren
-                try {
-                  if (fieldData["identity"]?["alternateIDs"] != null) {
-                    for (final altId in fieldData["identity"]["alternateIDs"]) {
-                      if (altId["issuedBy"] == "Asset Registry") {
-                        geoId = altId["UID"];
-                        break;
-                      }
-                    }
+              if (fieldData["identity"]?["alternateIDs"] != null) {
+                for (final altId in fieldData["identity"]["alternateIDs"]) {
+                  if (altId["issuedBy"] == "Asset Registry") {
+                    geoId = altId["UID"];
+                    break;
                   }
-                } catch (e) {
-                  debugPrint("ERROR extracting geoID: $e");
                 }
-
-                // Extrahiere Fläche
-                String area = "";
-                try {
-                  final areaValue =
-                      getSpecificPropertyfromJSON(fieldData, "area");
-                  area = areaValue?.toString() ?? "";
-                } catch (e) {
-                  debugPrint("ERROR extracting area: $e");
-                }
-
-                // Extrahiere methodHistoryRef und existenceStarts
-                final methodHistoryRef = fieldData["methodHistoryRef"] ?? [];
-                final existenceStarts = fieldData["existenceStarts"];
-
-                fields.add({
-                  "name": fieldName,
-                  "uid": fieldUID,
-                  "geoId": geoId,
-                  "area": area,
-                  "methodHistoryRef": methodHistoryRef,
-                  "existenceStarts": existenceStarts,
-                });
-              } catch (e) {
-                debugPrint("❌ ERROR extracting field data: $e");
               }
             } catch (e) {
-              debugPrint("❌ CRITICAL ERROR processing field ${doc.id}: $e");
+              debugPrint("ERROR extracting geoID: $e");
             }
-          }
-          debugPrint(
-              'Fertig mit Verarbeiten der Dokumente. Insgesamt ${fields.length} Felder extrahiert.');
-          // Schließe den Stream nach dem ersten Datenempfang
-          if (!completer.isCompleted) {
-            completer.complete();
-          }
-        },
-        onError: (error) {
-          if (!completer.isCompleted) {
-            completer.completeError(error);
-          }
-        },
-      );
 
-      // Warte auf die ersten Daten oder Timeout
-      await Future.any([
-        completer.future,
-        Future.delayed(const Duration(seconds: 5)), // Timeout nach 5 Sekunden
-      ]);
+            String area = "";
+            try {
+              final areaValue = getSpecificPropertyfromJSON(fieldData, "area");
+              area = areaValue?.toString() ?? "";
+            } catch (e) {
+              debugPrint("ERROR extracting area: $e");
+            }
 
-      // Stream sofort schließen
-      await streamSubscription.cancel();
+            final methodHistoryRef = fieldData["methodHistoryRef"] ?? [];
+            final existenceStarts = fieldData["existenceStarts"];
 
-      // Für jedes Feld das Registrierungsdatum laden
-      debugPrint(
-          'Beginne mit Laden der Registrierungsdaten für ${fields.length} Felder...');
+            fields.add({
+              "name": fieldName,
+              "uid": fieldUID,
+              "geoId": geoId,
+              "area": area,
+              "methodHistoryRef": methodHistoryRef,
+              "existenceStarts": existenceStarts,
+            });
+          } catch (e) {
+            debugPrint("❌ ERROR extracting field data: $e");
+          }
+        } catch (e) {
+          debugPrint("❌ CRITICAL ERROR processing field ${doc.id}: $e");
+        }
+      }
+
+      debugPrint('Felder verarbeitet: ${fields.length}');
       final totalCount = fields.length;
       for (int i = 0; i < fields.length; i++) {
         final field = fields[i];
         final fieldName = field["name"] as String? ?? '';
         onStatus(l10n.loadingFieldDetailsProgress(
             (i + 1).toString(), totalCount.toString(), fieldName));
-        // Zuerst versuchen, das Datum aus existenceStarts (ISO 8601) zu lesen
+
         DateTime? registrationDate;
-        final existenceStarts = field["existenceStarts"];
-        if (existenceStarts != null &&
-            existenceStarts is String &&
-            existenceStarts.isNotEmpty) {
-          registrationDate = DateTime.tryParse(existenceStarts);
+        final existenceStartsStr = field["existenceStarts"];
+        if (existenceStartsStr != null &&
+            existenceStartsStr is String &&
+            existenceStartsStr.isNotEmpty) {
+          registrationDate = DateTime.tryParse(existenceStartsStr);
         }
-        // Nur wenn existenceStarts nicht funktioniert hat, aus methodHistoryRef laden
         if (registrationDate == null) {
           registrationDate =
               await _getRegistrationDate(field["methodHistoryRef"]);
@@ -302,20 +445,21 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         field["registrationDate"] = registrationDate;
       }
 
-      onStatus(l10n.loadingSortingFields);
-      // Sortiere die Felder nach Registrierungsdatum (neueste zuerst)
+      // Sortiere nur wenn nicht schon von Firestore geordnet
+      // (Fallback-Query liefert u.U. ungeordnete Ergebnisse)
       fields.sort((a, b) {
         final dateA = a["registrationDate"] as DateTime?;
         final dateB = b["registrationDate"] as DateTime?;
-
         if (dateA == null && dateB == null) return 0;
         if (dateA == null) return 1;
         if (dateB == null) return -1;
-
-        return dateB.compareTo(dateA); // Neueste zuerst
+        return dateB.compareTo(dateA);
       });
-    } catch (e) {}
-    return fields;
+    } catch (e) {
+      debugPrint('Fehler in _fetchFieldsPage: $e');
+    }
+
+    return (fields, lastDocument, hasMore);
   }
 
   /// Ermittelt das Registrierungsdatum durch das Suchen der generateDigitalSibling Methode
@@ -371,62 +515,30 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
-  /// Wendet den ausgewählten Datumsfilter an
-  void _applyDateFilter() {
-    final now = DateTime.now();
-
+  /// Gibt einen lokalisierten Label für den aktuellen Datumsfilter zurück.
+  String _getFilterLabel(AppLocalizations l10n) {
     switch (selectedDateFilter) {
       case 'today':
-        filteredFields = registeredFields.where((field) {
-          final regDate = field["registrationDate"] as DateTime?;
-          if (regDate == null) return false;
-          return regDate.year == now.year &&
-              regDate.month == now.month &&
-              regDate.day == now.day;
-        }).toList();
-        break;
+        return l10n.registeredToday;
       case 'week':
-        final oneWeekAgo = now.subtract(const Duration(days: 7));
-        filteredFields = registeredFields.where((field) {
-          final regDate = field["registrationDate"] as DateTime?;
-          if (regDate == null) return false;
-          return regDate.isAfter(oneWeekAgo);
-        }).toList();
-        break;
+        return l10n.lastWeek;
       case 'month':
-        final oneMonthAgo = DateTime(now.year, now.month - 1, now.day);
-        filteredFields = registeredFields.where((field) {
-          final regDate = field["registrationDate"] as DateTime?;
-          if (regDate == null) return false;
-          return regDate.isAfter(oneMonthAgo);
-        }).toList();
-        break;
+        return l10n.lastMonth;
       case 'year':
-        final oneYearAgo = DateTime(now.year - 1, now.month, now.day);
-        filteredFields = registeredFields.where((field) {
-          final regDate = field["registrationDate"] as DateTime?;
-          if (regDate == null) return false;
-          return regDate.isAfter(oneYearAgo);
-        }).toList();
-        break;
+        return l10n.lastYear;
       case 'specific':
-        if (selectedSpecificDate != null) {
-          filteredFields = registeredFields.where((field) {
-            final regDate = field["registrationDate"] as DateTime?;
-            if (regDate == null) return false;
-            return regDate.year == selectedSpecificDate!.year &&
-                regDate.month == selectedSpecificDate!.month &&
-                regDate.day == selectedSpecificDate!.day;
-          }).toList();
-        } else {
-          filteredFields = List.from(registeredFields);
-        }
-        break;
-      case 'all':
+        return selectedSpecificDate != null
+            ? _formatRealDate(selectedSpecificDate)
+            : l10n.specificDateLabel;
       default:
-        filteredFields = List.from(registeredFields);
-        break;
+        return l10n.allFields;
     }
+  }
+
+  /// Wendet den ausgewählten Datumsfilter an (delegiert jetzt an _applySearchFilter,
+  /// da die Datumsfilterung über Firestore erfolgt).
+  void _applyDateFilter() {
+    _applySearchFilter();
   }
 
   /// Öffnet einen Datumspicker zur Auswahl eines spezifischen Datums
@@ -442,8 +554,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       setState(() {
         selectedSpecificDate = picked;
         selectedDateFilter = 'specific';
-        _applyDateFilter();
       });
+      _loadRegisteredFields();
     }
   }
 
@@ -832,6 +944,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           } else if (returnCode == 'alreadyRegistered') {
             alreadyExistsCount++;
             debugPrint('ℹ️ Feld existiert bereits');
+          } else if (returnCode == 'cancelledByUser') {
+            debugPrint('⛔ Import vom Benutzer abgebrochen');
+            break;
           } else {
             errors.add(l10n.csvLineError((i + 1).toString(), returnCode));
             errorCount++;
@@ -1058,10 +1173,60 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           "coordinates": _convertWKTToGeoJSON(coordinates),
         });
 
+        // Prüfe ob Namens-Diskrepanz vorliegt
+        final existingName = existingField["identity"]["name"] as String? ?? "";
+        final hasNameDiscrepancy = existingName.isNotEmpty &&
+            existingName != "N/A" &&
+            existingName.toLowerCase() != fieldName.toLowerCase();
+
+        if (hasNameDiscrepancy) {
+          final dialogResult = await showDialog<bool?>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              title: Text(
+                l10n.fieldNameDiscrepancyTitle,
+                style: const TextStyle(color: Colors.black),
+              ),
+              content: Text(
+                l10n.fieldNameDiscrepancyMessage(existingName, fieldName),
+                style: const TextStyle(color: Colors.black87),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(null),
+                  child: Text(
+                    l10n.fieldNameDiscrepancyCancel,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(
+                    l10n.fieldNameDiscrepancyKeepExisting(existingName),
+                    style: const TextStyle(color: Colors.black87),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.fieldNameDiscrepancyUseNew(fieldName)),
+                ),
+              ],
+            ),
+          );
+          if (dialogResult == null) {
+            return ('cancelledByUser');
+          }
+          if (dialogResult == true) {
+            existingField["identity"]["name"] = fieldName;
+          }
+        }
+
         if (!currentOwners.any((owner) => owner["UID"] == appUserUID) ||
             !hasBoundaries ||
             !hasStartDate ||
-            existingField["identity"]["name"] == "N/A") {
+            existingField["identity"]["name"] == "N/A" ||
+            hasNameDiscrepancy) {
           if (existingField["identity"]["name"] == "N/A") {
             existingField["identity"]["name"] = fieldName;
           }
@@ -1230,17 +1395,18 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.fieldRegistry),
-            if (!isLoading && registeredFields.isNotEmpty)
-              Text(
-                l10n.fieldsCountSorted(
-                  filteredFields.length.toString(),
-                  registeredFields.length.toString(),
-                  registeredFields.length.toString(),
-                ),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
+            Text(
+              () {
+                final filterLabel = _getFilterLabel(l10n);
+                final limitLabel = _hasMoreData
+                    ? '${registeredFields.length}+'
+                    : registeredFields.length.toString();
+                return '$filterLabel · $limitLabel';
+              }(),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
           ],
         ),
         actions: [
@@ -1257,8 +1423,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                     if (value != 'specific') {
                       selectedSpecificDate = null;
                     }
-                    _applyDateFilter();
                   });
+                  _loadRegisteredFields();
                 }
               },
               itemBuilder: (context) => [
@@ -1320,6 +1486,30 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               //     ),
               //   ),
               if (isRegistering) const LinearProgressIndicator(),
+              if (!isLoading && registeredFields.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: TextField(
+                    controller: _searchController,
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      hintText: l10n.searchFields,
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => _searchController.clear(),
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ),
               Expanded(
                 child: isLoading
                     ? Center(
@@ -1359,7 +1549,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                                 Text(
                                   registeredFields.isEmpty
                                       ? l10n.noFieldsRegistered
-                                      : l10n.noFieldsForSelectedTimeframe,
+                                      : _searchQuery.isNotEmpty
+                                          ? l10n.noFieldsForSearch(_searchQuery)
+                                          : l10n.noFieldsForSelectedTimeframe,
                                   style: const TextStyle(
                                     fontSize: 18,
                                     color: Colors.grey,
@@ -1491,6 +1683,43 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                             ),
                           ),
               ),
+              // Load More / Load All Buttons
+              if (!isLoading && _hasMoreData && _searchQuery.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoadingMore ? null : _loadMoreFields,
+                          icon: _isLoadingMore
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.expand_more),
+                          label: Text(
+                            l10n.loadMore,
+                            style: const TextStyle(color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoadingMore ? null : _loadAllFields,
+                          icon: const Icon(Icons.download),
+                          label: Text(
+                            l10n.loadAll,
+                            style: const TextStyle(color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
           // Progress Overlay

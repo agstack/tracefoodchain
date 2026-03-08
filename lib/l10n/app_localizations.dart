@@ -2562,6 +2562,36 @@ abstract class AppLocalizations {
   /// **'⚠️ Field already exists - Failed to extract GeoID: {error}'**
   String fieldAlreadyExistsGeoIdFailed(String error);
 
+  /// No description provided for @fieldNameDiscrepancyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Field Name Discrepancy'**
+  String get fieldNameDiscrepancyTitle;
+
+  /// Message shown when uploaded field name differs from existing name in database
+  ///
+  /// In en, this message translates to:
+  /// **'The GeoID already exists in the database with the name \"{existingName}\", but is being uploaded as \"{newName}\". Which name should be used?'**
+  String fieldNameDiscrepancyMessage(String existingName, String newName);
+
+  /// Button label to keep the existing field name
+  ///
+  /// In en, this message translates to:
+  /// **'Keep existing ({existingName})'**
+  String fieldNameDiscrepancyKeepExisting(String existingName);
+
+  /// Button label to use the new field name
+  ///
+  /// In en, this message translates to:
+  /// **'Use new ({newName})'**
+  String fieldNameDiscrepancyUseNew(String newName);
+
+  /// No description provided for @fieldNameDiscrepancyCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel import'**
+  String get fieldNameDiscrepancyCancel;
+
   /// Message when new field is registered and GeoID was successfully extracted
   ///
   /// In en, this message translates to:
@@ -2693,6 +2723,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No fields for the selected timeframe'**
   String get noFieldsForSelectedTimeframe;
+
+  /// No description provided for @searchFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Search fields...'**
+  String get searchFields;
+
+  /// No description provided for @noFieldsForSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'No fields found for \"{query}\"'**
+  String noFieldsForSearch(String query);
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load More'**
+  String get loadMore;
+
+  /// No description provided for @loadAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Load All'**
+  String get loadAll;
+
+  /// No description provided for @loadAllFieldsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Load All Fields'**
+  String get loadAllFieldsTitle;
+
+  /// No description provided for @loadAllFieldsWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading all fields in the selected timeframe may take a very long time (several minutes). Do you want to continue?'**
+  String get loadAllFieldsWarning;
 
   /// No description provided for @registeredOn.
   ///
