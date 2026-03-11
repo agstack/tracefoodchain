@@ -2382,6 +2382,876 @@ abstract class AppLocalizations {
   /// **'Upload CSV'**
   String get uploadCsv;
 
+  /// No description provided for @fastUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Upload'**
+  String get fastUpload;
+
+  /// No description provided for @fastUploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Upload – Bulk Field Registration'**
+  String get fastUploadTitle;
+
+  /// No description provided for @fastUploadCsvSection.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV File'**
+  String get fastUploadCsvSection;
+
+  /// No description provided for @fastUploadPickCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Select CSV File'**
+  String get fastUploadPickCsv;
+
+  /// No description provided for @fastUploadActionSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get fastUploadActionSection;
+
+  /// No description provided for @fastUploadProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Process & Upload'**
+  String get fastUploadProcess;
+
+  /// No description provided for @fastUploadProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing…'**
+  String get fastUploadProcessing;
+
+  /// No description provided for @fastUploadReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get fastUploadReset;
+
+  /// No description provided for @fastUploadFormatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV Format'**
+  String get fastUploadFormatHint;
+
+  /// No description provided for @fastUploadSaveGeoIds.
+  ///
+  /// In en, this message translates to:
+  /// **'Save GeoIDs ({count})'**
+  String fastUploadSaveGeoIds(int count);
+
+  /// No description provided for @fastUploadDryRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Dry-Run Preview'**
+  String get fastUploadDryRun;
+
+  /// No description provided for @fastUploadPersisting.
+  ///
+  /// In en, this message translates to:
+  /// **'Persisting…'**
+  String get fastUploadPersisting;
+
+  /// No description provided for @fastUploadPersistenceComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Persistence complete'**
+  String get fastUploadPersistenceComplete;
+
+  /// No description provided for @fastUploadPersistToDb.
+  ///
+  /// In en, this message translates to:
+  /// **'Persist to DB ({count})'**
+  String fastUploadPersistToDb(int count);
+
+  /// No description provided for @fastUploadFormatHintBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns: name, dni, polygon\n\nPolygon format:\n[-88.36,14.79];[-88.37,14.79];...\n\nEndpoint:\nPOST /register-field-\nboundaries-geojson'**
+  String get fastUploadFormatHintBody;
+
+  /// No description provided for @fuLogOpeningFilePicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening file picker…'**
+  String get fuLogOpeningFilePicker;
+
+  /// No description provided for @fuLogCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled – no file selected.'**
+  String get fuLogCancelled;
+
+  /// No description provided for @fuLogFileSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'File: {name}  ({size})'**
+  String fuLogFileSelected(String name, String size);
+
+  /// No description provided for @fuLogWebPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Web platform detected – reading via stream…'**
+  String get fuLogWebPlatform;
+
+  /// No description provided for @fuLogBytesReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} bytes received'**
+  String fuLogBytesReceived(String size);
+
+  /// No description provided for @fuLogNativePlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Native platform detected – reading via file…'**
+  String get fuLogNativePlatform;
+
+  /// No description provided for @fuLogBytesRead.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} bytes read'**
+  String fuLogBytesRead(String size);
+
+  /// No description provided for @fuLogCsvLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV loaded successfully'**
+  String get fuLogCsvLoaded;
+
+  /// No description provided for @fuLogTotalLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Total lines : {count}'**
+  String fuLogTotalLines(int count);
+
+  /// No description provided for @fuLogTotalChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Total chars : {count}'**
+  String fuLogTotalChars(int count);
+
+  /// No description provided for @fuLogFirst120.
+  ///
+  /// In en, this message translates to:
+  /// **'First 120 characters:'**
+  String get fuLogFirst120;
+
+  /// No description provided for @fuLogCsvReady.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV ready. Click \"Process & Upload\".'**
+  String get fuLogCsvReady;
+
+  /// No description provided for @fuLogFileLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'ERROR loading file: {error}'**
+  String fuLogFileLoadError(String error);
+
+  /// No description provided for @fuLogNoCsvLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No CSV file loaded – please select a file first.'**
+  String get fuLogNoCsvLoaded;
+
+  /// No description provided for @fuLogUploadStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Upload started'**
+  String get fuLogUploadStarted;
+
+  /// No description provided for @fuLogStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'STEP 1: PARSE CSV'**
+  String get fuLogStep1;
+
+  /// No description provided for @fuLogNoPolygons.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid polygons found – aborting.'**
+  String get fuLogNoPolygons;
+
+  /// No description provided for @fuLogPolygonsExtracted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} polygon(s) successfully extracted'**
+  String fuLogPolygonsExtracted(int count);
+
+  /// No description provided for @fuLogFieldNamesCached.
+  ///
+  /// In en, this message translates to:
+  /// **'Field names cached (for result correlation): {count}'**
+  String fuLogFieldNamesCached(int count);
+
+  /// No description provided for @fuLogStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'STEP 2: CREATE GEOJSON'**
+  String get fuLogStep2;
+
+  /// No description provided for @fuLogFeatureCollectionCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'FeatureCollection created'**
+  String get fuLogFeatureCollectionCreated;
+
+  /// No description provided for @fuLogFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'Features : {count}'**
+  String fuLogFeatures(int count);
+
+  /// No description provided for @fuLogSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size    : {size}'**
+  String fuLogSize(String size);
+
+  /// No description provided for @fuLogFeature0Points.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature 0: {count} coordinate points'**
+  String fuLogFeature0Points(int count);
+
+  /// No description provided for @fuLogStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'STEP 3: AUTHENTICATION'**
+  String get fuLogStep3;
+
+  /// No description provided for @fuLogCredentialsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'API credentials missing in .env file!'**
+  String get fuLogCredentialsMissing;
+
+  /// No description provided for @fuLogCredentialsNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Required: {key}'**
+  String fuLogCredentialsNeeded(String key);
+
+  /// No description provided for @fuLogEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'E-mail: {email}'**
+  String fuLogEmail(String email);
+
+  /// No description provided for @fuLogConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to AgStack User Registry…'**
+  String get fuLogConnecting;
+
+  /// No description provided for @fuLogServiceInitialized.
+  ///
+  /// In en, this message translates to:
+  /// **'Service initialized'**
+  String get fuLogServiceInitialized;
+
+  /// No description provided for @fuLogLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed – check credentials.'**
+  String get fuLogLoginFailed;
+
+  /// No description provided for @fuLogLoginSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Login successful'**
+  String get fuLogLoginSuccess;
+
+  /// No description provided for @fuLogTokenPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Bearer token (first 20 chars): {preview}…'**
+  String fuLogTokenPreview(String preview);
+
+  /// No description provided for @fuLogStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'STEP 4: UPLOAD (MULTIPART)'**
+  String get fuLogStep4;
+
+  /// No description provided for @fuLogSendingMultipart.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending multipart/form-data…'**
+  String get fuLogSendingMultipart;
+
+  /// No description provided for @fuLogPolygonCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygons : {count}'**
+  String fuLogPolygonCount(int count);
+
+  /// No description provided for @fuLogTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout  : {label}  ({seconds}s = {count} × 2s + 60s buffer)'**
+  String fuLogTimeout(String label, int seconds, int count);
+
+  /// No description provided for @fuLogWaitingForServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for server response…'**
+  String get fuLogWaitingForServer;
+
+  /// No description provided for @fuLogStep5.
+  ///
+  /// In en, this message translates to:
+  /// **'STEP 5: SERVER RESPONSE'**
+  String get fuLogStep5;
+
+  /// No description provided for @fuLogHttpStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP Status   : {code} {text}'**
+  String fuLogHttpStatus(int code, String text);
+
+  /// No description provided for @fuLogContentType.
+  ///
+  /// In en, this message translates to:
+  /// **'Content-Type : {type}'**
+  String fuLogContentType(String type);
+
+  /// No description provided for @fuLogResponseSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Response size: {size}'**
+  String fuLogResponseSize(String size);
+
+  /// No description provided for @fuLogUploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload successful (HTTP {code})'**
+  String fuLogUploadSuccess(int code);
+
+  /// No description provided for @fuLogServerError.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error (HTTP {code})'**
+  String fuLogServerError(int code);
+
+  /// No description provided for @fuLogLoggedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged out from User Registry'**
+  String get fuLogLoggedOut;
+
+  /// No description provided for @fuLogLogoutFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout failed (ignored)'**
+  String get fuLogLogoutFailed;
+
+  /// No description provided for @fuLogException.
+  ///
+  /// In en, this message translates to:
+  /// **'EXCEPTION: {error}'**
+  String fuLogException(String error);
+
+  /// No description provided for @fuLogProcessDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Process complete'**
+  String get fuLogProcessDone;
+
+  /// No description provided for @fuLogSavingGeoIds.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving {count} GeoIDs as \"{filename}\"…'**
+  String fuLogSavingGeoIds(int count, String filename);
+
+  /// No description provided for @fuLogGeoIdsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'File saved/downloaded: {filename}'**
+  String fuLogGeoIdsSaved(String filename);
+
+  /// No description provided for @fuLogSaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error saving: {error}'**
+  String fuLogSaveError(String error);
+
+  /// No description provided for @fuLogRawPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON RESPONSE (RAW PREVIEW)'**
+  String get fuLogRawPreview;
+
+  /// No description provided for @fuLogDetailedAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'DETAILED RESULT ANALYSIS'**
+  String get fuLogDetailedAnalysis;
+
+  /// No description provided for @fuLogNotJsonObject.
+  ///
+  /// In en, this message translates to:
+  /// **'Response is not a JSON object – raw display:'**
+  String get fuLogNotJsonObject;
+
+  /// No description provided for @fuLogServerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Server message: {msg}'**
+  String fuLogServerMessage(String msg);
+
+  /// No description provided for @fuLogNoResultsArray.
+  ///
+  /// In en, this message translates to:
+  /// **'No \"results\" array in response.'**
+  String get fuLogNoResultsArray;
+
+  /// No description provided for @fuLogFullResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Full response (formatted):'**
+  String get fuLogFullResponse;
+
+  /// No description provided for @fuLogTotalResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Total results: {count}'**
+  String fuLogTotalResults(int count);
+
+  /// No description provided for @fuLogEntryNotObject.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry {index} is not an object: {value}'**
+  String fuLogEntryNotObject(int index, String value);
+
+  /// No description provided for @fuLogStatusNew.
+  ///
+  /// In en, this message translates to:
+  /// **'✅ NEWLY REGISTERED'**
+  String get fuLogStatusNew;
+
+  /// No description provided for @fuLogStatusExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'ℹ️  ALREADY EXISTS'**
+  String get fuLogStatusExisting;
+
+  /// No description provided for @fuLogStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'❌ ERROR ({status})'**
+  String fuLogStatusError(String status);
+
+  /// No description provided for @fuLogGeoIdSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Geo-ID  : {id}  (field: {src})'**
+  String fuLogGeoIdSource(String id, String src);
+
+  /// No description provided for @fuLogGeoIdMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Geo-ID  : (not available)'**
+  String get fuLogGeoIdMissing;
+
+  /// No description provided for @fuLogApiMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message : {msg}'**
+  String fuLogApiMessage(String msg);
+
+  /// No description provided for @fuLogCoordPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Points  : {count} coordinate points in polygon'**
+  String fuLogCoordPoints(int count);
+
+  /// No description provided for @fuLogSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'SUMMARY'**
+  String get fuLogSummary;
+
+  /// No description provided for @fuLogSummaryTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total                   : {count}'**
+  String fuLogSummaryTotal(int count);
+
+  /// No description provided for @fuLogSummaryNew.
+  ///
+  /// In en, this message translates to:
+  /// **'✅ Newly registered      : {count}'**
+  String fuLogSummaryNew(int count);
+
+  /// No description provided for @fuLogSummaryExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'ℹ️  Already exists        : {count}'**
+  String fuLogSummaryExisting(int count);
+
+  /// No description provided for @fuLogSummaryErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'❌ Errors                : {count}'**
+  String fuLogSummaryErrors(int count);
+
+  /// No description provided for @fuLogErrorDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error details:'**
+  String get fuLogErrorDetails;
+
+  /// No description provided for @fuLogGeoIdsReadyForExport.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} GeoIDs ready for export'**
+  String fuLogGeoIdsReadyForExport(int count);
+
+  /// No description provided for @fuLogClickSaveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'→ Click \"Save GeoIDs\" button in the left panel'**
+  String get fuLogClickSaveButton;
+
+  /// No description provided for @fuLogParseError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error parsing response: {error}'**
+  String fuLogParseError(String error);
+
+  /// No description provided for @fuLogRawText.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw response text:'**
+  String get fuLogRawText;
+
+  /// No description provided for @fuLogDelimiterDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter detected: \"{delimiter}\" ({semicolons} semicolons vs. {commas} commas outside quotes)'**
+  String fuLogDelimiterDetected(String delimiter, int semicolons, int commas);
+
+  /// No description provided for @fuLogEolWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Line ending: Windows (\\r\\n)'**
+  String get fuLogEolWindows;
+
+  /// No description provided for @fuLogEolMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Line ending: Mac OS Classic (\\r)'**
+  String get fuLogEolMac;
+
+  /// No description provided for @fuLogEolUnix.
+  ///
+  /// In en, this message translates to:
+  /// **'Line ending: Unix/macOS (\\n)'**
+  String get fuLogEolUnix;
+
+  /// No description provided for @fuLogParsedRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Parsed rows: {count} (incl. header)'**
+  String fuLogParsedRows(int count);
+
+  /// No description provided for @fuLogNoCsvDataRows.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV contains no data rows'**
+  String get fuLogNoCsvDataRows;
+
+  /// No description provided for @fuLogHeaderColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Header columns: {cols}'**
+  String fuLogHeaderColumns(String cols);
+
+  /// No description provided for @fuLogNoPolygonColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'No \"polygon\"/\"coordinates\"/\"koordinaten\" column found'**
+  String get fuLogNoPolygonColumn;
+
+  /// No description provided for @fuLogAvailableColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Available columns: {cols}'**
+  String fuLogAvailableColumns(String cols);
+
+  /// No description provided for @fuLogPolygonColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygon column  : index {index} (name: \"{name}\")'**
+  String fuLogPolygonColumn(int index, String name);
+
+  /// No description provided for @fuLogNameColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Name column     : index {index} (name: \"{name}\")'**
+  String fuLogNameColumn(int index, String name);
+
+  /// No description provided for @fuLogNoNameColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Name column     : not found – generated name will be used'**
+  String get fuLogNoNameColumn;
+
+  /// No description provided for @fuLogRowTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row}: only {count} columns present (need > {need}) → skipped'**
+  String fuLogRowTooShort(int row, int count, int need);
+
+  /// No description provided for @fuLogEmptyCoords.
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row} \"{name}\": coordinate cell is empty → skipped'**
+  String fuLogEmptyCoords(int row, String name);
+
+  /// No description provided for @fuLogTooFewPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row} \"{name}\": fewer than 4 polygon points → skipped'**
+  String fuLogTooFewPoints(int row, String name);
+
+  /// No description provided for @fuLogRowParsed.
+  ///
+  /// In en, this message translates to:
+  /// **'✔ Row {row}  \"{name}\"  →  {count} points'**
+  String fuLogRowParsed(int row, String name, int count);
+
+  /// No description provided for @fuLogSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} row(s) skipped'**
+  String fuLogSkipped(int count);
+
+  /// No description provided for @fuLogParseSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully parsed: {features} features, skipped: {skipped}'**
+  String fuLogParseSummary(int features, int skipped);
+
+  /// No description provided for @fuLogEncodingUtf8.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding: UTF-8'**
+  String get fuLogEncodingUtf8;
+
+  /// No description provided for @fuLogEncodingLatin1.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding: Latin-1 (ISO-8859-1)'**
+  String get fuLogEncodingLatin1;
+
+  /// No description provided for @fuLogEncodingFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding: UTF-8 (allow malformed – fallback)'**
+  String get fuLogEncodingFallback;
+
+  /// No description provided for @fuLogPersistHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'DATABASE PERSISTENCE ({count} fields)'**
+  String fuLogPersistHeader(int count);
+
+  /// No description provided for @fuLogPersistSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Running in background – upload results are being saved to DB'**
+  String get fuLogPersistSubtitle;
+
+  /// No description provided for @fuLogDryRunHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'🔍 DRY-RUN PREVIEW ({count} fields) – NO DB CHANGES'**
+  String fuLogDryRunHeader(int count);
+
+  /// No description provided for @fuLogDryRunSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows what would be persisted. No database interaction.'**
+  String get fuLogDryRunSubtitle;
+
+  /// No description provided for @fuLogDryRunWouldCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'   🔍 [DRY-RUN] Would create via generateDigitalSibling'**
+  String get fuLogDryRunWouldCreate;
+
+  /// No description provided for @fuLogDryRunName.
+  ///
+  /// In en, this message translates to:
+  /// **'      Name        : {name}'**
+  String fuLogDryRunName(String name);
+
+  /// No description provided for @fuLogDryRunGeoId.
+  ///
+  /// In en, this message translates to:
+  /// **'      GeoID       : {geoId}'**
+  String fuLogDryRunGeoId(String geoId);
+
+  /// No description provided for @fuLogDryRunOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'      Owner UID   : {uid}'**
+  String fuLogDryRunOwner(String uid);
+
+  /// No description provided for @fuLogDryRunCoords.
+  ///
+  /// In en, this message translates to:
+  /// **'      Coordinates : {count} points (first: {first})'**
+  String fuLogDryRunCoords(int count, String first);
+
+  /// No description provided for @fuLogDryRunQuerying.
+  ///
+  /// In en, this message translates to:
+  /// **'   🔍 [DRY-RUN] Querying Firebase for GeoID: {geoId}'**
+  String fuLogDryRunQuerying(String geoId);
+
+  /// No description provided for @fuLogDryRunNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'      DB result   : ⚠️  No entry found'**
+  String get fuLogDryRunNotFound;
+
+  /// No description provided for @fuLogDryRunWouldCreateNew.
+  ///
+  /// In en, this message translates to:
+  /// **'      Action      : → would create via generateDigitalSibling'**
+  String get fuLogDryRunWouldCreateNew;
+
+  /// No description provided for @fuLogDryRunFound.
+  ///
+  /// In en, this message translates to:
+  /// **'      DB result   : ✅ Entry found'**
+  String get fuLogDryRunFound;
+
+  /// No description provided for @fuLogDryRunDbName.
+  ///
+  /// In en, this message translates to:
+  /// **'      DB name     : {name}'**
+  String fuLogDryRunDbName(String name);
+
+  /// No description provided for @fuLogDryRunFlags.
+  ///
+  /// In en, this message translates to:
+  /// **'      hasBoundaries: {b}  |  hasStartDate: {d}  |  hasOwner: {o}'**
+  String fuLogDryRunFlags(String b, String d, String o);
+
+  /// No description provided for @fuLogDryRunNoChange.
+  ///
+  /// In en, this message translates to:
+  /// **'      Action      : ℹ️  No changes needed'**
+  String get fuLogDryRunNoChange;
+
+  /// No description provided for @fuLogDryRunActions.
+  ///
+  /// In en, this message translates to:
+  /// **'      Action      : → {actions}'**
+  String fuLogDryRunActions(String actions);
+
+  /// No description provided for @fuLogDryRunAddOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Add owner ({uid})'**
+  String fuLogDryRunAddOwner(String uid);
+
+  /// No description provided for @fuLogDryRunSetBoundaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Set boundaries'**
+  String get fuLogDryRunSetBoundaries;
+
+  /// No description provided for @fuLogDryRunSetStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Set existenceStarts'**
+  String get fuLogDryRunSetStartDate;
+
+  /// No description provided for @fuLogDryRunSetName.
+  ///
+  /// In en, this message translates to:
+  /// **'Set name → {name}'**
+  String fuLogDryRunSetName(String name);
+
+  /// No description provided for @fuLogPersistedNew.
+  ///
+  /// In en, this message translates to:
+  /// **'   ✅ Created  →  GeoID: {geoId}'**
+  String fuLogPersistedNew(String geoId);
+
+  /// No description provided for @fuLogPersistedUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'   ✅ Updated  →  GeoID: {geoId}'**
+  String fuLogPersistedUpdated(String geoId);
+
+  /// No description provided for @fuLogPersistedAlreadyFull.
+  ///
+  /// In en, this message translates to:
+  /// **'   ℹ️  Already complete  →  GeoID: {geoId}'**
+  String fuLogPersistedAlreadyFull(String geoId);
+
+  /// No description provided for @fuLogPersistedNewFromExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'   ✅ Created (was already registered at API)  →  GeoID: {geoId}'**
+  String fuLogPersistedNewFromExisting(String geoId);
+
+  /// No description provided for @fuLogPersistError.
+  ///
+  /// In en, this message translates to:
+  /// **'   ❌ Error: {error}'**
+  String fuLogPersistError(String error);
+
+  /// No description provided for @fuLogPersistDone.
+  ///
+  /// In en, this message translates to:
+  /// **'PERSISTENCE COMPLETE'**
+  String get fuLogPersistDone;
+
+  /// No description provided for @fuLogPersistSummaryNew.
+  ///
+  /// In en, this message translates to:
+  /// **'   ✅ Created     : {count}'**
+  String fuLogPersistSummaryNew(int count);
+
+  /// No description provided for @fuLogPersistSummaryUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'   ✅ Updated     : {count}'**
+  String fuLogPersistSummaryUpdated(int count);
+
+  /// No description provided for @fuLogDryRunDone.
+  ///
+  /// In en, this message translates to:
+  /// **'DRY-RUN COMPLETE – nothing was written'**
+  String get fuLogDryRunDone;
+
+  /// No description provided for @fuLogDryRunSummaryNew.
+  ///
+  /// In en, this message translates to:
+  /// **'   🔍 Would create  : {count}'**
+  String fuLogDryRunSummaryNew(int count);
+
+  /// No description provided for @fuLogDryRunSummaryUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'   🔍 Would update  : {count}'**
+  String fuLogDryRunSummaryUpdated(int count);
+
+  /// No description provided for @fuLogPersistSummaryErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'   ❌ Errors        : {count}'**
+  String fuLogPersistSummaryErrors(int count);
+
   /// No description provided for @selectCsvFile.
   ///
   /// In en, this message translates to:

@@ -1225,6 +1225,606 @@ class AppLocalizationsDe extends AppLocalizations {
   String get uploadCsv => 'CSV hochladen';
 
   @override
+  String get fastUpload => 'Fast Upload';
+
+  @override
+  String get fastUploadTitle => 'Fast Upload – Massenregistrierung von Feldern';
+
+  @override
+  String get fastUploadCsvSection => 'CSV-Datei';
+
+  @override
+  String get fastUploadPickCsv => 'CSV-Datei auswählen';
+
+  @override
+  String get fastUploadActionSection => 'Aktion';
+
+  @override
+  String get fastUploadProcess => 'Verarbeiten & Hochladen';
+
+  @override
+  String get fastUploadProcessing => 'Wird verarbeitet …';
+
+  @override
+  String get fastUploadReset => 'Zurücksetzen';
+
+  @override
+  String get fastUploadFormatHint => 'CSV-Format';
+
+  @override
+  String fastUploadSaveGeoIds(int count) {
+    return 'GeoIDs speichern ($count)';
+  }
+
+  @override
+  String get fastUploadDryRun => 'Dry-Run Vorschau';
+
+  @override
+  String get fastUploadPersisting => 'Persistiere …';
+
+  @override
+  String get fastUploadPersistenceComplete => 'Persistierung abgeschlossen';
+
+  @override
+  String fastUploadPersistToDb(int count) {
+    return 'In DB persistieren ($count)';
+  }
+
+  @override
+  String get fastUploadFormatHintBody =>
+      'Spalten: name, dni, polygon\n\nPolygon-Format:\n[-88.36,14.79];[-88.37,14.79];...\n\nEndpunkt:\nPOST /register-field-\nboundaries-geojson';
+
+  @override
+  String get fuLogOpeningFilePicker => 'Datei-Auswahl wird geöffnet …';
+
+  @override
+  String get fuLogCancelled => 'Abgebrochen – keine Datei ausgewählt.';
+
+  @override
+  String fuLogFileSelected(String name, String size) {
+    return 'Datei: $name  ($size)';
+  }
+
+  @override
+  String get fuLogWebPlatform => 'Web-Plattform erkannt – lese via Stream …';
+
+  @override
+  String fuLogBytesReceived(String size) {
+    return '$size Bytes empfangen';
+  }
+
+  @override
+  String get fuLogNativePlatform =>
+      'Native Plattform erkannt – lese via File …';
+
+  @override
+  String fuLogBytesRead(String size) {
+    return '$size Bytes gelesen';
+  }
+
+  @override
+  String get fuLogCsvLoaded => 'CSV erfolgreich geladen';
+
+  @override
+  String fuLogTotalLines(int count) {
+    return 'Zeilen gesamt : $count';
+  }
+
+  @override
+  String fuLogTotalChars(int count) {
+    return 'Zeichen gesamt: $count';
+  }
+
+  @override
+  String get fuLogFirst120 => 'Erste 120 Zeichen:';
+
+  @override
+  String get fuLogCsvReady =>
+      'CSV bereit. Klicke auf \\\"Verarbeiten & Hochladen\\\".';
+
+  @override
+  String fuLogFileLoadError(String error) {
+    return 'FEHLER beim Laden der Datei: $error';
+  }
+
+  @override
+  String get fuLogNoCsvLoaded =>
+      'Keine CSV-Datei geladen – bitte zuerst eine Datei auswählen.';
+
+  @override
+  String get fuLogUploadStarted => 'Fast-Upload gestartet';
+
+  @override
+  String get fuLogStep1 => 'SCHRITT 1: CSV PARSEN';
+
+  @override
+  String get fuLogNoPolygons => 'Keine gültigen Polygone gefunden – Abbruch.';
+
+  @override
+  String fuLogPolygonsExtracted(int count) {
+    return '$count Polygon(e) erfolgreich extrahiert';
+  }
+
+  @override
+  String fuLogFieldNamesCached(int count) {
+    return 'Feldnamen gespeichert (für Ergebnis-Korrelation): $count';
+  }
+
+  @override
+  String get fuLogStep2 => 'SCHRITT 2: GEOJSON ERSTELLEN';
+
+  @override
+  String get fuLogFeatureCollectionCreated => 'FeatureCollection erstellt';
+
+  @override
+  String fuLogFeatures(int count) {
+    return 'Features : $count';
+  }
+
+  @override
+  String fuLogSize(String size) {
+    return 'Größe    : $size';
+  }
+
+  @override
+  String fuLogFeature0Points(int count) {
+    return 'Feature 0: $count Koordinatenpunkte';
+  }
+
+  @override
+  String get fuLogStep3 => 'SCHRITT 3: AUTHENTIFIZIERUNG';
+
+  @override
+  String get fuLogCredentialsMissing =>
+      'API-Zugangsdaten fehlen in der .env-Datei!';
+
+  @override
+  String fuLogCredentialsNeeded(String key) {
+    return 'Benötigt: $key';
+  }
+
+  @override
+  String fuLogEmail(String email) {
+    return 'E-Mail: $email';
+  }
+
+  @override
+  String get fuLogConnecting => 'Verbinde mit AgStack User Registry …';
+
+  @override
+  String get fuLogServiceInitialized => 'Service initialisiert';
+
+  @override
+  String get fuLogLoginFailed => 'Login fehlgeschlagen – Zugangsdaten prüfen.';
+
+  @override
+  String get fuLogLoginSuccess => 'Login erfolgreich';
+
+  @override
+  String fuLogTokenPreview(String preview) {
+    return 'Bearer-Token (erste 20 Zeichen): $preview…';
+  }
+
+  @override
+  String get fuLogStep4 => 'SCHRITT 4: HOCHLADEN (MULTIPART)';
+
+  @override
+  String get fuLogSendingMultipart => 'Sende multipart/form-data …';
+
+  @override
+  String fuLogPolygonCount(int count) {
+    return 'Polygone : $count';
+  }
+
+  @override
+  String fuLogTimeout(String label, int seconds, int count) {
+    return 'Timeout  : $label  (${seconds}s = $count × 2s + 60s Puffer)';
+  }
+
+  @override
+  String get fuLogWaitingForServer => 'Warte auf Server-Antwort …';
+
+  @override
+  String get fuLogStep5 => 'SCHRITT 5: SERVER-ANTWORT';
+
+  @override
+  String fuLogHttpStatus(int code, String text) {
+    return 'HTTP Status   : $code $text';
+  }
+
+  @override
+  String fuLogContentType(String type) {
+    return 'Content-Type : $type';
+  }
+
+  @override
+  String fuLogResponseSize(String size) {
+    return 'Antwort-Größe: $size';
+  }
+
+  @override
+  String fuLogUploadSuccess(int code) {
+    return 'Upload erfolgreich (HTTP $code)';
+  }
+
+  @override
+  String fuLogServerError(int code) {
+    return 'Server-Fehler (HTTP $code)';
+  }
+
+  @override
+  String get fuLogLoggedOut => 'Abgemeldet von User Registry';
+
+  @override
+  String get fuLogLogoutFailed => 'Logout fehlgeschlagen (ignoriert)';
+
+  @override
+  String fuLogException(String error) {
+    return 'AUSNAHME: $error';
+  }
+
+  @override
+  String get fuLogProcessDone => 'Prozess abgeschlossen';
+
+  @override
+  String fuLogSavingGeoIds(int count, String filename) {
+    return 'Speichere $count GeoIDs als \\\"$filename\\\" …';
+  }
+
+  @override
+  String fuLogGeoIdsSaved(String filename) {
+    return 'Datei erfolgreich gespeichert/heruntergeladen: $filename';
+  }
+
+  @override
+  String fuLogSaveError(String error) {
+    return 'Fehler beim Speichern: $error';
+  }
+
+  @override
+  String get fuLogRawPreview => 'JSON-ANTWORT (RAW PREVIEW)';
+
+  @override
+  String get fuLogDetailedAnalysis => 'DETAILLIERTE ERGEBNIS-ANALYSE';
+
+  @override
+  String get fuLogNotJsonObject => 'Antwort ist kein JSON-Objekt – Rohanzeige:';
+
+  @override
+  String fuLogServerMessage(String msg) {
+    return 'Server-Nachricht: $msg';
+  }
+
+  @override
+  String get fuLogNoResultsArray =>
+      'Kein \\\"results\\\"-Array in der Antwort.';
+
+  @override
+  String get fuLogFullResponse => 'Vollständige Antwort (formatiert):';
+
+  @override
+  String fuLogTotalResults(int count) {
+    return 'Ergebnisse gesamt: $count';
+  }
+
+  @override
+  String fuLogEntryNotObject(int index, String value) {
+    return 'Eintrag $index ist kein Objekt: $value';
+  }
+
+  @override
+  String get fuLogStatusNew => '✅ NEU REGISTRIERT';
+
+  @override
+  String get fuLogStatusExisting => 'ℹ️  BEREITS VORHANDEN';
+
+  @override
+  String fuLogStatusError(String status) {
+    return '❌ FEHLER ($status)';
+  }
+
+  @override
+  String fuLogGeoIdSource(String id, String src) {
+    return 'Geo-ID  : $id  (Feld: $src)';
+  }
+
+  @override
+  String get fuLogGeoIdMissing => 'Geo-ID  : (nicht vorhanden)';
+
+  @override
+  String fuLogApiMessage(String msg) {
+    return 'Nachricht: $msg';
+  }
+
+  @override
+  String fuLogCoordPoints(int count) {
+    return 'Punkte  : $count Koordinatenpunkte im Polygon';
+  }
+
+  @override
+  String get fuLogSummary => 'ZUSAMMENFASSUNG';
+
+  @override
+  String fuLogSummaryTotal(int count) {
+    return 'Gesamt                  : $count';
+  }
+
+  @override
+  String fuLogSummaryNew(int count) {
+    return '✅ Neu registriert       : $count';
+  }
+
+  @override
+  String fuLogSummaryExisting(int count) {
+    return 'ℹ️  Bereits vorhanden     : $count';
+  }
+
+  @override
+  String fuLogSummaryErrors(int count) {
+    return '❌ Fehler                : $count';
+  }
+
+  @override
+  String get fuLogErrorDetails => 'Fehler-Details:';
+
+  @override
+  String fuLogGeoIdsReadyForExport(int count) {
+    return '$count GeoIDs bereit zum Export';
+  }
+
+  @override
+  String get fuLogClickSaveButton =>
+      '→ \\\"GeoIDs speichern\\\"-Button im linken Panel klicken';
+
+  @override
+  String fuLogParseError(String error) {
+    return 'Fehler beim Parsen der Antwort: $error';
+  }
+
+  @override
+  String get fuLogRawText => 'Rohtext der Antwort:';
+
+  @override
+  String fuLogDelimiterDetected(String delimiter, int semicolons, int commas) {
+    return 'Trennzeichen erkannt: \\\"$delimiter\\\" ($semicolons Semikola vs. $commas Kommas außerhalb Anführungszeichen)';
+  }
+
+  @override
+  String get fuLogEolWindows => 'Zeilen-Ende: Windows (\\r\\n)';
+
+  @override
+  String get fuLogEolMac => 'Zeilen-Ende: Mac OS Classic (\\r)';
+
+  @override
+  String get fuLogEolUnix => 'Zeilen-Ende: Unix/macOS (\\n)';
+
+  @override
+  String fuLogParsedRows(int count) {
+    return 'Geparste Zeilen: $count (inkl. Header)';
+  }
+
+  @override
+  String get fuLogNoCsvDataRows => 'CSV enthält keine Datenzeilen';
+
+  @override
+  String fuLogHeaderColumns(String cols) {
+    return 'Header-Spalten: $cols';
+  }
+
+  @override
+  String get fuLogNoPolygonColumn =>
+      'Keine \\\"polygon\\\"/\\\"coordinates\\\"/\\\"koordinaten\\\"-Spalte gefunden';
+
+  @override
+  String fuLogAvailableColumns(String cols) {
+    return 'Verfügbare Spalten: $cols';
+  }
+
+  @override
+  String fuLogPolygonColumn(int index, String name) {
+    return 'Polygon-Spalte  : Index $index (Spaltenname: \\\"$name\\\")';
+  }
+
+  @override
+  String fuLogNameColumn(int index, String name) {
+    return 'Namen-Spalte    : Index $index (Spaltenname: \\\"$name\\\")';
+  }
+
+  @override
+  String get fuLogNoNameColumn =>
+      'Namen-Spalte    : nicht gefunden – generierter Name wird verwendet';
+
+  @override
+  String fuLogRowTooShort(int row, int count, int need) {
+    return 'Zeile $row: nur $count Spalten vorhanden (benötigt > $need) → übersprungen';
+  }
+
+  @override
+  String fuLogEmptyCoords(int row, String name) {
+    return 'Zeile $row \\\"$name\\\": Koordinatenzelle ist leer → übersprungen';
+  }
+
+  @override
+  String fuLogTooFewPoints(int row, String name) {
+    return 'Zeile $row \\\"$name\\\": weniger als 4 Polygon-Punkte → übersprungen';
+  }
+
+  @override
+  String fuLogRowParsed(int row, String name, int count) {
+    return '✔ Zeile $row  \\\"$name\\\"  →  $count Punkte';
+  }
+
+  @override
+  String fuLogSkipped(int count) {
+    return '$count Zeile(n) übersprungen';
+  }
+
+  @override
+  String fuLogParseSummary(int features, int skipped) {
+    return 'Erfolgreich geparst: $features Features, übersprungen: $skipped';
+  }
+
+  @override
+  String get fuLogEncodingUtf8 => 'Encoding: UTF-8';
+
+  @override
+  String get fuLogEncodingLatin1 => 'Encoding: Latin-1 (ISO-8859-1)';
+
+  @override
+  String get fuLogEncodingFallback =>
+      'Encoding: UTF-8 (allow malformed – Fallback)';
+
+  @override
+  String fuLogPersistHeader(int count) {
+    return 'DATENBANK-PERSISTIERUNG ($count Felder)';
+  }
+
+  @override
+  String get fuLogPersistSubtitle =>
+      'Läuft im Hintergrund – Upload-Ergebnisse werden in DB gespeichert';
+
+  @override
+  String fuLogDryRunHeader(int count) {
+    return '🔍 DRY-RUN VORSCHAU ($count Felder) – KEINE DB-Änderungen';
+  }
+
+  @override
+  String get fuLogDryRunSubtitle =>
+      'Zeigt an, was persistiert werden würde. Keine Datenbank-Interaktion.';
+
+  @override
+  String get fuLogDryRunWouldCreate =>
+      '   🔍 [DRY-RUN] Würde neu anlegen via generateDigitalSibling';
+
+  @override
+  String fuLogDryRunName(String name) {
+    return '      Name        : $name';
+  }
+
+  @override
+  String fuLogDryRunGeoId(String geoId) {
+    return '      GeoID       : $geoId';
+  }
+
+  @override
+  String fuLogDryRunOwner(String uid) {
+    return '      Owner UID   : $uid';
+  }
+
+  @override
+  String fuLogDryRunCoords(int count, String first) {
+    return '      Koordinaten : $count Punkte (erster: $first)';
+  }
+
+  @override
+  String fuLogDryRunQuerying(String geoId) {
+    return '   🔍 [DRY-RUN] Abfrage Firebase für GeoID: $geoId';
+  }
+
+  @override
+  String get fuLogDryRunNotFound =>
+      '      DB-Befund   : ⚠️  Kein Eintrag gefunden';
+
+  @override
+  String get fuLogDryRunWouldCreateNew =>
+      '      Aktion      : → würde neu anlegen via generateDigitalSibling';
+
+  @override
+  String get fuLogDryRunFound => '      DB-Befund   : ✅ Eintrag gefunden';
+
+  @override
+  String fuLogDryRunDbName(String name) {
+    return '      DB-Name     : $name';
+  }
+
+  @override
+  String fuLogDryRunFlags(String b, String d, String o) {
+    return '      hasBoundaries  : $b  |  hasStartDate: $d  |  hasOwner: $o';
+  }
+
+  @override
+  String get fuLogDryRunNoChange =>
+      '      Aktion      : ℹ️  Keine Änderung nötig';
+
+  @override
+  String fuLogDryRunActions(String actions) {
+    return '      Aktion      : → $actions';
+  }
+
+  @override
+  String fuLogDryRunAddOwner(String uid) {
+    return 'Owner hinzufügen ($uid)';
+  }
+
+  @override
+  String get fuLogDryRunSetBoundaries => 'Boundaries setzen';
+
+  @override
+  String get fuLogDryRunSetStartDate => 'existenceStarts setzen';
+
+  @override
+  String fuLogDryRunSetName(String name) {
+    return 'Name → $name';
+  }
+
+  @override
+  String fuLogPersistedNew(String geoId) {
+    return '   ✅ Neu angelegt  →  GeoID: $geoId';
+  }
+
+  @override
+  String fuLogPersistedUpdated(String geoId) {
+    return '   ✅ Aktualisiert  →  GeoID: $geoId';
+  }
+
+  @override
+  String fuLogPersistedAlreadyFull(String geoId) {
+    return '   ℹ️  Bereits vollständig  →  GeoID: $geoId';
+  }
+
+  @override
+  String fuLogPersistedNewFromExisting(String geoId) {
+    return '   ✅ Neu angelegt (war bereits bei API registriert)  →  GeoID: $geoId';
+  }
+
+  @override
+  String fuLogPersistError(String error) {
+    return '   ❌ Fehler: $error';
+  }
+
+  @override
+  String get fuLogPersistDone => 'PERSISTIERUNG ABGESCHLOSSEN';
+
+  @override
+  String fuLogPersistSummaryNew(int count) {
+    return '   ✅ Neu angelegt      : $count';
+  }
+
+  @override
+  String fuLogPersistSummaryUpdated(int count) {
+    return '   ✅ Aktualisiert      : $count';
+  }
+
+  @override
+  String get fuLogDryRunDone =>
+      'DRY-RUN ABGESCHLOSSEN – nichts wurde geschrieben';
+
+  @override
+  String fuLogDryRunSummaryNew(int count) {
+    return '   🔍 Würde neu anlegen  : $count';
+  }
+
+  @override
+  String fuLogDryRunSummaryUpdated(int count) {
+    return '   🔍 Würde aktualisieren: $count';
+  }
+
+  @override
+  String fuLogPersistSummaryErrors(int count) {
+    return '   ❌ Fehler            : $count';
+  }
+
+  @override
   String get selectCsvFile => 'CSV-Datei auswählen';
 
   @override

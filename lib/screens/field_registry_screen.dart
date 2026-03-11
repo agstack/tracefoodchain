@@ -18,6 +18,7 @@ import 'package:trace_foodchain_app/services/permission_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
+import 'package:trace_foodchain_app/screens/fast_upload_screen.dart';
 
 /// Eine einfache LatLng Klasse für Koordinaten
 class LatLng {
@@ -1866,7 +1867,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 SizedBox(
-                  width: 200, // Feste Breite für beide Buttons
+                  width: 200,
                   child: FloatingActionButton.extended(
                     heroTag: "exportExcel",
                     onPressed: (isRegistering ||
@@ -1880,7 +1881,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  width: 200, // Feste Breite für beide Buttons
+                  width: 200,
                   child: FloatingActionButton.extended(
                     heroTag: "uploadCsv",
                     onPressed: (isRegistering || !_isAppFullyInitialized())
@@ -1888,6 +1889,26 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                         : _uploadCsvFile,
                     icon: const Icon(Icons.upload_file),
                     label: Text(l10n.uploadCsv),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: 200,
+                  child: FloatingActionButton.extended(
+                    heroTag: "fastUpload",
+                    onPressed: (isRegistering || !_isAppFullyInitialized())
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const FastUploadScreen(),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.bolt),
+                    label: Text(l10n.fastUpload),
+                    backgroundColor: Colors.green[700],
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
