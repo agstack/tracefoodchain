@@ -2286,6 +2286,72 @@ abstract class AppLocalizations {
   /// **'Failed to generate Excel file'**
   String get failedToGenerateExcelFile;
 
+  /// No description provided for @downloadGeoJSON.
+  ///
+  /// In en, this message translates to:
+  /// **'Download GeoJSON'**
+  String get downloadGeoJSON;
+
+  /// No description provided for @downloadKML.
+  ///
+  /// In en, this message translates to:
+  /// **'Download KML'**
+  String get downloadKML;
+
+  /// No description provided for @copyGeoId.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Geo ID'**
+  String get copyGeoId;
+
+  /// No description provided for @fieldCoordinatesDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Field coordinates downloaded'**
+  String get fieldCoordinatesDownloaded;
+
+  /// No description provided for @noCoordinatesAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No coordinates available for this field'**
+  String get noCoordinatesAvailable;
+
+  /// No description provided for @editEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editEntry;
+
+  /// No description provided for @editFarmerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Farmer'**
+  String get editFarmerTitle;
+
+  /// No description provided for @editFarmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Farm'**
+  String get editFarmTitle;
+
+  /// No description provided for @changesSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes saved successfully'**
+  String get changesSaved;
+
+  /// No description provided for @editWindowExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit window expired (24 h)'**
+  String get editWindowExpired;
+
+  /// No description provided for @within24hEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Editable for {hours} more hours'**
+  String within24hEdit(int hours);
+
   /// No description provided for @exportToExcel.
   ///
   /// In en, this message translates to:
@@ -3924,6 +3990,24 @@ abstract class AppLocalizations {
   /// **'Crop Image'**
   String get cropImage;
 
+  /// No description provided for @selectImageSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Image Source'**
+  String get selectImageSource;
+
+  /// No description provided for @fromCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get fromCamera;
+
+  /// No description provided for @fromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get fromGallery;
+
   /// No description provided for @imageUploadError.
   ///
   /// In en, this message translates to:
@@ -4878,6 +4962,36 @@ abstract class AppLocalizations {
   /// **'Retake Consent Form Photo'**
   String get retakeConsentFormPhoto;
 
+  /// No description provided for @consentFormPhoto2.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent Form Photo 2 (optional)'**
+  String get consentFormPhoto2;
+
+  /// No description provided for @consentFormPhoto2Optional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional: Take a second photo (e.g. back of form)'**
+  String get consentFormPhoto2Optional;
+
+  /// No description provided for @takeConsentFormPhoto2.
+  ///
+  /// In en, this message translates to:
+  /// **'Take 2nd Consent Photo'**
+  String get takeConsentFormPhoto2;
+
+  /// No description provided for @retakeConsentFormPhoto2.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake 2nd Consent Photo'**
+  String get retakeConsentFormPhoto2;
+
+  /// No description provided for @consentPhoto2Taken.
+  ///
+  /// In en, this message translates to:
+  /// **'Second consent photo taken successfully'**
+  String get consentPhoto2Taken;
+
   /// No description provided for @placeConsentFormInFrame.
   ///
   /// In en, this message translates to:
@@ -4979,6 +5093,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap to switch unit'**
   String get tapToSwitchUnit;
+
+  /// No description provided for @polygonPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify Polygon'**
+  String get polygonPreviewTitle;
+
+  /// No description provided for @polygonPreviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Does the captured polygon look correct? If not, you can redo the entire capture.'**
+  String get polygonPreviewDescription;
+
+  /// No description provided for @polygonPreviewConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks correct'**
+  String get polygonPreviewConfirm;
+
+  /// No description provided for @polygonPreviewRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo capture'**
+  String get polygonPreviewRedo;
 }
 
 class _AppLocalizationsDelegate

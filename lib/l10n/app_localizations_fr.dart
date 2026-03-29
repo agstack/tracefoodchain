@@ -1184,6 +1184,42 @@ class AppLocalizationsFr extends AppLocalizations {
       'Échec de la génération du fichier Excel';
 
   @override
+  String get downloadGeoJSON => 'Télécharger GeoJSON';
+
+  @override
+  String get downloadKML => 'Télécharger KML';
+
+  @override
+  String get copyGeoId => 'Copier le Geo ID';
+
+  @override
+  String get fieldCoordinatesDownloaded => 'Coordonnées du champ téléchargées';
+
+  @override
+  String get noCoordinatesAvailable =>
+      'Aucune coordonnée disponible pour ce champ';
+
+  @override
+  String get editEntry => 'Modifier';
+
+  @override
+  String get editFarmerTitle => 'Modifier agriculteur';
+
+  @override
+  String get editFarmTitle => 'Modifier la ferme';
+
+  @override
+  String get changesSaved => 'Modifications enregistrées avec succès';
+
+  @override
+  String get editWindowExpired => 'Fenêtre de modification expirée (24 h)';
+
+  @override
+  String within24hEdit(int hours) {
+    return 'Modifiable encore $hours heures';
+  }
+
+  @override
   String get exportToExcel => 'Exporter vers Excel';
 
   @override
@@ -2248,6 +2284,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cropImage => 'Recadrer l\'image';
 
   @override
+  String get selectImageSource => 'Sélectionner la source de l\'image';
+
+  @override
+  String get fromCamera => 'Caméra';
+
+  @override
+  String get fromGallery => 'Galerie';
+
+  @override
   String get imageUploadError =>
       'Erreur lors du téléchargement de l\'image. Veuillez réessayer.';
 
@@ -2768,6 +2813,24 @@ class AppLocalizationsFr extends AppLocalizations {
       'Reprendre une Photo du Formulaire de Consentement';
 
   @override
+  String get consentFormPhoto2 =>
+      'Photo du Formulaire de Consentement 2 (optionnelle)';
+
+  @override
+  String get consentFormPhoto2Optional =>
+      'Optionnel : Prenez une deuxième photo (ex. verso du formulaire)';
+
+  @override
+  String get takeConsentFormPhoto2 => 'Prendre la 2e Photo de Consentement';
+
+  @override
+  String get retakeConsentFormPhoto2 => 'Reprendre la 2e Photo de Consentement';
+
+  @override
+  String get consentPhoto2Taken =>
+      'Deuxième photo de consentement prise avec succès';
+
+  @override
   String get placeConsentFormInFrame =>
       'Placez le formulaire de consentement signé dans le cadre';
 
@@ -2822,4 +2885,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tapToSwitchUnit => 'Appuyez pour changer d\'unité';
+
+  @override
+  String get polygonPreviewTitle => 'Vérifier le polygone';
+
+  @override
+  String get polygonPreviewDescription =>
+      'Le polygone capturé semble-t-il correct ? Sinon, vous pouvez recommencer la capture complète.';
+
+  @override
+  String get polygonPreviewConfirm => 'Semble correct';
+
+  @override
+  String get polygonPreviewRedo => 'Recapturer';
 }

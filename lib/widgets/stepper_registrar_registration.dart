@@ -67,6 +67,11 @@ class _StepperRegistrarRegistrationState
   String? _consentFormPhotoLocalPath;
   Position? _consentFormPhotoPosition;
 
+  // Consent Form Photo 2 (optional)
+  XFile? _consentFormPhoto2;
+  String? _consentFormPhotoLocalPath2;
+  Position? _consentFormPhotoPosition2;
+
   @override
   void initState() {
     super.initState();
@@ -428,6 +433,26 @@ class _StepperRegistrarRegistrationState
         debugPrint('No consent form photo to create image object for');
       }
 
+      // Create image object for Consent Form Photo 2 (optional)
+      Map<String, dynamic>? consentFormImage2;
+      if (_consentFormPhotoLocalPath2 != null &&
+          _consentFormPhotoLocalPath2!.isNotEmpty) {
+        debugPrint('Creating image object for Consent Form photo 2...');
+        consentFormImage2 = await createImageObject(
+          localPath: _consentFormPhotoLocalPath2!,
+          position: _consentFormPhotoPosition2,
+          imageName: 'Consent Form 2 - ${farm['identity']['name']}',
+        );
+
+        // Link image to farm
+        farm['linkedObjectRef'].add({
+          'UID': getObjectMethodUID(consentFormImage2),
+          'RALType': 'image',
+          'role': 'consentFormPhoto2',
+        });
+        debugPrint('Consent Form 2 image object created and linked to farm');
+      }
+
       // Add registrar as currentOwner and in linkedObjectRef
       debugPrint(
           'Adding registrar to farm currentOwners and linkedObjectRef...');
@@ -588,6 +613,42 @@ class _StepperRegistrarRegistrationState
         debugPrint('Consent Form Image method saved and signed successfully');
       }
 
+      // Create separate generateDigitalSibling method for Consent Form Image 2
+      if (consentFormImage2 != null) {
+        debugPrint(
+            'Creating separate generateDigitalSibling method for Consent Form Image 2');
+        Map<String, dynamic> consentFormImage2Method =
+            await getOpenRALTemplate('generateDigitalSibling');
+
+        consentFormImage2Method['identity']['name'] =
+            'Consent Form Image 2 - ${farm['identity']['name']}';
+        consentFormImage2Method['methodState'] = 'finished';
+        consentFormImage2Method['executor'] = appUserDoc!;
+        consentFormImage2Method['existenceStarts'] =
+            DateTime.now().toUtc().toIso8601String();
+
+        setObjectMethodUID(consentFormImage2Method, const Uuid().v4());
+        debugPrint('Consent Form Image 2 Method UID set');
+
+        await setObjectMethod(consentFormImage2, false, false);
+        debugPrint('Consent Form Image 2 saved first time');
+
+        addOutputobject(consentFormImage2Method, consentFormImage2, 'image');
+        debugPrint('Consent Form Image 2 added to method');
+
+        await updateMethodHistories(consentFormImage2Method);
+        debugPrint('Consent Form Image 2 method history updated');
+
+        consentFormImage2 =
+            await getLocalObjectMethod(getObjectMethodUID(consentFormImage2));
+        addOutputobject(consentFormImage2Method, consentFormImage2, 'image');
+        debugPrint(
+            'Consent Form Image 2 re-added to method with updated history');
+
+        await setObjectMethod(consentFormImage2Method, true, true);
+        debugPrint('Consent Form Image 2 method saved and signed successfully');
+      }
+
       // Aktualisiere UI
       debugPrint('Step 9: Updating UI');
       repaintContainerList.value = true;
@@ -691,7 +752,37 @@ class _StepperRegistrarRegistrationState
     }
   }
 
-  Future<void> _savePhoto(XFile photo, {required bool isConsentForm}) async {
+  Future<void> _takeConsentFormPhoto2() async {
+    try {
+      if (kIsWeb) {
+        await _showWebCameraDialog(isConsentForm: true, isConsentForm2: true);
+      } else {
+        final XFile? photo = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (photo != null) {
+          await _savePhoto(photo, isConsentForm: true, isConsentForm2: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error taking consent form photo 2: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _savePhoto(XFile photo,
+      {required bool isConsentForm, bool isConsentForm2 = false}) async {
     final l10n = AppLocalizations.of(context)!;
 
     try {
@@ -717,7 +808,9 @@ class _StepperRegistrarRegistrationState
       if (!kIsWeb) {
         final appDir = await getApplicationDocumentsDirectory();
         final dirName = isConsentForm ? 'consentForms' : 'nationalIDs';
-        final prefix = isConsentForm ? 'consentForm' : 'nationalID';
+        final prefix = isConsentForm2
+            ? 'consentForm2'
+            : (isConsentForm ? 'consentForm' : 'nationalID');
         final fileName =
             '${prefix}_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final localPath = '${appDir.path}/$dirName/$fileName';
@@ -733,7 +826,11 @@ class _StepperRegistrarRegistrationState
         await localFile.writeAsBytes(await photo.readAsBytes());
 
         setState(() {
-          if (isConsentForm) {
+          if (isConsentForm2) {
+            _consentFormPhoto2 = photo;
+            _consentFormPhotoLocalPath2 = localPath;
+            _consentFormPhotoPosition2 = photoPosition;
+          } else if (isConsentForm) {
             _consentFormPhoto = photo;
             _consentFormPhotoLocalPath = localPath;
             _consentFormPhotoPosition = photoPosition;
@@ -745,7 +842,7 @@ class _StepperRegistrarRegistrationState
         });
 
         debugPrint(
-            '${isConsentForm ? "Consent Form" : "National ID"} Photo saved locally: $localPath');
+            '${isConsentForm2 ? "Consent Form 2" : isConsentForm ? "Consent Form" : "National ID"} Photo saved locally: $localPath');
         if (photoPosition != null) {
           debugPrint(
               'Photo GPS stored: ${photoPosition.latitude}, ${photoPosition.longitude}');
@@ -753,7 +850,11 @@ class _StepperRegistrarRegistrationState
       } else {
         // Web: Just store the XFile (use path which contains the blob URL)
         setState(() {
-          if (isConsentForm) {
+          if (isConsentForm2) {
+            _consentFormPhoto2 = photo;
+            _consentFormPhotoLocalPath2 = photo.path;
+            _consentFormPhotoPosition2 = photoPosition;
+          } else if (isConsentForm) {
             _consentFormPhoto = photo;
             _consentFormPhotoLocalPath = photo.path;
             _consentFormPhotoPosition = photoPosition;
@@ -768,8 +869,11 @@ class _StepperRegistrarRegistrationState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                isConsentForm ? l10n.consentPhotoTaken : l10n.idPhotoTaken),
+            content: Text(isConsentForm2
+                ? l10n.consentPhoto2Taken
+                : isConsentForm
+                    ? l10n.consentPhotoTaken
+                    : l10n.idPhotoTaken),
             backgroundColor: Colors.green,
           ),
         );
@@ -787,7 +891,8 @@ class _StepperRegistrarRegistrationState
     }
   }
 
-  Future<void> _showWebCameraDialog({required bool isConsentForm}) async {
+  Future<void> _showWebCameraDialog(
+      {required bool isConsentForm, bool isConsentForm2 = false}) async {
     final l10n = AppLocalizations.of(context)!;
 
     try {
@@ -1025,7 +1130,8 @@ class _StepperRegistrarRegistrationState
                             _cameraController = null;
                             Navigator.of(dialogContext).pop();
                             await _savePhoto(image,
-                                isConsentForm: isConsentForm);
+                                isConsentForm: isConsentForm,
+                                isConsentForm2: isConsentForm2);
                           } catch (e) {
                             debugPrint('Error capturing photo: $e');
                           }
@@ -1388,6 +1494,103 @@ class _StepperRegistrarRegistrationState
                         )
                       : Image.file(
                           File(_consentFormPhoto!.path),
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // Consent Form Photo 2 (Optional)
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _consentFormPhoto2 == null
+                  ? Colors.grey.shade400
+                  : Colors.green,
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _consentFormPhoto2 == null
+                        ? Icons.add_photo_alternate_outlined
+                        : Icons.check_circle,
+                    color: _consentFormPhoto2 == null
+                        ? Colors.grey.shade600
+                        : Colors.green,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.consentFormPhoto2,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _consentFormPhoto2 == null
+                              ? l10n.consentFormPhoto2Optional
+                              : l10n.consentPhoto2Taken,
+                          style: TextStyle(
+                            color: _consentFormPhoto2 == null
+                                ? Colors.grey[600]
+                                : Colors.green[700],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _takeConsentFormPhoto2,
+                  icon: Icon(_consentFormPhoto2 == null
+                      ? Icons.add_a_photo
+                      : Icons.refresh),
+                  label: Text(_consentFormPhoto2 == null
+                      ? l10n.takeConsentFormPhoto2
+                      : l10n.retakeConsentFormPhoto2),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              if (_consentFormPhoto2 != null) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: kIsWeb
+                      ? Image.network(
+                          _consentFormPhoto2!.path,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        )
+                      : Image.file(
+                          File(_consentFormPhoto2!.path),
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.contain,

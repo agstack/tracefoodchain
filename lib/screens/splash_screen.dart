@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -553,7 +554,11 @@ class _SplashScreenState extends State<SplashScreen>
       );
     } else {
       // Navigiere basierend auf Benutzerrolle
-      final userRole = appState.userRole?.toLowerCase() ?? '';
+      // Im Debug-Modus kann kDebugViewRole in constants.dart gesetzt werden
+      // um das UI einer anderen Rolle zu testen (z.B. 'registrar')
+      final userRole = (kDebugMode && kDebugViewRole.isNotEmpty)
+          ? kDebugViewRole.toLowerCase()
+          : appState.userRole?.toLowerCase() ?? '';
       if (userRole == 'registrar') {
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {

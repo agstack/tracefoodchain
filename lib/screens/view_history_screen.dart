@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import '../helpers/json_full_double_to_int.dart';
+import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
 import '../services/open_ral_service.dart';
+import '../services/service_functions.dart';
+import '../utils/file_download.dart';
 import '../main.dart';
 
 class ViewHistoryScreen extends StatefulWidget {
@@ -437,6 +444,78 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                   ),
                 ],
               ),
+
+              // Download-Aktionen nur für Felder
+              if (objectType == 'field') ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () =>
+                          _downloadFieldGeoJSON(registration, l10n),
+                      icon: const Icon(Icons.download, size: 16),
+                      label:
+                          const Text('GeoJSON', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.green[700],
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton.icon(
+                      onPressed: () => _downloadFieldKML(registration, l10n),
+                      icon: const Icon(Icons.map_outlined, size: 16),
+                      label: const Text('KML', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.orange[700],
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              // Edit-Schaltfläche für Farm/Farmer innerhalb der 24h-Frist
+              if ((objectType == 'farm' || objectType == 'farmer') &&
+                  _isWithin24Hours(registration)) ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.within24hEdit(_hoursRemaining(registration)),
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _showEditDialog(registration, l10n),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: Text(l10n.editEntry,
+                            style: const TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue[700],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -498,6 +577,124 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
     );
   }
 
+  List<List<double>>? _parseBoundaries(Map<String, dynamic> rawData) {
+    final boundariesValue = getSpecificPropertyfromJSON(rawData, 'boundaries');
+    if (boundariesValue == null || boundariesValue.toString().isEmpty)
+      return null;
+    try {
+      final decoded = jsonDecode(boundariesValue.toString());
+      if (decoded is Map && decoded['coordinates'] is List) {
+        return (decoded['coordinates'] as List).map((e) {
+          final pair = e as List;
+          return [
+            (pair[0] as num).toDouble(),
+            (pair[1] as num).toDouble(),
+          ];
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('Error parsing boundaries: $e');
+    }
+    return null;
+  }
+
+  String _escapeXml(String text) => text
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
+
+  Future<void> _downloadFieldGeoJSON(
+      Map<String, dynamic> registration, AppLocalizations l10n) async {
+    final rawData = registration['rawData'] as Map<String, dynamic>;
+    final coords = _parseBoundaries(rawData);
+    if (coords == null || coords.isEmpty) {
+      await fshowInfoDialog(context, l10n.noCoordinatesAvailable);
+      return;
+    }
+    final ring = List<List<double>>.from(coords);
+    if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
+      ring.add(ring.first);
+    }
+    final area = getSpecificPropertyfromJSON(rawData, 'area')?.toString() ?? '';
+    final geojson = {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'Polygon',
+            'coordinates': [ring]
+          },
+          'properties': {
+            'name': registration['displayName'] ?? '',
+            'area_ha': area,
+          }
+        }
+      ]
+    };
+    final safeName = (registration['displayName'] as String? ?? 'field')
+        .replaceAll(RegExp(r'[^\w-]'), '_');
+    final bytes =
+        utf8.encode(const JsonEncoder.withIndent('  ').convert(geojson));
+    try {
+      await downloadFile(bytes, '$safeName.geojson');
+      if (mounted) {
+        await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
+      }
+    } catch (e) {
+      if (mounted) await fshowInfoDialog(context, 'Error: $e');
+    }
+  }
+
+  Future<void> _downloadFieldKML(
+      Map<String, dynamic> registration, AppLocalizations l10n) async {
+    final rawData = registration['rawData'] as Map<String, dynamic>;
+    final coords = _parseBoundaries(rawData);
+    if (coords == null || coords.isEmpty) {
+      await fshowInfoDialog(context, l10n.noCoordinatesAvailable);
+      return;
+    }
+    final ring = List<List<double>>.from(coords);
+    if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
+      ring.add(ring.first);
+    }
+    final fieldName = registration['displayName'] as String? ?? 'Field';
+    final area = getSpecificPropertyfromJSON(rawData, 'area')?.toString() ?? '';
+    final coordStr = ring.map((c) => '${c[0]},${c[1]},0').join(' ');
+    final kmlContent = '''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${_escapeXml(fieldName)}</name>
+    <Placemark>
+      <name>${_escapeXml(fieldName)}</name>
+      <description>Area: ${_escapeXml(area)} ha</description>
+      <Style>
+        <LineStyle><color>ff0000ff</color><width>2</width></LineStyle>
+        <PolyStyle><color>330000ff</color></PolyStyle>
+      </Style>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>$coordStr</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>''';
+    final safeName = fieldName.replaceAll(RegExp(r'[^\w-]'), '_');
+    final bytes = utf8.encode(kmlContent);
+    try {
+      await downloadFile(bytes, '$safeName.kml');
+      if (mounted)
+        await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
+    } catch (e) {
+      if (mounted) await fshowInfoDialog(context, 'Error: $e');
+    }
+  }
+
   Widget _buildDetailRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -527,5 +724,272 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         ],
       ),
     );
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // 24h Edit helpers
+  // ──────────────────────────────────────────────────────────────
+
+  bool _isWithin24Hours(Map<String, dynamic> registration) {
+    final regDate = registration['registrationDate'] as DateTime?;
+    if (regDate == null) return false;
+    return DateTime.now().difference(regDate).inHours < 24;
+  }
+
+  int _hoursRemaining(Map<String, dynamic> registration) {
+    final regDate = registration['registrationDate'] as DateTime;
+    final diff = 24 - DateTime.now().difference(regDate).inHours;
+    return diff.clamp(0, 24).toInt();
+  }
+
+  Widget _buildEditField(
+    String label,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.black),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[700]),
+        border: const OutlineInputBorder(),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+    );
+  }
+
+  Future<void> _applyEditChanges(
+    Map<String, dynamic> doc,
+    String objectType,
+    Map<String, TextEditingController> controllers,
+  ) async {
+    if (objectType == 'farmer') {
+      var updated = setSpecificPropertyJSON(
+          doc, 'firstName', controllers['firstName']!.text.trim(), 'String');
+      updated = setSpecificPropertyJSON(
+          updated, 'lastName', controllers['lastName']!.text.trim(), 'String');
+      updated = setSpecificPropertyJSON(updated, 'phoneNumber',
+          controllers['phoneNumber']!.text.trim(), 'String');
+      // Update full display name
+      updated['identity']['name'] =
+          '${controllers['firstName']!.text.trim()} ${controllers['lastName']!.text.trim()}'
+              .trim();
+      // Update National ID in alternateIDs
+      final altIds = updated['identity']?['alternateIDs'] as List?;
+      if (altIds != null) {
+        bool found = false;
+        for (var i = 0; i < altIds.length; i++) {
+          if (altIds[i]['issuedBy'] == 'National ID') {
+            altIds[i]['UID'] = controllers['nationalID']!.text.trim();
+            found = true;
+            break;
+          }
+        }
+        if (!found && controllers['nationalID']!.text.trim().isNotEmpty) {
+          altIds.add({
+            'issuedBy': 'National ID',
+            'UID': controllers['nationalID']!.text.trim()
+          });
+        }
+      }
+      final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(updated))
+          as Map<String, dynamic>;
+      await changeObjectData(processedDoc);
+    } else {
+      // farm – start from passed doc (already deep-copied)
+      doc['identity']['name'] = controllers['farmName']!.text.trim();
+      final altIds = doc['identity']?['alternateIDs'] as List?;
+      if (altIds != null) {
+        bool found = false;
+        for (var i = 0; i < altIds.length; i++) {
+          if (altIds[i]['issuedBy'] == 'Farm Registry') {
+            altIds[i]['UID'] = controllers['farmID']!.text.trim();
+            found = true;
+            break;
+          }
+        }
+        if (!found && controllers['farmID']!.text.trim().isNotEmpty) {
+          altIds.add({
+            'issuedBy': 'Farm Registry',
+            'UID': controllers['farmID']!.text.trim()
+          });
+        }
+      }
+      final postalAddress = doc['currentGeolocation']?['postalAddress'] as Map?;
+      if (postalAddress != null) {
+        postalAddress['cityName'] = controllers['cityName']!.text.trim();
+        postalAddress['stateName'] = controllers['stateName']!.text.trim();
+      }
+      final areaText =
+          controllers['totalArea']!.text.trim().replaceAll(',', '.');
+      if (areaText.isNotEmpty) {
+        final areaVal = double.tryParse(areaText);
+        if (areaVal != null) {
+          doc = setSpecificPropertyJSON(
+              doc, 'totalAreaEstimatedHa', areaVal, 'double');
+        }
+      }
+      final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(doc))
+          as Map<String, dynamic>;
+      await changeObjectData(processedDoc);
+    }
+  }
+
+  Future<void> _showEditDialog(
+      Map<String, dynamic> registration, AppLocalizations l10n) async {
+    final objectType = registration['objectType'] as String;
+    final rawData = registration['rawData'] as Map<String, dynamic>;
+
+    // Deep copy so we never mutate the displayed data
+    final doc = jsonDecode(jsonEncode(rawData)) as Map<String, dynamic>;
+
+    final formKey = GlobalKey<FormState>();
+    late final Map<String, TextEditingController> controllers;
+
+    if (objectType == 'farmer') {
+      String nationalId = '';
+      final altIds = doc['identity']?['alternateIDs'] as List?;
+      if (altIds != null) {
+        for (final altId in altIds) {
+          if (altId['issuedBy'] == 'National ID') {
+            nationalId = altId['UID']?.toString() ?? '';
+            break;
+          }
+        }
+      }
+      controllers = {
+        'firstName': TextEditingController(
+            text: getSpecificPropertyfromJSON(doc, 'firstName') ?? ''),
+        'lastName': TextEditingController(
+            text: getSpecificPropertyfromJSON(doc, 'lastName') ?? ''),
+        'phoneNumber': TextEditingController(
+            text: getSpecificPropertyfromJSON(doc, 'phoneNumber') ?? ''),
+        'nationalID': TextEditingController(text: nationalId),
+      };
+    } else {
+      // farm
+      String farmId = '';
+      final altIds = doc['identity']?['alternateIDs'] as List?;
+      if (altIds != null) {
+        for (final altId in altIds) {
+          if (altId['issuedBy'] == 'Farm Registry') {
+            farmId = altId['UID']?.toString() ?? '';
+            break;
+          }
+        }
+      }
+      controllers = {
+        'farmName': TextEditingController(
+            text: doc['identity']?['name']?.toString() ?? ''),
+        'farmID': TextEditingController(text: farmId),
+        'cityName': TextEditingController(
+            text: doc['currentGeolocation']?['postalAddress']?['cityName']
+                    ?.toString() ??
+                ''),
+        'stateName': TextEditingController(
+            text: doc['currentGeolocation']?['postalAddress']?['stateName']
+                    ?.toString() ??
+                ''),
+        'totalArea': TextEditingController(
+            text:
+                getSpecificPropertyfromJSON(doc, 'totalAreaEstimatedHa') ?? ''),
+      };
+    }
+
+    final title =
+        objectType == 'farmer' ? l10n.editFarmerTitle : l10n.editFarmTitle;
+    bool isSaving = false;
+    bool saved = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(title, style: const TextStyle(color: Colors.black)),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (objectType == 'farmer') ...[
+                    _buildEditField(l10n.firstName, controllers['firstName']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.lastName, controllers['lastName']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(
+                        l10n.phoneNumber, controllers['phoneNumber']!,
+                        keyboardType: TextInputType.phone),
+                    const SizedBox(height: 12),
+                    _buildEditField(
+                        l10n.nationalID, controllers['nationalID']!),
+                  ] else ...[
+                    _buildEditField(l10n.farmName, controllers['farmName']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.farmID, controllers['farmID']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.cityName, controllers['cityName']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.stateName, controllers['stateName']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.totalArea, controllers['totalArea']!,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  isSaving ? null : () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.cancel,
+                  style: const TextStyle(color: Colors.black87)),
+            ),
+            TextButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => isSaving = true);
+                      try {
+                        await _applyEditChanges(doc, objectType, controllers);
+                        saved = true;
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                      } catch (e) {
+                        debugPrint('Edit save error: $e');
+                        setDialogState(() => isSaving = false);
+                        if (ctx.mounted) {
+                          await fshowInfoDialog(ctx, 'Error: $e');
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(l10n.save,
+                      style: const TextStyle(color: Colors.black87)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    for (final c in controllers.values) {
+      c.dispose();
+    }
+
+    if (saved && mounted) {
+      await fshowInfoDialog(context, l10n.changesSaved);
+      await _loadRegistrations();
+    }
   }
 }

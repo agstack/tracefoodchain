@@ -1164,6 +1164,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get failedToGenerateExcelFile => 'Failed to generate Excel file';
 
   @override
+  String get downloadGeoJSON => 'Download GeoJSON';
+
+  @override
+  String get downloadKML => 'Download KML';
+
+  @override
+  String get copyGeoId => 'Copy Geo ID';
+
+  @override
+  String get fieldCoordinatesDownloaded => 'Field coordinates downloaded';
+
+  @override
+  String get noCoordinatesAvailable =>
+      'No coordinates available for this field';
+
+  @override
+  String get editEntry => 'Edit';
+
+  @override
+  String get editFarmerTitle => 'Edit Farmer';
+
+  @override
+  String get editFarmTitle => 'Edit Farm';
+
+  @override
+  String get changesSaved => 'Changes saved successfully';
+
+  @override
+  String get editWindowExpired => 'Edit window expired (24 h)';
+
+  @override
+  String within24hEdit(int hours) {
+    return 'Editable for $hours more hours';
+  }
+
+  @override
   String get exportToExcel => 'Export to Excel';
 
   @override
@@ -2213,6 +2249,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cropImage => 'Crop Image';
 
   @override
+  String get selectImageSource => 'Select Image Source';
+
+  @override
+  String get fromCamera => 'Camera';
+
+  @override
+  String get fromGallery => 'Gallery';
+
+  @override
   String get imageUploadError => 'Error uploading image. Please try again.';
 
   @override
@@ -2722,6 +2767,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retakeConsentFormPhoto => 'Retake Consent Form Photo';
 
   @override
+  String get consentFormPhoto2 => 'Consent Form Photo 2 (optional)';
+
+  @override
+  String get consentFormPhoto2Optional =>
+      'Optional: Take a second photo (e.g. back of form)';
+
+  @override
+  String get takeConsentFormPhoto2 => 'Take 2nd Consent Photo';
+
+  @override
+  String get retakeConsentFormPhoto2 => 'Retake 2nd Consent Photo';
+
+  @override
+  String get consentPhoto2Taken => 'Second consent photo taken successfully';
+
+  @override
   String get placeConsentFormInFrame =>
       'Place signed consent form within the frame';
 
@@ -2775,4 +2836,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tapToSwitchUnit => 'Tap to switch unit';
+
+  @override
+  String get polygonPreviewTitle => 'Verify Polygon';
+
+  @override
+  String get polygonPreviewDescription =>
+      'Does the captured polygon look correct? If not, you can redo the entire capture.';
+
+  @override
+  String get polygonPreviewConfirm => 'Looks correct';
+
+  @override
+  String get polygonPreviewRedo => 'Redo capture';
 }

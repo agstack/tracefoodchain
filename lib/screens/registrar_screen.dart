@@ -1,7 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../helpers/json_full_double_to_int.dart';
+import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
+import '../services/firebase_storage_service.dart';
 import '../widgets/gps_position_widget.dart';
 import '../widgets/stepper_registrar_registration.dart';
 import '../widgets/field_boundary_recorder.dart';
@@ -26,11 +31,87 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
   String _userName = '';
   bool _isSuperAdmin = false;
 
+  // Statistics
+  int _statRegisteredToday = 0;
+  int _statVerified = 0;
+  int _statPending = 0;
+
   @override
   void initState() {
     super.initState();
     _loadUserName();
     _checkUserRole();
+    _loadStats();
+  }
+
+  /// Counts farmer/farm/field objects in localStorage and updates the stats.
+  ///
+  /// - Registered today: farm+human objects whose creation method has an
+  ///   existenceStarts timestamp that falls within today's calendar day.
+  /// - Verified: all farm+human objects with objectState == 'active'.
+  /// - Pending:  all farm+human+field objects with objectState == 'qcPending'.
+  void _loadStats() {
+    if (!isLocalStorageInitialized()) return;
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    int registeredToday = 0;
+    int verified = 0;
+    int pending = 0;
+
+    for (final key in localStorage!.keys) {
+      try {
+        final value = localStorage!.get(key);
+        if (value is! Map) continue;
+        final doc = Map<String, dynamic>.from(value);
+
+        final objectType = doc['template']?['RALType']?.toString();
+        if (objectType == null) continue;
+
+        final isFarmerOrFarm = objectType == 'human' || objectType == 'farm';
+        final isFarmerFarmOrField =
+            isFarmerOrFarm || objectType == 'field' || objectType == 'plot';
+
+        final objectState = doc['objectState']?.toString();
+
+        // Pending count: all relevant objects awaiting QC
+        if (isFarmerFarmOrField && objectState == 'qcPending') {
+          pending++;
+        }
+
+        if (!isFarmerOrFarm) continue;
+
+        // Verified count
+        if (objectState == 'active') verified++;
+
+        // Registered-today count: look up creation method's existenceStarts
+        final methodHistoryRef = doc['methodHistoryRef'] as List?;
+        if (methodHistoryRef == null || methodHistoryRef.isEmpty) continue;
+        final firstMethodUid = methodHistoryRef.first?['UID']?.toString();
+        if (firstMethodUid == null) continue;
+        final methodDoc = localStorage!.get(firstMethodUid);
+        if (methodDoc == null || methodDoc is! Map) continue;
+        final existenceStartsRaw = methodDoc['existenceStarts']?.toString();
+        if (existenceStartsRaw == null) continue;
+        final createdAt = DateTime.tryParse(existenceStartsRaw);
+        if (createdAt != null &&
+            createdAt.isAfter(todayStart) &&
+            createdAt.isBefore(todayEnd)) {
+          registeredToday++;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _statRegisteredToday = registeredToday;
+        _statVerified = verified;
+        _statPending = pending;
+      });
+    }
   }
 
   void _checkUserRole() {
@@ -101,6 +182,211 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
     }
   }
 
+  Future<void> _showEditProfileDialog() async {
+    if (appUserDoc == null) return;
+    final l10n = AppLocalizations.of(context)!;
+
+    final doc = jsonDecode(jsonEncode(appUserDoc)) as Map<String, dynamic>;
+
+    final firstNameController = TextEditingController(
+        text: getSpecificPropertyfromJSON(doc, 'firstName') ?? '');
+    final lastNameController = TextEditingController(
+        text: getSpecificPropertyfromJSON(doc, 'lastName') ?? '');
+    final phoneController = TextEditingController(
+        text: getSpecificPropertyfromJSON(doc, 'phoneNumber') ?? '');
+
+    // Current avatar URL from the user doc
+    String? editAvatarUrl =
+        getSpecificPropertyfromJSON(doc, 'downloadURL') ?? '';
+    if (editAvatarUrl!.isEmpty) editAvatarUrl = null;
+
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+    bool isUploadingPhoto = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l10n.editProfile,
+              style: const TextStyle(color: Colors.black)),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // --- Profile photo ---
+                  Center(
+                    child: GestureDetector(
+                      onTap: (isUploadingPhoto || isSaving)
+                          ? null
+                          : () async {
+                              setDialogState(() => isUploadingPhoto = true);
+                              try {
+                                final XFile? file = await FirebaseStorageService
+                                    .showImageSourceDialog(ctx);
+                                if (file != null) {
+                                  final url = await FirebaseStorageService
+                                      .uploadUserAvatar(file);
+                                  if (url != null) {
+                                    setDialogState(() => editAvatarUrl = url);
+                                  }
+                                }
+                              } catch (e) {
+                                debugPrint('Photo upload error: $e');
+                              } finally {
+                                setDialogState(() => isUploadingPhoto = false);
+                              }
+                            },
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage: editAvatarUrl != null
+                                ? NetworkImage(editAvatarUrl!)
+                                : null,
+                            child: editAvatarUrl == null
+                                ? Icon(Icons.person,
+                                    size: 40, color: Colors.grey[600])
+                                : null,
+                          ),
+                          if (isUploadingPhoto)
+                            const Positioned.fill(
+                              child: CircleAvatar(
+                                radius: 40,
+                                backgroundColor: Colors.black45,
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(6),
+                              child: const Icon(Icons.camera_alt,
+                                  color: Colors.white, size: 16),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // --- Text fields ---
+                  TextFormField(
+                    controller: firstNameController,
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      labelText: l10n.firstName,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.person),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.pleaseEnterFirstName
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: lastNameController,
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      labelText: l10n.lastName,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.person_outline),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.pleaseEnterLastName
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phoneController,
+                    style: const TextStyle(color: Colors.black),
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: l10n.phoneNumber,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.phone),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  isSaving ? null : () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.cancel,
+                  style: const TextStyle(color: Colors.black87)),
+            ),
+            TextButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => isSaving = true);
+                      try {
+                        var updated = setSpecificPropertyJSON(doc, 'firstName',
+                            firstNameController.text.trim(), 'String');
+                        updated = setSpecificPropertyJSON(updated, 'lastName',
+                            lastNameController.text.trim(), 'String');
+                        updated = setSpecificPropertyJSON(
+                            updated,
+                            'phoneNumber',
+                            phoneController.text.trim(),
+                            'String');
+                        if (editAvatarUrl != null) {
+                          updated = setSpecificPropertyJSON(
+                              updated, 'downloadURL', editAvatarUrl!, 'String');
+                        }
+                        updated['identity']['name'] =
+                            '${firstNameController.text.trim()} ${lastNameController.text.trim()}'
+                                .trim();
+                        final processedDoc =
+                            jsonFullDoubleToInt(sortJsonAlphabetically(updated))
+                                as Map<String, dynamic>;
+                        await changeObjectData(processedDoc);
+                        appUserDoc = processedDoc;
+                        if (mounted) {
+                          _loadUserName();
+                          Navigator.of(dialogContext).pop();
+                          await fshowInfoDialog(context, l10n.changesSaved);
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (ctx.mounted) {
+                          await fshowInfoDialog(ctx, 'Error: $e');
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(l10n.save,
+                      style: const TextStyle(color: Colors.black87)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    firstNameController.dispose();
+    lastNameController.dispose();
+    phoneController.dispose();
+  }
+
   void _openRegistrationForm() {
     final appState = Provider.of<AppState>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
@@ -129,7 +415,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
       MaterialPageRoute(
         builder: (context) => const StepperRegistrarRegistration(),
       ),
-    );
+    ).then((_) => _loadStats());
   }
 
   void _openQCReview() {
@@ -138,7 +424,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
       MaterialPageRoute(
         builder: (context) => const RegistrarQCScreen(),
       ),
-    );
+    ).then((_) => _loadStats());
   }
 
   void _openFieldBoundaryRecorder() {
@@ -169,7 +455,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
       MaterialPageRoute(
         builder: (context) => const FieldBoundaryRecorder(),
       ),
-    );
+    ).then((_) => _loadStats());
   }
 
   @override
@@ -181,6 +467,11 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
         title: Text(l10n.registrarDashboard),
         actions: [
           const LanguageSelector(),
+          IconButton(
+            icon: const Icon(Icons.manage_accounts),
+            onPressed: _showEditProfileDialog,
+            tooltip: l10n.viewAndEditProfile,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
@@ -413,21 +704,21 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                               context,
                               icon: Icons.person_add,
                               label: l10n.registered,
-                              value: '0',
+                              value: '$_statRegisteredToday',
                               color: Colors.blue,
                             ),
                             _buildStatItem(
                               context,
                               icon: Icons.check_circle,
                               label: l10n.verified,
-                              value: '0',
+                              value: '$_statVerified',
                               color: Colors.green,
                             ),
                             _buildStatItem(
                               context,
                               icon: Icons.pending,
                               label: l10n.pending,
-                              value: '0',
+                              value: '$_statPending',
                               color: Colors.orange,
                             ),
                           ],

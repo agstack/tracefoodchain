@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/main.dart' show country;
@@ -255,7 +256,7 @@ class PolygonRecorderWidget extends StatefulWidget {
     super.key,
     required this.onPolygonComplete,
     this.draftKey,
-    this.minDistanceMeters = 10,
+    this.minDistanceMeters = 5,
     this.farmId,
     this.onCancel,
   });
@@ -299,6 +300,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   final List<double> _accuracies = []; // Genauigkeit für jeden Punkt in Metern
   StreamSubscription<Position>? _positionStream;
   bool _isRecording = false;
+  GoogleMapController? _recordingMapController;
   bool _isLoading = false;
   Position? _currentPosition;
   Position? _lastAddedPosition;
@@ -408,6 +410,18 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
       ),
     ).listen((Position position) {
       setState(() => _currentPosition = position);
+      // Karte folgt GPS-Position wenn noch keine Punkte aufgenommen wurden
+      if (_points.isEmpty && _recordingMapController != null) {
+        try {
+          _recordingMapController!.animateCamera(
+            CameraUpdate.newLatLng(
+                LatLng(position.latitude, position.longitude)),
+          );
+        } catch (_) {
+          // Controller bereits disposed (z.B. nach Redo), ignorieren
+          _recordingMapController = null;
+        }
+      }
     });
   }
 
@@ -514,6 +528,9 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
       _accuracies.add(positionToAdd.accuracy);
       _lastAddedPosition = positionToAdd;
     });
+
+    // Kamera auf neue Bounds updaten
+    _updateRecordingMapCamera();
 
     // Speichere Draft nach jedem Punkt
     await _saveDraft();
@@ -640,10 +657,295 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     }
   }
 
+  // --- Polygon-Vorschau Hilfsmethoden ---
+
+  Color _getAccuracyColor(double accuracy) {
+    if (accuracy <= 5.0) return Colors.green;
+    if (accuracy <= 10.0) return Colors.lightGreen;
+    if (accuracy <= 15.0) return Colors.orange;
+    return Colors.red;
+  }
+
+  Set<Circle> _buildAccuracyCircles(
+      List<LatLng> points, List<double> accuracies) {
+    final Set<Circle> circles = {};
+    final pointCount = (points.isNotEmpty &&
+            points.first.latitude == points.last.latitude &&
+            points.first.longitude == points.last.longitude)
+        ? points.length - 1
+        : points.length;
+    for (int i = 0; i < pointCount; i++) {
+      final accuracy = (i < accuracies.length) ? accuracies[i] : 0.0;
+      circles.add(Circle(
+        circleId: CircleId('acc_$i'),
+        center: points[i],
+        radius: 3,
+        fillColor: _getAccuracyColor(accuracy).withOpacity(0.8),
+        strokeColor: _getAccuracyColor(accuracy),
+        strokeWidth: 2,
+      ));
+    }
+    return circles;
+  }
+
+  LatLngBounds _calculateLatLngBounds(List<LatLng> points) {
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+    for (final p in points) {
+      if (p.latitude < minLat) minLat = p.latitude;
+      if (p.latitude > maxLat) maxLat = p.latitude;
+      if (p.longitude < minLng) minLng = p.longitude;
+      if (p.longitude > maxLng) maxLng = p.longitude;
+    }
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
+  Future<bool> _showPolygonPreviewDialog(
+    List<List<double>> finalPoints,
+    double area,
+    List<double> accuracies,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final appState = Provider.of<AppState>(context, listen: false);
+    final availableUnits = getAreaUnits(country);
+
+    // Konvertiere [lat, lon] → LatLng
+    final latLngPoints = finalPoints.map((p) => LatLng(p[0], p[1])).toList();
+
+    final bounds = _calculateLatLngBounds(latLngPoints);
+    final centroid = LatLng(
+      latLngPoints.map((p) => p.latitude).reduce((a, b) => a + b) /
+          latLngPoints.length,
+      latLngPoints.map((p) => p.longitude).reduce((a, b) => a + b) /
+          latLngPoints.length,
+    );
+
+    GoogleMapController? mapController;
+
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isOnline = Provider.of<AppState>(context, listen: false).isConnected;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final dialogL10n = AppLocalizations.of(ctx)!;
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: SizedBox(
+            height: screenHeight * 0.85,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Titelzeile
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Row(
+                    children: [
+                      Icon(isOnline ? Icons.map : Icons.map_outlined,
+                          color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          dialogL10n.polygonPreviewTitle,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      if (!isOnline)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.wifi_off,
+                                  size: 14, color: Colors.orange[800]),
+                              const SizedBox(width: 4),
+                              Text('Offline',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.orange[800],
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Beschreibung
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Text(
+                    dialogL10n.polygonPreviewDescription,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  ),
+                ),
+                // Flächenanzeige
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: availableUnits.map((unit) {
+                      final symbol = unit['symbol'] as String;
+                      final factor =
+                          (unit['toHectareFactor'] as num).toDouble();
+                      final converted = area / factor;
+                      final isPreferred =
+                          symbol == appState.preferredAreaUnitSymbol;
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isPreferred)
+                            const Icon(Icons.star,
+                                size: 14, color: Colors.orange)
+                          else
+                            const SizedBox(width: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${converted.toStringAsFixed(4)} $symbol',
+                            style: TextStyle(
+                              fontSize: isPreferred ? 16 : 13,
+                              fontWeight: isPreferred
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color:
+                                  isPreferred ? Colors.black : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const Divider(height: 1),
+                // Karten- oder Canvas-Vorschau
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(bottom: Radius.circular(0)),
+                    child: isOnline
+                        ? GoogleMap(
+                            initialCameraPosition: CameraPosition(
+                              target: centroid,
+                              zoom: 16,
+                            ),
+                            onMapCreated: (controller) {
+                              mapController = controller;
+                              Future.delayed(
+                                const Duration(milliseconds: 300),
+                                () => mapController?.animateCamera(
+                                  CameraUpdate.newLatLngBounds(bounds, 40),
+                                ),
+                              );
+                            },
+                            polygons: {
+                              Polygon(
+                                polygonId: const PolygonId('preview'),
+                                points: latLngPoints,
+                                strokeColor: Colors.blue,
+                                strokeWidth: 2,
+                                fillColor: Colors.blue.withOpacity(0.2),
+                              ),
+                            },
+                            circles:
+                                _buildAccuracyCircles(latLngPoints, accuracies),
+                            zoomGesturesEnabled: true,
+                            scrollGesturesEnabled: true,
+                            rotateGesturesEnabled: false,
+                            tiltGesturesEnabled: false,
+                            zoomControlsEnabled: false,
+                            mapToolbarEnabled: false,
+                            myLocationButtonEnabled: false,
+                            mapType: MapType.hybrid,
+                            liteModeEnabled: false,
+                          )
+                        : InteractiveViewer(
+                            boundaryMargin: const EdgeInsets.all(64),
+                            minScale: 0.5,
+                            maxScale: 8.0,
+                            child: Container(
+                              color: Colors.grey[100],
+                              child: CustomPaint(
+                                painter: PolygonPainter(
+                                  points: finalPoints,
+                                  accuracies: accuracies,
+                                ),
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                const Divider(height: 1),
+                // Buttons
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          icon: const Icon(Icons.replay, color: Colors.red),
+                          label: Text(
+                            dialogL10n.polygonPreviewRedo,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          icon: const Icon(Icons.check_circle),
+                          label: Text(dialogL10n.polygonPreviewConfirm),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[700],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    mapController?.dispose();
+    return result ?? false;
+  }
+
   void _completePolygon() async {
     final l10n = AppLocalizations.of(context)!;
 
-    if (_points.length < 3) {
+    if (_points.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.minimumPointsRequired)),
       );
@@ -716,69 +1018,27 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     // Lösche Draft
     await _deleteDraft();
 
-    // Zeige Abschluss-Overlay mit Flächenangabe in allen verfügbaren Einheiten
-    if (context.mounted) {
-      final l10nOverlay = AppLocalizations.of(context)!;
-      final appState = Provider.of<AppState>(context, listen: false);
-      final availableUnits = getAreaUnits(country);
-      await showDialog(
-        context: context,
-        builder: (ctx) {
-          final overlayL10n = AppLocalizations.of(ctx)!;
-          return AlertDialog(
-            title: Text(
-              overlayL10n.areaCompletionOverlayTitle,
-              style: const TextStyle(
-                  color: Colors.black, fontWeight: FontWeight.bold),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: availableUnits.map((unit) {
-                final symbol = unit['symbol'] as String;
-                final factor = (unit['toHectareFactor'] as num).toDouble();
-                final converted = area / factor;
-                final isPreferred = symbol == appState.preferredAreaUnitSymbol;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      if (isPreferred)
-                        const Icon(Icons.star, size: 16, color: Colors.orange)
-                      else
-                        const SizedBox(width: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${converted.toStringAsFixed(4)} $symbol',
-                        style: TextStyle(
-                          fontSize: isPreferred ? 18 : 15,
-                          fontWeight:
-                              isPreferred ? FontWeight.bold : FontWeight.normal,
-                          color: isPreferred ? Colors.black : Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(overlayL10n.confirm),
-              ),
-            ],
-          );
-        },
-      );
-    }
+    // Vorschau-Dialog: Polygon auf Karte verifizieren (inkl. Flächenanzeige)
+    if (!context.mounted) return;
+    final confirmed =
+        await _showPolygonPreviewDialog(finalPoints, area, _accuracies);
 
-    // Callback mit finalen Punkten, Fläche und GPS-Genauigkeiten
-    widget.onPolygonComplete(finalPoints, area, _accuracies);
+    if (confirmed) {
+      // Nutzer bestätigt → normaler Speicher-Flow
+      widget.onPolygonComplete(finalPoints, area, _accuracies);
+    } else {
+      // Nutzer verwirft → alle Punkte löschen und GPS neu starten
+      if (!context.mounted) return;
+      setState(() {
+        _points.clear();
+        _accuracies.clear();
+        _lastAddedPosition = null;
+        _currentPosition = null;
+        _recordingMapController =
+            null; // Controller-Referenz leeren (Widget wurde disposed)
+      });
+      await _startRecording();
+    }
   }
 
   /// Sortiert Punkte zu einem sinnvollen Polygon mittels Nearest-Neighbor-Algorithmus
@@ -844,7 +1104,24 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   @override
   void dispose() {
     _positionStream?.cancel();
+    _recordingMapController?.dispose();
     super.dispose();
+  }
+
+  void _updateRecordingMapCamera() {
+    if (_recordingMapController == null || _points.isEmpty) return;
+    if (_points.length == 1) {
+      _recordingMapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(_points[0][0], _points[0][1]), 17),
+      );
+      return;
+    }
+    final bounds = _calculateLatLngBounds(
+      _points.map((p) => LatLng(p[0], p[1])).toList(),
+    );
+    _recordingMapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 50),
+    );
   }
 
   // Hilfsmethode: Erstellt Index-Mapping und sortierte Punkte
@@ -1107,7 +1384,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final estimatedArea = _points.length >= 3
+    final estimatedArea = _points.length >= 4
         ? _calculateAreaInHectares([..._points, _points.first])
         : 0.0;
 
@@ -1161,147 +1438,198 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                   // Polygon-Visualisierung mit interaktiven Gesten - EXPANDED für verfügbaren Platz
                   if (_points.isNotEmpty)
                     Expanded(
-                      child: Container(
-                        key: _canvasKey,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[400]!),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: GestureDetector(
-                            onScaleStart: (details) {
-                              _lastFocalPoint = details.focalPoint;
-                              // Prüfe ob ein Punkt berührt wurde (aber nur bei Single Touch)
-                              if (details.pointerCount == 1) {
-                                _checkPointSelection(details.localFocalPoint);
-                              }
-                            },
-                            onScaleUpdate: (details) {
-                              if (_isDraggingPoint &&
-                                  _selectedPointIndex != null &&
-                                  details.pointerCount == 1) {
-                                // Punkt verschieben
-                                _dragPoint(details.localFocalPoint);
-                              } else if (details.pointerCount > 1) {
-                                // Zoom und Pan (nur bei Multi-Touch)
-                                setState(() {
-                                  _scale =
-                                      (_scale * details.scale).clamp(0.5, 5.0);
-                                  _offset +=
-                                      details.focalPoint - _lastFocalPoint;
-                                  _lastFocalPoint = details.focalPoint;
-                                });
-                              } else {
-                                // Nur Pan bei Single Touch ohne Punkt-Drag
-                                setState(() {
-                                  _offset +=
-                                      details.focalPoint - _lastFocalPoint;
-                                  _lastFocalPoint = details.focalPoint;
-                                });
-                              }
-                            },
-                            onScaleEnd: (details) {
-                              if (_isDraggingPoint) {
-                                _saveDraft();
-                              }
-                              setState(() {
-                                _isDraggingPoint = false;
-                                // Behalte die Selektion nach dem Drag
-                              });
-                            },
-                            onLongPressStart: (details) {
-                              // Wichtig: Selektion vor Dialog
-                              _checkPointSelection(details.localPosition);
-                              // Warte kurz damit setState wirksam wird
-                              Future.microtask(() {
-                                if (_selectedPointIndex != null && mounted) {
-                                  _showPointEditDialog(_selectedPointIndex!);
-                                }
-                              });
-                            },
-                            child: Stack(
-                              children: [
-                                CustomPaint(
-                                  painter: PolygonPainter(
-                                    points: _sortPointsToPolygon(
-                                        List.from(_points)),
-                                    accuracies: _accuracies,
-                                    scale: _scale,
-                                    offset: _offset,
-                                    selectedPointIndex: _selectedPointIndex,
-                                  ),
-                                  child: Container(),
-                                ),
-                                // Zoom-Controls
-                                Positioned(
-                                  right: 8,
-                                  top: 8,
-                                  child: Column(
-                                    children: [
-                                      FloatingActionButton.small(
-                                        heroTag: 'zoom_in',
-                                        onPressed: () {
-                                          setState(() {
-                                            _scale =
-                                                (_scale * 1.2).clamp(0.5, 5.0);
-                                          });
-                                        },
-                                        child: const Icon(Icons.add),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      FloatingActionButton.small(
-                                        heroTag: 'zoom_out',
-                                        onPressed: () {
-                                          setState(() {
-                                            _scale =
-                                                (_scale / 1.2).clamp(0.5, 5.0);
-                                          });
-                                        },
-                                        child: const Icon(Icons.remove),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      FloatingActionButton.small(
-                                        heroTag: 'zoom_reset',
-                                        onPressed: () {
-                                          setState(() {
-                                            _scale = 1.0;
-                                            _offset = Offset.zero;
-                                            _selectedPointIndex = null;
-                                          });
-                                        },
-                                        child: const Icon(
-                                            Icons.center_focus_strong),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Info-Text
-                                Positioned(
-                                  left: 8,
-                                  bottom: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      l10n.pinchToZoom,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                      child: Consumer<AppState>(
+                        builder: (ctx, appState, _) {
+                          final isOnline = appState.isConnected;
+                          return Container(
+                            key: _canvasKey,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: isOnline
+                                  ? Colors.transparent
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[400]!),
                             ),
-                          ),
-                        ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Stack(
+                                children: [
+                                  // Kartenhintergrund (nur bei bestehender Verbindung)
+                                  if (isOnline)
+                                    IgnorePointer(
+                                      child: GoogleMap(
+                                        initialCameraPosition: CameraPosition(
+                                          target: _currentPosition != null
+                                              ? LatLng(
+                                                  _currentPosition!.latitude,
+                                                  _currentPosition!.longitude)
+                                              : LatLng(_points.first[0],
+                                                  _points.first[1]),
+                                          zoom: 17,
+                                        ),
+                                        onMapCreated: (controller) {
+                                          _recordingMapController = controller;
+                                          _updateRecordingMapCamera();
+                                        },
+                                        myLocationEnabled: true,
+                                        myLocationButtonEnabled: false,
+                                        zoomControlsEnabled: false,
+                                        scrollGesturesEnabled: false,
+                                        zoomGesturesEnabled: false,
+                                        rotateGesturesEnabled: false,
+                                        tiltGesturesEnabled: false,
+                                        mapToolbarEnabled: false,
+                                        mapType: MapType.hybrid,
+                                        liteModeEnabled: false,
+                                      ),
+                                    ),
+                                  // Polygon-Canvas + Gesten (immer präsent)
+                                  GestureDetector(
+                                    onScaleStart: (details) {
+                                      _lastFocalPoint = details.focalPoint;
+                                      // Prüfe ob ein Punkt berührt wurde (aber nur bei Single Touch)
+                                      if (details.pointerCount == 1) {
+                                        _checkPointSelection(
+                                            details.localFocalPoint);
+                                      }
+                                    },
+                                    onScaleUpdate: (details) {
+                                      if (_isDraggingPoint &&
+                                          _selectedPointIndex != null &&
+                                          details.pointerCount == 1) {
+                                        // Punkt verschieben
+                                        _dragPoint(details.localFocalPoint);
+                                      } else if (details.pointerCount > 1) {
+                                        // Zoom und Pan (nur bei Multi-Touch)
+                                        setState(() {
+                                          _scale = (_scale * details.scale)
+                                              .clamp(0.5, 5.0);
+                                          _offset += details.focalPoint -
+                                              _lastFocalPoint;
+                                          _lastFocalPoint = details.focalPoint;
+                                        });
+                                      } else {
+                                        // Nur Pan bei Single Touch ohne Punkt-Drag
+                                        setState(() {
+                                          _offset += details.focalPoint -
+                                              _lastFocalPoint;
+                                          _lastFocalPoint = details.focalPoint;
+                                        });
+                                      }
+                                    },
+                                    onScaleEnd: (details) {
+                                      if (_isDraggingPoint) {
+                                        _saveDraft();
+                                      }
+                                      setState(() {
+                                        _isDraggingPoint = false;
+                                        // Behalte die Selektion nach dem Drag
+                                      });
+                                    },
+                                    onLongPressStart: (details) {
+                                      // Wichtig: Selektion vor Dialog
+                                      _checkPointSelection(
+                                          details.localPosition);
+                                      // Warte kurz damit setState wirksam wird
+                                      Future.microtask(() {
+                                        if (_selectedPointIndex != null &&
+                                            mounted) {
+                                          _showPointEditDialog(
+                                              _selectedPointIndex!);
+                                        }
+                                      });
+                                    },
+                                    child: Stack(
+                                      children: [
+                                        CustomPaint(
+                                          painter: PolygonPainter(
+                                            points: _sortPointsToPolygon(
+                                                List.from(_points)),
+                                            accuracies: _accuracies,
+                                            scale: _scale,
+                                            offset: _offset,
+                                            selectedPointIndex:
+                                                _selectedPointIndex,
+                                          ),
+                                          child: Container(
+                                            color: isOnline
+                                                ? Colors.transparent
+                                                : null,
+                                          ),
+                                        ),
+                                        // Zoom-Controls
+                                        Positioned(
+                                          right: 8,
+                                          top: 8,
+                                          child: Column(
+                                            children: [
+                                              FloatingActionButton.small(
+                                                heroTag: 'zoom_in',
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _scale = (_scale * 1.2)
+                                                        .clamp(0.5, 5.0);
+                                                  });
+                                                },
+                                                child: const Icon(Icons.add),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              FloatingActionButton.small(
+                                                heroTag: 'zoom_out',
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _scale = (_scale / 1.2)
+                                                        .clamp(0.5, 5.0);
+                                                  });
+                                                },
+                                                child: const Icon(Icons.remove),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              FloatingActionButton.small(
+                                                heroTag: 'zoom_reset',
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _scale = 1.0;
+                                                    _offset = Offset.zero;
+                                                    _selectedPointIndex = null;
+                                                  });
+                                                },
+                                                child: const Icon(
+                                                    Icons.center_focus_strong),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Info-Text
+                                        Positioned(
+                                          left: 8,
+                                          bottom: 8,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              l10n.pinchToZoom,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
 
@@ -1369,7 +1697,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
 
                   const SizedBox(height: 8),
                   // Complete Button or Minimum Points Message
-                  if (_points.length >= 3)
+                  if (_points.length >= 4)
                     ElevatedButton.icon(
                       onPressed: _completePolygon,
                       icon: const Icon(Icons.check_circle),

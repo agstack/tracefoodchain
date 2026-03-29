@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../l10n/app_localizations.dart';
 
 class FirebaseStorageService {
   static final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -99,57 +100,66 @@ class FirebaseStorageService {
   }
 
   /// Show image source selection dialog (adapted for web/mobile)
+  ///
+  /// Separates the source-selection dialog from the actual image picking to
+  /// avoid the double-pop problem where [Navigator.pop] is called once to
+  /// close the dialog and then again (on an already-orphaned context) to
+  /// return the result, silently popping the parent route instead.
   static Future<XFile?> showImageSourceDialog(BuildContext context) async {
     if (kIsWeb) {
       // On web, only gallery is available
       return await pickImage(source: ImageSource.gallery);
     }
 
-    return showDialog<XFile?>(
+    final l10n = AppLocalizations.of(context)!;
+
+    // Step 1: let the user pick a source (camera / gallery).  The dialog
+    // closes and only returns an ImageSource enum value — no picking yet.
+    final ImageSource? source = await showDialog<ImageSource>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Avatar-Bild auswählen'),
-          content: const Text('Woher möchten Sie Ihr Profilbild auswählen?'),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                final image = await pickImage(source: ImageSource.camera);
-                Navigator.of(context).pop(image);
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.camera_alt),
-                  SizedBox(width: 8),
-                  Text('Kamera'),
-                ],
-              ),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.selectImageSource,
+            style: const TextStyle(color: Colors.black)),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(ImageSource.camera),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.camera_alt),
+                const SizedBox(width: 8),
+                Text(l10n.fromCamera),
+              ],
             ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                final image = await pickImage(source: ImageSource.gallery);
-                Navigator.of(context).pop(image);
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.photo_library),
-                  SizedBox(width: 8),
-                  Text('Galerie'),
-                ],
-              ),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(ImageSource.gallery),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.photo_library),
+                const SizedBox(width: 8),
+                Text(l10n.fromGallery),
+              ],
             ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Abbrechen'),
-            ),
-          ],
-        );
-      },
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.cancel,
+                style: const TextStyle(color: Colors.black87)),
+          ),
+        ],
+      ),
     );
+
+    if (source == null) return null;
+
+    // Step 2: pick the image only after the dialog is fully gone.  This
+    // ensures the camera/gallery intent is launched from a clean state and
+    // the result is returned correctly on all devices.
+    return await pickImage(source: source);
   }
 
   /// Delete user's avatar

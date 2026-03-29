@@ -1176,6 +1176,42 @@ class AppLocalizationsDe extends AppLocalizations {
       'Fehler beim Generieren der Excel-Datei';
 
   @override
+  String get downloadGeoJSON => 'GeoJSON herunterladen';
+
+  @override
+  String get downloadKML => 'KML herunterladen';
+
+  @override
+  String get copyGeoId => 'Geo-ID kopieren';
+
+  @override
+  String get fieldCoordinatesDownloaded => 'Feldkoordinaten heruntergeladen';
+
+  @override
+  String get noCoordinatesAvailable =>
+      'Keine Koordinaten für dieses Feld verfügbar';
+
+  @override
+  String get editEntry => 'Bearbeiten';
+
+  @override
+  String get editFarmerTitle => 'Landwirt bearbeiten';
+
+  @override
+  String get editFarmTitle => 'Betrieb bearbeiten';
+
+  @override
+  String get changesSaved => 'Änderungen erfolgreich gespeichert';
+
+  @override
+  String get editWindowExpired => 'Bearbeitungsfenster abgelaufen (24 Std.)';
+
+  @override
+  String within24hEdit(int hours) {
+    return 'Noch $hours Std. bearbeitbar';
+  }
+
+  @override
   String get exportToExcel => 'Exportieren nach Excel';
 
   @override
@@ -2234,6 +2270,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cropImage => 'Bild zuschneiden';
 
   @override
+  String get selectImageSource => 'Bildquelle auswählen';
+
+  @override
+  String get fromCamera => 'Kamera';
+
+  @override
+  String get fromGallery => 'Galerie';
+
+  @override
   String get imageUploadError =>
       'Fehler beim Hochladen des Bildes. Bitte versuchen Sie es erneut.';
 
@@ -2752,6 +2797,24 @@ class AppLocalizationsDe extends AppLocalizations {
       'Einverständniserklärung erneut fotografieren';
 
   @override
+  String get consentFormPhoto2 => 'Einverständniserklärung Foto 2 (optional)';
+
+  @override
+  String get consentFormPhoto2Optional =>
+      'Optional: Zweites Foto aufnehmen (z.B. Rückseite des Formulars)';
+
+  @override
+  String get takeConsentFormPhoto2 => '2. Einverständnisfoto aufnehmen';
+
+  @override
+  String get retakeConsentFormPhoto2 =>
+      '2. Einverständnisfoto erneut aufnehmen';
+
+  @override
+  String get consentPhoto2Taken =>
+      'Zweites Einverständnisfoto erfolgreich aufgenommen';
+
+  @override
   String get placeConsentFormInFrame =>
       'Platzieren Sie die unterschriebene Einverständniserklärung im Rahmen';
 
@@ -2805,4 +2868,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tapToSwitchUnit => 'Tippen zum Einheitenwechsel';
+
+  @override
+  String get polygonPreviewTitle => 'Polygon überprüfen';
+
+  @override
+  String get polygonPreviewDescription =>
+      'Sieht das erfasste Polygon korrekt aus? Falls nicht, können Sie die gesamte Aufnahme von vorne beginnen.';
+
+  @override
+  String get polygonPreviewConfirm => 'Sieht korrekt aus';
+
+  @override
+  String get polygonPreviewRedo => 'Erneut aufnehmen';
 }
