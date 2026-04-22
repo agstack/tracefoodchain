@@ -16,6 +16,9 @@ import '../services/asset_registry_api_service.dart';
 import '../services/user_registry_api_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
+import '../helpers/field_download_helper.dart';
+import '../services/service_functions.dart';
+import '../utils/file_download.dart';
 
 /// Screen für QC-Review und Genehmigung von registrierten Farmen, Farmern und Feldern
 class RegistrarQCScreen extends StatefulWidget {
@@ -611,6 +614,90 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    if (ralType == 'field') ...[
+                      TextButton.icon(
+                        onPressed: () {
+                          final l10n = AppLocalizations.of(context)!;
+                          final boundariesRaw =
+                              getSpecificPropertyfromJSON(obj, 'boundaries');
+                          final area = getSpecificPropertyfromJSON(obj, 'area')
+                                  ?.toString() ??
+                              '';
+                          String? geoId;
+                          final altIds =
+                              obj['identity']?['alternateIDs'] as List?;
+                          if (altIds != null) {
+                            for (final a in altIds) {
+                              if (a['issuedBy'] == 'Asset Registry') {
+                                geoId = a['UID'] as String?;
+                                break;
+                              }
+                            }
+                          }
+                          FieldDownloadHelper.downloadGeoJSON(
+                            context,
+                            name:
+                                obj['identity']?['name'] as String? ?? 'field',
+                            boundariesJson: boundariesRaw?.toString(),
+                            l10n: l10n,
+                            area: area,
+                            geoId: geoId,
+                          );
+                        },
+                        icon: const Icon(Icons.download, size: 16),
+                        label: const Text('GeoJSON',
+                            style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.green[700],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: () {
+                          final l10n = AppLocalizations.of(context)!;
+                          final boundariesRaw =
+                              getSpecificPropertyfromJSON(obj, 'boundaries');
+                          final area = getSpecificPropertyfromJSON(obj, 'area')
+                                  ?.toString() ??
+                              '';
+                          String? geoId;
+                          final altIds =
+                              obj['identity']?['alternateIDs'] as List?;
+                          if (altIds != null) {
+                            for (final a in altIds) {
+                              if (a['issuedBy'] == 'Asset Registry') {
+                                geoId = a['UID'] as String?;
+                                break;
+                              }
+                            }
+                          }
+                          FieldDownloadHelper.downloadKML(
+                            context,
+                            name:
+                                obj['identity']?['name'] as String? ?? 'Field',
+                            boundariesJson: boundariesRaw?.toString(),
+                            l10n: l10n,
+                            area: area,
+                            geoId: geoId,
+                          );
+                        },
+                        icon: const Icon(Icons.map_outlined, size: 16),
+                        label:
+                            const Text('KML', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.orange[700],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     TextButton.icon(
                       onPressed: () => _rejectRegistration(obj),
                       icon: const Icon(Icons.close),

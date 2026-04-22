@@ -10,6 +10,7 @@ import '../l10n/app_localizations.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
+import '../helpers/field_download_helper.dart';
 import '../main.dart';
 
 class ViewHistoryScreen extends StatefulWidget {
@@ -453,8 +454,24 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton.icon(
-                      onPressed: () =>
-                          _downloadFieldGeoJSON(registration, l10n),
+                      onPressed: () {
+                        final rawData =
+                            registration['rawData'] as Map<String, dynamic>;
+                        final boundariesRaw =
+                            getSpecificPropertyfromJSON(rawData, 'boundaries');
+                        final area =
+                            getSpecificPropertyfromJSON(rawData, 'area')
+                                    ?.toString() ??
+                                '';
+                        FieldDownloadHelper.downloadGeoJSON(
+                          context,
+                          name:
+                              registration['displayName'] as String? ?? 'field',
+                          boundariesJson: boundariesRaw?.toString(),
+                          l10n: l10n,
+                          area: area,
+                        );
+                      },
                       icon: const Icon(Icons.download, size: 16),
                       label:
                           const Text('GeoJSON', style: TextStyle(fontSize: 12)),
@@ -468,7 +485,24 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                     ),
                     const SizedBox(width: 4),
                     TextButton.icon(
-                      onPressed: () => _downloadFieldKML(registration, l10n),
+                      onPressed: () {
+                        final rawData =
+                            registration['rawData'] as Map<String, dynamic>;
+                        final boundariesRaw =
+                            getSpecificPropertyfromJSON(rawData, 'boundaries');
+                        final area =
+                            getSpecificPropertyfromJSON(rawData, 'area')
+                                    ?.toString() ??
+                                '';
+                        FieldDownloadHelper.downloadKML(
+                          context,
+                          name:
+                              registration['displayName'] as String? ?? 'Field',
+                          boundariesJson: boundariesRaw?.toString(),
+                          l10n: l10n,
+                          area: area,
+                        );
+                      },
                       icon: const Icon(Icons.map_outlined, size: 16),
                       label: const Text('KML', style: TextStyle(fontSize: 12)),
                       style: TextButton.styleFrom(
@@ -575,124 +609,6 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         ],
       ),
     );
-  }
-
-  List<List<double>>? _parseBoundaries(Map<String, dynamic> rawData) {
-    final boundariesValue = getSpecificPropertyfromJSON(rawData, 'boundaries');
-    if (boundariesValue == null || boundariesValue.toString().isEmpty)
-      return null;
-    try {
-      final decoded = jsonDecode(boundariesValue.toString());
-      if (decoded is Map && decoded['coordinates'] is List) {
-        return (decoded['coordinates'] as List).map((e) {
-          final pair = e as List;
-          return [
-            (pair[0] as num).toDouble(),
-            (pair[1] as num).toDouble(),
-          ];
-        }).toList();
-      }
-    } catch (e) {
-      debugPrint('Error parsing boundaries: $e');
-    }
-    return null;
-  }
-
-  String _escapeXml(String text) => text
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&apos;');
-
-  Future<void> _downloadFieldGeoJSON(
-      Map<String, dynamic> registration, AppLocalizations l10n) async {
-    final rawData = registration['rawData'] as Map<String, dynamic>;
-    final coords = _parseBoundaries(rawData);
-    if (coords == null || coords.isEmpty) {
-      await fshowInfoDialog(context, l10n.noCoordinatesAvailable);
-      return;
-    }
-    final ring = List<List<double>>.from(coords);
-    if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
-      ring.add(ring.first);
-    }
-    final area = getSpecificPropertyfromJSON(rawData, 'area')?.toString() ?? '';
-    final geojson = {
-      'type': 'FeatureCollection',
-      'features': [
-        {
-          'type': 'Feature',
-          'geometry': {
-            'type': 'Polygon',
-            'coordinates': [ring]
-          },
-          'properties': {
-            'name': registration['displayName'] ?? '',
-            'area_ha': area,
-          }
-        }
-      ]
-    };
-    final safeName = (registration['displayName'] as String? ?? 'field')
-        .replaceAll(RegExp(r'[^\w-]'), '_');
-    final bytes =
-        utf8.encode(const JsonEncoder.withIndent('  ').convert(geojson));
-    try {
-      await downloadFile(bytes, '$safeName.geojson');
-      if (mounted) {
-        await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
-      }
-    } catch (e) {
-      if (mounted) await fshowInfoDialog(context, 'Error: $e');
-    }
-  }
-
-  Future<void> _downloadFieldKML(
-      Map<String, dynamic> registration, AppLocalizations l10n) async {
-    final rawData = registration['rawData'] as Map<String, dynamic>;
-    final coords = _parseBoundaries(rawData);
-    if (coords == null || coords.isEmpty) {
-      await fshowInfoDialog(context, l10n.noCoordinatesAvailable);
-      return;
-    }
-    final ring = List<List<double>>.from(coords);
-    if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
-      ring.add(ring.first);
-    }
-    final fieldName = registration['displayName'] as String? ?? 'Field';
-    final area = getSpecificPropertyfromJSON(rawData, 'area')?.toString() ?? '';
-    final coordStr = ring.map((c) => '${c[0]},${c[1]},0').join(' ');
-    final kmlContent = '''<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>${_escapeXml(fieldName)}</name>
-    <Placemark>
-      <name>${_escapeXml(fieldName)}</name>
-      <description>Area: ${_escapeXml(area)} ha</description>
-      <Style>
-        <LineStyle><color>ff0000ff</color><width>2</width></LineStyle>
-        <PolyStyle><color>330000ff</color></PolyStyle>
-      </Style>
-      <Polygon>
-        <outerBoundaryIs>
-          <LinearRing>
-            <coordinates>$coordStr</coordinates>
-          </LinearRing>
-        </outerBoundaryIs>
-      </Polygon>
-    </Placemark>
-  </Document>
-</kml>''';
-    final safeName = fieldName.replaceAll(RegExp(r'[^\w-]'), '_');
-    final bytes = utf8.encode(kmlContent);
-    try {
-      await downloadFile(bytes, '$safeName.kml');
-      if (mounted)
-        await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
-    } catch (e) {
-      if (mounted) await fshowInfoDialog(context, 'Error: $e');
-    }
   }
 
   Widget _buildDetailRow(String label, String? value) {

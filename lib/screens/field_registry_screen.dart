@@ -19,6 +19,7 @@ import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
 import 'package:trace_foodchain_app/screens/fast_upload_screen.dart';
+import 'package:trace_foodchain_app/helpers/field_download_helper.dart';
 
 /// Eine einfache LatLng Klasse für Koordinaten
 class LatLng {
@@ -1397,129 +1398,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     }
   }
 
-  /// Parses the stored boundaries JSON string into a list of [lon, lat] pairs.
-  List<List<double>>? _parseBoundaries(String? boundariesValue) {
-    if (boundariesValue == null || boundariesValue.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(boundariesValue);
-      if (decoded is Map && decoded['coordinates'] is List) {
-        return (decoded['coordinates'] as List).map((e) {
-          final pair = e as List;
-          return [
-            (pair[0] as num).toDouble(),
-            (pair[1] as num).toDouble(),
-          ];
-        }).toList();
-      }
-    } catch (e) {
-      debugPrint('Error parsing boundaries: $e');
-    }
-    return null;
-  }
-
-  String _escapeXml(String text) => text
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&apos;');
-
-  Future<void> _downloadFieldGeoJSON(Map<String, dynamic> field) async {
-    final l10n = AppLocalizations.of(context)!;
-    final coords = _parseBoundaries(field['boundaries'] as String?);
-    if (coords == null || coords.isEmpty) {
-      await fshowInfoDialog(context, l10n.noCoordinatesAvailable);
-      return;
-    }
-    // Ensure ring is closed
-    final ring = List<List<double>>.from(coords);
-    if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
-      ring.add(ring.first);
-    }
-    final geojson = {
-      "type": "FeatureCollection",
-      "features": [
-        {
-          "type": "Feature",
-          "geometry": {
-            "type": "Polygon",
-            "coordinates": [ring]
-          },
-          "properties": {
-            "name": field["name"] ?? "",
-            "area_ha": field["area"] ?? "",
-            "geoId": field["geoId"] ?? "",
-          }
-        }
-      ]
-    };
-    final safeName =
-        (field["name"] as String? ?? "field").replaceAll(RegExp(r'[^\w-]'), '_');
-    final fileName = '$safeName.geojson';
-    final bytes = utf8.encode(const JsonEncoder.withIndent('  ').convert(geojson));
-    try {
-      await downloadFile(bytes, fileName);
-      if (mounted) {
-        if (kIsWeb) {
-          await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
-        } else {
-          await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
-        }
-      }
-    } catch (e) {
-      if (mounted) await fshowInfoDialog(context, 'Error: $e');
-    }
-  }
-
-  Future<void> _downloadFieldKML(Map<String, dynamic> field) async {
-    final l10n = AppLocalizations.of(context)!;
-    final coords = _parseBoundaries(field['boundaries'] as String?);
-    if (coords == null || coords.isEmpty) {
-      await fshowInfoDialog(context, l10n.noCoordinatesAvailable);
-      return;
-    }
-    // Ensure ring is closed
-    final ring = List<List<double>>.from(coords);
-    if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
-      ring.add(ring.first);
-    }
-    final coordStr = ring.map((c) => '${c[0]},${c[1]},0').join(' ');
-    final fieldName = field["name"] as String? ?? "Field";
-    final area = field["area"] as String? ?? "";
-    final geoId = field["geoId"] as String? ?? "";
-    final kmlContent = '''<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>${_escapeXml(fieldName)}</name>
-    <Placemark>
-      <name>${_escapeXml(fieldName)}</name>
-      <description>Area: ${_escapeXml(area)} ha | Geo ID: ${_escapeXml(geoId)}</description>
-      <Style>
-        <LineStyle><color>ff0000ff</color><width>2</width></LineStyle>
-        <PolyStyle><color>330000ff</color></PolyStyle>
-      </Style>
-      <Polygon>
-        <outerBoundaryIs>
-          <LinearRing>
-            <coordinates>$coordStr</coordinates>
-          </LinearRing>
-        </outerBoundaryIs>
-      </Polygon>
-    </Placemark>
-  </Document>
-</kml>''';
-    final safeName =
-        fieldName.replaceAll(RegExp(r'[^\w-]'), '_');
-    final fileName = '$safeName.kml';
-    final bytes = utf8.encode(kmlContent);
-    try {
-      await downloadFile(bytes, fileName);
-      if (mounted) await fshowInfoDialog(context, l10n.fieldCoordinatesDownloaded);
-    } catch (e) {
-      if (mounted) await fshowInfoDialog(context, 'Error: $e');
-    }
-  }
-
   void _showFieldActions(Map<String, dynamic> field) {
     final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
@@ -1577,19 +1455,34 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                       style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _downloadFieldGeoJSON(field);
+                    final l10n = AppLocalizations.of(context)!;
+                    FieldDownloadHelper.downloadGeoJSON(
+                      context,
+                      name: field['name'] as String? ?? 'field',
+                      boundariesJson: field['boundaries'] as String?,
+                      l10n: l10n,
+                      geoId: field['geoId'] as String?,
+                      area: field['area'] as String?,
+                    );
                   },
                 ),
                 ListTile(
-                  leading:
-                      const Icon(Icons.map_outlined, color: Colors.orange),
+                  leading: const Icon(Icons.map_outlined, color: Colors.orange),
                   title: Text(l10n.downloadKML,
                       style: const TextStyle(color: Colors.black87)),
                   subtitle: Text('*.kml  (Google Earth, QGIS, …)',
                       style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _downloadFieldKML(field);
+                    final l10n = AppLocalizations.of(context)!;
+                    FieldDownloadHelper.downloadKML(
+                      context,
+                      name: field['name'] as String? ?? 'Field',
+                      boundariesJson: field['boundaries'] as String?,
+                      l10n: l10n,
+                      area: field['area'] as String?,
+                      geoId: field['geoId'] as String?,
+                    );
                   },
                 ),
                 const SizedBox(height: 8),

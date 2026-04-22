@@ -463,6 +463,8 @@ class CloudSyncService {
 
   Future<bool> syncMethods(String domain,
       {Function(int current, int total)? onProgress,
+      Function(int current, int total)? onDownloadProgress,
+      VoidCallback? onFetchingFromCloud,
       bool syncFromCloud = true}) async {
     List<String> failedSyncedOutputObjects = [];
     if (_isSyncing) {
@@ -551,32 +553,52 @@ class CloudSyncService {
             if (syncresult["responseDetails"] != null) {
               switch (syncresult["response"]) {
                 case "409":
+                  debugPrint('[SYNC 409] Merge conflict for method $methodUid');
+                  debugPrint(
+                      '[SYNC 409] Full responseDetails: ${syncresult["responseDetails"]}');
                   //ToDo: Flag methods or objects with merge conflicts
                   if (syncresult["responseDetails"]
                       .containsKey("methodConflict")) {
+                    debugPrint(
+                        '[SYNC 409] methodConflict: ${syncresult["responseDetails"]["methodConflict"]}');
                     //problem to merge method
                     //     - cloudVersionInvalid
                     //     - clientVersionInvalid
                     //     - conflictReasonUnknown
                     Map<String, dynamic> conflictMethod =
                         await getLocalObjectMethod(getObjectMethodUID(doc2));
+                    debugPrint(
+                        '[SYNC 409] conflictMethod loaded, isEmpty=${conflictMethod.isEmpty}');
                     conflictMethod["hasMergeConflict"] = true;
                     conflictMethod["mergeConflictReason"] =
                         syncresult["responseDetails"]["methodConflict"];
                     await setObjectMethod(conflictMethod, false, true);
+                    debugPrint(
+                        '[SYNC 409] conflictMethod saved with hasMergeConflict=true');
                   }
                   if (syncresult["responseDetails"]
                       .containsKey("conflictObjects")) {
+                    final conflictList =
+                        syncresult["responseDetails"]["conflictObjects"];
+                    debugPrint(
+                        '[SYNC 409] conflictObjects count: ${conflictList?.length ?? 0}, content: $conflictList');
                     // conflictObjects: List of objects with merge conflicts
                     // "objectUid": "a9b94df2-2ad8-4f2f-b469-3d8bb6f9f054" => flag as problematic
-                    for (final object in syncresult["responseDetails"]
-                        ["conflictObjects"]) {
+                    for (final object in conflictList) {
+                      debugPrint(
+                          '[SYNC 409] Flagging conflictObject: ${object["objectUid"]}');
                       Map<String, dynamic> conflictObject =
                           await getLocalObjectMethod(object["objectUid"]);
+                      debugPrint(
+                          '[SYNC 409] conflictObject loaded, isEmpty=${conflictObject.isEmpty}');
                       conflictObject["hasMergeConflict"] = true;
                       await setObjectMethod(conflictObject, false, true);
+                      debugPrint(
+                          '[SYNC 409] conflictObject ${object["objectUid"]} saved with hasMergeConflict=true');
                     }
                   }
+                  debugPrint(
+                      '[SYNC 409] 409 handling done, continuing loop (syncSuccess=false)');
 
                   break;
                 case "400":
@@ -625,6 +647,8 @@ class CloudSyncService {
           }
         } catch (e) {
           syncSuccess = false;
+          debugPrint(
+              '[SYNC] Exception in inner try-catch for method $methodUid: $e');
           snackbarMessageNotifier.value = "unknown error syncing to cloud";
           // globalSnackBarNotifier.value = {
           //   'type': 'error',
@@ -641,18 +665,29 @@ class CloudSyncService {
         }
       }
 
+      debugPrint(
+          '[SYNC] Upload loop done. syncSuccess=$syncSuccess, syncFromCloud param=$syncFromCloud');
+
       //******* 2. SYNC METHODS AND OBJECTS FROM CLOUD - independet of new methods on device ********
       //This happens in case a user has logged into a second device (e.g., webapp on PC)
       //1. Generate a hash list from all objects and methods on the device
 
       //2. Get all objects and methods from the cloud that are not on the device or need to be updated
       if (!syncFromCloud) {
+        debugPrint('[SYNC] syncFromCloud=false, returning early');
         return syncSuccess;
+      }
+      debugPrint('[SYNC] Starting syncObjectsMethodsFromCloud...');
+      if (onFetchingFromCloud != null) {
+        onFetchingFromCloud();
       }
       final cloudData =
           await apiClient.syncObjectsMethodsFromCloud(domain, deviceHashes);
+      debugPrint(
+          '[SYNC] syncObjectsMethodsFromCloud returned, isEmpty=${cloudData.isEmpty}');
       // this will return an empty object in case there is an error.
       if (cloudData.isEmpty) {
+        debugPrint('[SYNC] cloudData is empty, returning false');
         return false;
       }
 
@@ -679,7 +714,9 @@ class CloudSyncService {
 
       for (final item in mergedList) {
         currentDownloadIndex++;
-        if (onProgress != null) {
+        if (onDownloadProgress != null) {
+          onDownloadProgress(currentDownloadIndex, totalDownloads);
+        } else if (onProgress != null) {
           onProgress(currentDownloadIndex, totalDownloads);
         }
 
@@ -709,8 +746,11 @@ class CloudSyncService {
       }
       //
     } catch (e) {
+      debugPrint(
+          '[SYNC] Exception in outer try-catch (skipping syncFromCloud!): $e');
       return false;
     } finally {
+      debugPrint('[SYNC] syncMethods finally block reached, _isSyncing reset');
       _isSyncing = false;
       return true;
     }

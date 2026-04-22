@@ -53,7 +53,16 @@ class _HomeScreenState extends State<HomeScreen> {
             final l10n = AppLocalizations.of(context)!;
             syncStatusNotifier.value = "${l10n.syncingWith} $cloudKey";
             await cloudSyncService.syncMethods(cloudKey,
-                syncFromCloud: !isWebLandscape);
+                syncFromCloud: !isWebLandscape, onProgress: (current, total) {
+              syncStatusNotifier.value =
+                  "${l10n.syncingWith} $cloudKey ↑ ($current/$total)";
+            }, onFetchingFromCloud: () {
+              syncStatusNotifier.value =
+                  "${l10n.syncingWith} $cloudKey ↓ ...";
+            }, onDownloadProgress: (current, total) {
+              syncStatusNotifier.value =
+                  "${l10n.syncingWith} $cloudKey ↓ ($current/$total)";
+            });
           }
         }
         final databaseHelper = DatabaseHelper();
@@ -86,7 +95,17 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
           syncStatusNotifier.value = "${l10n.manuallySyncingWith} $cloudKey";
-          await cloudSyncService.syncMethods(cloudKey,syncFromCloud: !isWebLandscape);
+          await cloudSyncService.syncMethods(cloudKey,
+              syncFromCloud: !isWebLandscape, onProgress: (current, total) {
+            syncStatusNotifier.value =
+                "${l10n.manuallySyncingWith} $cloudKey ↑ ($current/$total)";
+          }, onFetchingFromCloud: () {
+            syncStatusNotifier.value =
+                "${l10n.manuallySyncingWith} $cloudKey ↓ ...";
+          }, onDownloadProgress: (current, total) {
+            syncStatusNotifier.value =
+                "${l10n.manuallySyncingWith} $cloudKey ↓ ($current/$total)";
+          });
         }
       }
       final databaseHelper = DatabaseHelper();

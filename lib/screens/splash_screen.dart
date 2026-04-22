@@ -298,7 +298,15 @@ class _SplashScreenState extends State<SplashScreen>
             syncFromCloud: !isWebLandscape,
             onProgress: (current, total) {
               syncStatusNotifier.value =
-                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ($current/$total)";
+                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↑ ($current/$total)";
+            },
+            onFetchingFromCloud: () {
+              syncStatusNotifier.value =
+                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ...";
+            },
+            onDownloadProgress: (current, total) {
+              syncStatusNotifier.value =
+                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ($current/$total)";
             },
           );
         }
