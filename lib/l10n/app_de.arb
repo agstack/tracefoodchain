@@ -1148,6 +1148,19 @@
   "pleaseEnableGps": "Bitte GPS aktivieren, um fortzufahren",
   "waitingForGps": "Warte auf GPS-Signal...",
   "recordingInProgress": "Aufzeichnung läuft...",
+  "statusSavingFarmer": "Landwirtschaftsdaten werden lokal gespeichert...",
+  "statusSavingFarm": "Farmdaten werden lokal gespeichert...",
+  "statusSigningFarmer": "Landwirt-Datensatz wird signiert & synchronisiert...",
+  "statusSigningFarm": "Farm-Datensatz wird signiert & synchronisiert...",
+  "statusSigningImage": "Bild-Datensatz wird signiert & synchronisiert...",
+  "statusUploadingPhoto": "Foto wird hochgeladen: {photoName}",
+  "@statusUploadingPhoto": {
+    "placeholders": {
+      "photoName": { "type": "String" }
+    }
+  },
+  "statusSyncingCloud": "Mit Cloud synchronisieren...",
+  "statusSaved": "Lokal gespeichert.",
   "cancelRegistration": "Registrierung verlassen?",
   "cancelRegistrationMessage": "Möchten Sie die Feldregistrierung verlassen?",
   "continueRegistration": "Fortfahren",

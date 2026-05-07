@@ -29,6 +29,7 @@ class _StepperRegistrarRegistrationState
     extends State<StepperRegistrarRegistration> {
   int _currentStep = 0;
   bool _isProcessing = false;
+  String _statusMessage = '';
 
   // Farmer Daten
   final TextEditingController _farmerFirstNameController =
@@ -198,10 +199,18 @@ class _StepperRegistrarRegistrationState
   Future<void> _completeRegistration() async {
     final l10n = AppLocalizations.of(context)!;
 
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = l10n.statusSavingFarmer;
+    });
 
     try {
       debugPrint('=== START REGISTRATION ===');
+      cloudLogService.info('completeRegistration: start', data: {
+        'farmer':
+            '${_farmerFirstNameController.text.trim()} ${_farmerLastNameController.text.trim()}',
+        'farm': _farmNameController.text.trim(),
+      });
 
       // CRITICAL: Check if localStorage is initialized before proceeding
       if (!isLocalStorageInitialized()) {
@@ -484,6 +493,8 @@ class _StepperRegistrarRegistrationState
       debugPrint('Farmer Method UID set');
 
       //Step 2: save the objects a first time to get it the method history change
+      if (mounted) setState(() => _statusMessage = l10n.statusSavingFarmer);
+      cloudLogService.info('completeRegistration: saving farmer locally');
       await setObjectMethod(farmer, false, false);
       debugPrint('Farmer saved first time');
 
@@ -501,7 +512,11 @@ class _StepperRegistrarRegistrationState
       debugPrint('Farmer re-added to method with updated history');
 
       //Step 6: persist process
-      await setObjectMethod(farmerRegisterMethod, true, true); //sign it!
+      if (mounted) setState(() => _statusMessage = l10n.statusSigningFarmer);
+      cloudLogService.info(
+          'completeRegistration: signing & syncing farmer (setObjectMethod true,true)');
+      await setObjectMethod(farmerRegisterMethod, true, true,
+          syncFromCloud: false); //sign it!
       debugPrint('Farmer method saved and signed successfully');
 
       // Create separate generateDigitalSibling method for National ID Image
@@ -535,7 +550,15 @@ class _StepperRegistrarRegistrationState
         addOutputobject(nationalIDImageMethod, nationalIDImage, 'image');
         debugPrint('National ID Image re-added to method with updated history');
 
-        await setObjectMethod(nationalIDImageMethod, true, true);
+        if (mounted) setState(() => _statusMessage = l10n.statusSigningImage);
+        cloudLogService.info(
+            'completeRegistration: signing & syncing national ID image (setObjectMethod true,true)',
+            data: {
+              'imageName':
+                  nationalIDImage['identity']?['name']?.toString() ?? ''
+            });
+        await setObjectMethod(nationalIDImageMethod, true, true,
+            syncFromCloud: false);
         debugPrint('National ID Image method saved and signed successfully');
       }
 
@@ -557,6 +580,8 @@ class _StepperRegistrarRegistrationState
       debugPrint('Farm Method UID set');
 
       //Step 2: save the objects a first time to get it the method history change
+      if (mounted) setState(() => _statusMessage = l10n.statusSavingFarm);
+      cloudLogService.info('completeRegistration: saving farm locally');
       await setObjectMethod(farm, false, false);
       debugPrint('Farm saved first time');
 
@@ -574,7 +599,11 @@ class _StepperRegistrarRegistrationState
       debugPrint('Farm re-added to method with updated history');
 
       //Step 6: persist process
-      await setObjectMethod(farmRegisterMethod, true, true); //sign it!
+      if (mounted) setState(() => _statusMessage = l10n.statusSigningFarm);
+      cloudLogService.info(
+          'completeRegistration: signing & syncing farm (setObjectMethod true,true)');
+      await setObjectMethod(farmRegisterMethod, true, true,
+          syncFromCloud: false); //sign it!
       debugPrint('Farm method saved and signed successfully');
 
       // Create separate generateDigitalSibling method for Consent Form Image
@@ -609,7 +638,15 @@ class _StepperRegistrarRegistrationState
         debugPrint(
             'Consent Form Image re-added to method with updated history');
 
-        await setObjectMethod(consentFormImageMethod, true, true);
+        if (mounted) setState(() => _statusMessage = l10n.statusSigningImage);
+        cloudLogService.info(
+            'completeRegistration: signing & syncing consent form image (setObjectMethod true,true)',
+            data: {
+              'imageName':
+                  consentFormImage['identity']?['name']?.toString() ?? ''
+            });
+        await setObjectMethod(consentFormImageMethod, true, true,
+            syncFromCloud: false);
         debugPrint('Consent Form Image method saved and signed successfully');
       }
 
@@ -645,7 +682,15 @@ class _StepperRegistrarRegistrationState
         debugPrint(
             'Consent Form Image 2 re-added to method with updated history');
 
-        await setObjectMethod(consentFormImage2Method, true, true);
+        if (mounted) setState(() => _statusMessage = l10n.statusSigningImage);
+        cloudLogService.info(
+            'completeRegistration: signing & syncing consent form image 2 (setObjectMethod true,true)',
+            data: {
+              'imageName':
+                  consentFormImage2['identity']?['name']?.toString() ?? ''
+            });
+        await setObjectMethod(consentFormImage2Method, true, true,
+            syncFromCloud: false);
         debugPrint('Consent Form Image 2 method saved and signed successfully');
       }
 
@@ -656,6 +701,7 @@ class _StepperRegistrarRegistrationState
       debugPrint('UI updated');
 
       debugPrint('=== REGISTRATION COMPLETED SUCCESSFULLY ===');
+      cloudLogService.info('completeRegistration: completed successfully');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -670,6 +716,12 @@ class _StepperRegistrarRegistrationState
       debugPrint('=== REGISTRATION ERROR ===');
       debugPrint('Registration error: $e');
       debugPrint('Stack trace: $stackTrace');
+      cloudLogService.error('completeRegistration: failed', data: {
+        'error': e.toString(),
+        'stackTrace': stackTrace
+            .toString()
+            .substring(0, stackTrace.toString().length.clamp(0, 500)),
+      });
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -681,7 +733,10 @@ class _StepperRegistrarRegistrationState
       }
     } finally {
       if (mounted) {
-        setState(() => _isProcessing = false);
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = '';
+        });
       }
     }
   }
@@ -1352,14 +1407,71 @@ class _StepperRegistrarRegistrationState
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const CircularProgressIndicator(),
+                          // Foto-Upload-Fortschritt oder allgemeiner Spinner
+                          ValueListenableBuilder<String>(
+                            valueListenable: currentUploadPhotoName,
+                            builder: (context, photoName, _) {
+                              if (photoName.isNotEmpty) {
+                                return ValueListenableBuilder<double>(
+                                  valueListenable: uploadProgress,
+                                  builder: (context, progress, _) {
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            SizedBox(
+                                              width: 56,
+                                              height: 56,
+                                              child: CircularProgressIndicator(
+                                                value: progress / 100.0,
+                                                strokeWidth: 5,
+                                                backgroundColor:
+                                                    Colors.grey[300],
+                                                valueColor:
+                                                    const AlwaysStoppedAnimation<
+                                                        Color>(Colors.green),
+                                              ),
+                                            ),
+                                            Text(
+                                              '${progress.toInt()}%',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          l10n.statusUploadingPhoto(photoName),
+                                          style: const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              }
+                              return const CircularProgressIndicator();
+                            },
+                          ),
                           const SizedBox(height: 16),
+                          // Status-Nachricht
                           Text(
-                            l10n.recordingInProgress,
+                            _statusMessage.isNotEmpty
+                                ? _statusMessage
+                                : l10n.recordingInProgress,
                             style: const TextStyle(
                               color: Colors.black,
-                              fontSize: 16,
+                              fontSize: 15,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),

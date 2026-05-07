@@ -2435,6 +2435,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recordingInProgress => 'Recording in progress...';
 
   @override
+  String get statusSavingFarmer => 'Saving farmer data locally...';
+
+  @override
+  String get statusSavingFarm => 'Saving farm data locally...';
+
+  @override
+  String get statusSigningFarmer => 'Signing & syncing farmer record...';
+
+  @override
+  String get statusSigningFarm => 'Signing & syncing farm record...';
+
+  @override
+  String get statusSigningImage => 'Signing & syncing image record...';
+
+  @override
+  String statusUploadingPhoto(String photoName) {
+    return 'Uploading photo: $photoName';
+  }
+
+  @override
+  String get statusSyncingCloud => 'Syncing with cloud...';
+
+  @override
+  String get statusSaved => 'Saved locally.';
+
+  @override
   String get cancelRegistration => 'Leave Registration?';
 
   @override

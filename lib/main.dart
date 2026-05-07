@@ -26,6 +26,7 @@ import 'package:trace_foodchain_app/screens/splash_screen.dart';
 import 'package:trace_foodchain_app/screens/registrar_screen.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
+import 'package:trace_foodchain_app/services/cloud_log_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
 import 'package:trace_foodchain_app/services/google_maps_initializer.dart';
@@ -56,6 +57,10 @@ TrackedValueNotifier<bool> isSyncing =
 // ValueNotifier für Upload-Fortschritt
 TrackedValueNotifier<double> uploadProgress =
     TrackedValueNotifier<double>(0.0, "uploadProgress");
+
+// ValueNotifier für den Namen des aktuell hochgeladenen Fotos
+TrackedValueNotifier<String> currentUploadPhotoName =
+    TrackedValueNotifier<String>('', "currentUploadPhotoName");
 
 // Debug-Wrapper für ValueNotifiers
 class DebugValueNotifier<T> extends ValueNotifier<T> {
@@ -91,6 +96,7 @@ TrackedValueNotifier<int> inboxCount =
 bool batchSalePossible = false;
 bool isWebLandscape = false;
 CloudSyncService cloudSyncService = CloudSyncService('tracefoodchain.org');
+CloudLogService cloudLogService = CloudLogService();
 late KeyManager keyManager;
 late DigitalSignature digitalSignature;
 
@@ -401,6 +407,9 @@ Future<void> closeUserLocalStorage() async {
 
   // Ausgewählte Items zurücksetzen (aus items_list_widget.dart)
   selectedItems.clear();
+
+  // Cloud-Log-Session zurücksetzen
+  cloudLogService.reset();
 
   // UI-Update erzwingen
   repaintContainerList.value = true;

@@ -335,11 +335,14 @@ class CloudSyncService {
       return;
     }
     _isUploadingPhotos = true;
+    cloudLogService.info('uploadPendingPhotos: start');
 
     try {
       final User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         debugPrint('No authenticated user found, skipping photo upload');
+        cloudLogService
+            .warn('uploadPendingPhotos: no authenticated user, aborting');
         return;
       }
 
@@ -368,6 +371,17 @@ class CloudSyncService {
                   !localPath.startsWith('https://')) {
                 debugPrint(
                     'Found image object with local path: $localPath, UID: ${doc2["identity"]["UID"]}');
+                cloudLogService
+                    .info('uploadPendingPhotos: uploading photo', data: {
+                  'name': doc2['identity']['name']?.toString() ?? '',
+                  'uid': doc2['identity']['UID']?.toString() ?? '',
+                  'localPath': localPath,
+                });
+
+                // Zeige den Foto-Namen im Upload-Overlay
+                currentUploadPhotoName.value =
+                    doc2["identity"]["name"]?.toString() ?? '';
+                uploadProgress.value = 0.0;
 
                 try {
                   final userId = user.uid;
@@ -432,11 +446,30 @@ class CloudSyncService {
                     objectModified = true;
                     debugPrint(
                         'Updated downloadURL for image object ${doc2["identity"]["UID"]}');
+                    cloudLogService.info(
+                        'uploadPendingPhotos: photo uploaded successfully',
+                        data: {
+                          'name': doc2['identity']['name']?.toString() ?? '',
+                          'uid': doc2['identity']['UID']?.toString() ?? '',
+                        });
                   } else {
                     debugPrint('Upload failed or returned null result');
+                    cloudLogService.warn(
+                        'uploadPendingPhotos: upload returned null result',
+                        data: {
+                          'name': doc2['identity']['name']?.toString() ?? '',
+                        });
                   }
                 } catch (e) {
                   debugPrint('Error uploading image: $e');
+                  cloudLogService.error(
+                      'uploadPendingPhotos: photo upload exception',
+                      data: {
+                        'name': doc2['identity']['name']?.toString() ?? '',
+                        'error': e.toString(),
+                      });
+                } finally {
+                  currentUploadPhotoName.value = '';
                 }
               }
             }
@@ -445,7 +478,7 @@ class CloudSyncService {
           // Save the modified object back to localStorage using changeObjectData
           // to properly document the change with method history
           if (objectModified) {
-            await changeObjectData(doc2);
+            await changeObjectData(doc2, syncFromCloud: false);
             debugPrint(
                 'Object updated with cloud photo URLs via changeObjectData');
           }
@@ -453,9 +486,12 @@ class CloudSyncService {
       }
     } catch (e) {
       debugPrint('Error in photo upload process: $e');
+      cloudLogService.error('uploadPendingPhotos: outer exception',
+          data: {'error': e.toString()});
       // Don't throw - allow sync to continue even if photo upload fails
     } finally {
       _isUploadingPhotos = false;
+      cloudLogService.info('uploadPendingPhotos: finished');
     }
   }
 
@@ -472,6 +508,7 @@ class CloudSyncService {
       return false;
     }
     _isSyncing = true;
+    cloudLogService.info('syncMethods: start', data: {'domain': domain});
     final databaseHelper = DatabaseHelper();
     try {
       //****** 1. SYNC METHODS TO CLOUD - and build hash map for later syncing from cloud *********
@@ -748,10 +785,13 @@ class CloudSyncService {
     } catch (e) {
       debugPrint(
           '[SYNC] Exception in outer try-catch (skipping syncFromCloud!): $e');
+      cloudLogService.error('syncMethods: outer exception',
+          data: {'domain': domain, 'error': e.toString()});
       return false;
     } finally {
       debugPrint('[SYNC] syncMethods finally block reached, _isSyncing reset');
       _isSyncing = false;
+      cloudLogService.info('syncMethods: finished', data: {'domain': domain});
       return true;
     }
   }

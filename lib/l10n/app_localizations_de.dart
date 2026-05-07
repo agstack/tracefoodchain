@@ -2459,6 +2459,36 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recordingInProgress => 'Aufzeichnung läuft...';
 
   @override
+  String get statusSavingFarmer =>
+      'Landwirtschaftsdaten werden lokal gespeichert...';
+
+  @override
+  String get statusSavingFarm => 'Farmdaten werden lokal gespeichert...';
+
+  @override
+  String get statusSigningFarmer =>
+      'Landwirt-Datensatz wird signiert & synchronisiert...';
+
+  @override
+  String get statusSigningFarm =>
+      'Farm-Datensatz wird signiert & synchronisiert...';
+
+  @override
+  String get statusSigningImage =>
+      'Bild-Datensatz wird signiert & synchronisiert...';
+
+  @override
+  String statusUploadingPhoto(String photoName) {
+    return 'Foto wird hochgeladen: $photoName';
+  }
+
+  @override
+  String get statusSyncingCloud => 'Mit Cloud synchronisieren...';
+
+  @override
+  String get statusSaved => 'Lokal gespeichert.';
+
+  @override
   String get cancelRegistration => 'Registrierung verlassen?';
 
   @override

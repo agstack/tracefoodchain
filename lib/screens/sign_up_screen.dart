@@ -8,7 +8,7 @@ import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../screens/user_profile_setup_screen.dart';
 import '../services/open_ral_service.dart';
-import '../main.dart'; // Für appUserDoc
+import '../main.dart'; // Für appUserDoc, cloudLogService
 import '../constants.dart'; // Für APP_VERSION
 
 class AuthScreen extends StatefulWidget {
@@ -25,19 +25,30 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _authenticate() async {
     if (_formKey.currentState!.validate()) {
+      // Generate session ID here so it covers the full lifecycle incl. SplashScreen
+      if (cloudLogService.sessionId == null) {
+        cloudLogService.generateSessionId();
+      }
       try {
         // Try to sign in first
+        await cloudLogService.info('AuthScreen: Sign-in attempt started',
+            data: {'email': _emailController.text});
         UserCredential userCredential =
             await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text,
           password: _passwordController.text,
         );
 
+        await cloudLogService.info('AuthScreen: Sign-in successful',
+            data: {'uid': userCredential.user!.uid});
         await _handleSuccessfulAuth(
             userCredential.user!, "Signed in successfully.");
       } on FirebaseAuthException catch (e) {
         if (e.code == 'invalid-credential') {
           // If user is not found, try to create a new account
+          await cloudLogService.info(
+              'AuthScreen: Credential not found – attempting account creation',
+              data: {'email': _emailController.text});
           try {
             UserCredential userCredential =
                 await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -46,12 +57,22 @@ class _AuthScreenState extends State<AuthScreen> {
             );
 
             await userCredential.user?.sendEmailVerification();
+            await cloudLogService.info(
+                'AuthScreen: New account created, verification email sent',
+                data: {'uid': userCredential.user!.uid});
             await _handleSuccessfulAuth(userCredential.user!,
                 "Account created successfully. Please check your email for verification.");
           } on FirebaseAuthException catch (signUpError) {
+            await cloudLogService.error('AuthScreen: Account creation failed',
+                data: {
+                  'code': signUpError.code,
+                  'message': signUpError.message
+                });
             await _handleAuthError(signUpError);
           }
         } else {
+          await cloudLogService.error('AuthScreen: Sign-in failed',
+              data: {'code': e.code, 'message': e.message});
           await _handleAuthError(e);
         }
       }
@@ -62,11 +83,24 @@ class _AuthScreenState extends State<AuthScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', user.uid);
 
+    // Start cloud log session now that we know userId and are (likely) online
+    await cloudLogService.startSession(user.uid, email: user.email);
+    await cloudLogService.info(
+        'AuthScreen: handleSuccessfulAuth – userId saved, initializing user data',
+        data: {'uid': user.uid, 'email': user.email ?? ''});
+
     // Load the user's appUserDoc from cloud/local storage
+    await cloudLogService.info('AuthScreen: Loading user profile (appUserDoc)');
     await _loadAppUserDoc(user);
+    await cloudLogService.info(
+        appUserDoc != null
+            ? 'AuthScreen: User profile loaded successfully'
+            : 'AuthScreen: User profile not found (new user or not yet synced)',
+        data: {'hasProfile': appUserDoc != null});
 
     // Always check if user profile is complete, regardless of new or existing user
     // This ensures we always have the userRole
+    await cloudLogService.info('AuthScreen: Checking profile completeness');
     await _checkAndNavigateToProfileSetup(user);
   }
 

@@ -90,27 +90,50 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (_disposed) return;
 
+    // Generate session ID if not already set (e.g. carried over from AuthScreen)
+    if (cloudLogService.sessionId == null) {
+      cloudLogService.generateSessionId();
+    }
+
     // Check internet connectivity
-    dynamic connectivityResult;
     try {
-      // await (Connectivity().checkConnectivity())
-      //     .then((connectivityResult) async {
-      //   appState.setConnected(connectivityResult != ConnectivityResult.none);
-      // Check authentication status
       await appState.checkAuthStatus().then((onValue) async {
         if (appState.isAuthenticated) {
           //* AUTHENTICATED
           if (appState.isEmailVerified) {
             //* VERIFIED
+            // Start cloud log session (startSession does its own connectivity check)
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null && !cloudLogService.isSessionStarted) {
+              await cloudLogService.startSession(user.uid, email: user.email);
+            }
+            await cloudLogService.info(
+                'SplashScreen: User authenticated and email verified – starting full initialization',
+                data: {
+                  'uid': FirebaseAuth.instance.currentUser?.uid ?? '',
+                  'connected': appState.isConnected
+                });
             // Führe immer die vollständige Initialisierung durch
             await _navigateToNextScreen();
           } else {
             //*NOT VERIFIED
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null && !cloudLogService.isSessionStarted) {
+              await cloudLogService.startSession(user.uid, email: user.email);
+            }
+            await cloudLogService.warn(
+                'SplashScreen: Email not verified – showing verification dialog',
+                data: {
+                  'email': FirebaseAuth.instance.currentUser?.email ?? ''
+                });
             // Show email verification overlay
             _showEmailVerificationOverlay();
           }
         } else {
           //* NOT AUTHENTICATED YET
+          await cloudLogService.info(
+              'SplashScreen: User not authenticated – redirecting to AuthScreen',
+              data: {'connected': appState.isConnected});
           if (!appState.isConnected) {
             final l10n = AppLocalizations.of(context);
             await fshowInfoDialog(
@@ -123,10 +146,11 @@ class _SplashScreenState extends State<SplashScreen>
           Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const AuthScreen()));
         }
-        // });
       });
     } catch (e) {
-      // Fehler aufgetreten
+      await cloudLogService.error(
+          'SplashScreen: _initializeApp caught unexpected error',
+          data: {'error': e.toString()});
     }
   }
 
@@ -261,6 +285,8 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     if (l10n == null) {
+      await cloudLogService.error(
+          'SplashScreen: AppLocalizations not available – aborting initialization');
       return;
     }
     //successful auth, initialize Hive
@@ -270,6 +296,9 @@ class _SplashScreenState extends State<SplashScreen>
 
     final appState = Provider.of<AppState>(context, listen: false);
 
+    await cloudLogService.info('SplashScreen: Starting full app initialization',
+        data: {'connected': appState.isConnected});
+
     if (appState.isConnected) {
       // Starte Synchronisierung - zeige persistentes Banner
       isSyncing.value = true;
@@ -277,13 +306,23 @@ class _SplashScreenState extends State<SplashScreen>
       // openRAL: Update Templates
       syncStatusNotifier.value =
           "${l10n?.syncingWith ?? 'Synchronizing with'} open-ral.io";
-      await cloudSyncService.syncOpenRALTemplates(
-        'open-ral.io',
-        onProgress: (current, total) {
-          syncStatusNotifier.value =
-              "${l10n?.syncingWith ?? 'Synchronizing with'} open-ral.io ($current/$total)";
-        },
-      );
+      await cloudLogService.info(
+          'SplashScreen: Starting openRAL template sync with open-ral.io');
+      try {
+        await cloudSyncService.syncOpenRALTemplates(
+          'open-ral.io',
+          onProgress: (current, total) {
+            syncStatusNotifier.value =
+                "${l10n?.syncingWith ?? 'Synchronizing with'} open-ral.io ($current/$total)";
+          },
+        );
+        await cloudLogService
+            .info('SplashScreen: openRAL template sync complete');
+      } catch (e) {
+        await cloudLogService.error(
+            'SplashScreen: openRAL template sync failed',
+            data: {'error': e.toString()});
+      }
 
       // sync all non-open-ral methods with it's clouds on startup
       // Upload pending photos first to avoid internal loops
@@ -291,24 +330,34 @@ class _SplashScreenState extends State<SplashScreen>
 
       for (final cloudKey in cloudConnectors.keys) {
         if (cloudKey != "open-ral.io") {
+          await cloudLogService
+              .info('SplashScreen: Starting method sync with $cloudKey');
           syncStatusNotifier.value =
               "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey";
-          await cloudSyncService.syncMethods(
-            cloudKey,
-            syncFromCloud: !isWebLandscape,
-            onProgress: (current, total) {
-              syncStatusNotifier.value =
-                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↑ ($current/$total)";
-            },
-            onFetchingFromCloud: () {
-              syncStatusNotifier.value =
-                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ...";
-            },
-            onDownloadProgress: (current, total) {
-              syncStatusNotifier.value =
-                  "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ($current/$total)";
-            },
-          );
+          try {
+            await cloudSyncService.syncMethods(
+              cloudKey,
+              syncFromCloud: !isWebLandscape,
+              onProgress: (current, total) {
+                syncStatusNotifier.value =
+                    "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↑ ($current/$total)";
+              },
+              onFetchingFromCloud: () {
+                syncStatusNotifier.value =
+                    "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ...";
+              },
+              onDownloadProgress: (current, total) {
+                syncStatusNotifier.value =
+                    "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ($current/$total)";
+              },
+            );
+            await cloudLogService
+                .info('SplashScreen: Method sync complete for $cloudKey');
+          } catch (e) {
+            await cloudLogService.error(
+                'SplashScreen: Method sync failed for $cloudKey',
+                data: {'error': e.toString()});
+          }
         }
       }
       final databaseHelper = DatabaseHelper();
@@ -319,6 +368,8 @@ class _SplashScreenState extends State<SplashScreen>
         String ownerUID = FirebaseAuth.instance.currentUser!.uid;
         inbox = await databaseHelper.getInboxItems(ownerUID);
         inboxCount.value = inbox.length;
+        await cloudLogService
+            .info('SplashScreen: Inbox loaded', data: {'count': inbox.length});
       }
       cloudConnectors =
           await getCloudConnectors(); //refresh cloud connectors (if updates where downloaded)
@@ -326,8 +377,12 @@ class _SplashScreenState extends State<SplashScreen>
       // Beende Synchronisierung
       isSyncing.value = false;
       syncStatusNotifier.value = null;
+    } else {
+      await cloudLogService.info('SplashScreen: Offline – skipping cloud sync');
     }
 
+    await cloudLogService
+        .info('SplashScreen: Looking up user profile in local storage');
     for (var doc in localStorage!.values) {
       if (doc['template'] != null && doc['template']["RALType"] == "human") {
         final doc2 = Map<String, dynamic>.from(doc);
@@ -339,6 +394,12 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
     }
+
+    await cloudLogService.info(
+        appUserDoc != null
+            ? 'SplashScreen: User profile found in local storage'
+            : 'SplashScreen: User profile not found in local storage',
+        data: {'found': appUserDoc != null});
 
     //!###########  DEBUG: Anderen User für Testzwecke laden ##############
     if (appState.isConnected) {
@@ -361,24 +422,34 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
     // Check if private key exists, if not generate new keypair
+    await cloudLogService.info('SplashScreen: Checking private key / keypair');
     final privateKey = await keyManager.getPrivateKey();
     if (privateKey == null) {
+      await cloudLogService
+          .warn('SplashScreen: No private key found – generating new keypair');
       snackbarMessageNotifier.value = l10n.newKeypairNeeded;
       "No private key found - generating new keypair...";
       final success = await keyManager.generateAndStoreKeys();
       if (!success) {
         snackbarMessageNotifier.value = l10n.failedToInitializeKeyManagement;
         secureCommunicationEnabled = false;
+        await cloudLogService.error(
+            'SplashScreen: Failed to generate keypair – secure communication disabled');
       } else {
         secureCommunicationEnabled = true;
+        await cloudLogService
+            .info('SplashScreen: New keypair generated successfully');
       }
     } else {
       secureCommunicationEnabled = true;
+      await cloudLogService.info('SplashScreen: Existing private key found');
     }
 
     // if (1 == 1) {//! DEBUG ONLY, REMOVE!!!
     if (appUserDoc == null) {
       //User profile does not yet exist
+      await cloudLogService.info(
+          'SplashScreen: User profile missing – attempting cloud sync for profile');
       if (secureCommunicationEnabled) {
         //Do we get one from cloud?
         // Upload pending photos first to avoid internal loops
@@ -397,37 +468,52 @@ class _SplashScreenState extends State<SplashScreen>
             }
           }
         }
+        await cloudLogService.info(
+            appUserDoc != null
+                ? 'SplashScreen: User profile recovered from cloud sync'
+                : 'SplashScreen: User profile still missing after cloud sync – will create new',
+            data: {'found': appUserDoc != null});
       }
 
       if (appUserDoc == null) {
         // User doc was not found even after cloud sync – create a new profile
+        await cloudLogService.info(
+            'SplashScreen: Creating new user profile (generateDigitalSibling)');
         snackbarMessageNotifier.value = l10n.newUserProfileNeeded;
-        Map<String, dynamic> newUser = await getOpenRALTemplate("human");
-        newUser["identity"]["UID"] = FirebaseAuth.instance.currentUser?.uid;
-        setSpecificPropertyJSON(newUser, "email",
-            FirebaseAuth.instance.currentUser?.email, "String");
-        newUser["email"] = FirebaseAuth.instance.currentUser
-            ?.email; // Necessary to find the user later by email!
+        try {
+          Map<String, dynamic> newUser = await getOpenRALTemplate("human");
+          newUser["identity"]["UID"] = FirebaseAuth.instance.currentUser?.uid;
+          setSpecificPropertyJSON(newUser, "email",
+              FirebaseAuth.instance.currentUser?.email, "String");
+          newUser["email"] = FirebaseAuth.instance.currentUser
+              ?.email; // Necessary to find the user later by email!
 
-        final addItem = await getOpenRALTemplate("generateDigitalSibling");
-        //Add Executor
-        addItem["executor"] = newUser;
-        addItem["methodState"] = "finished";
-        //Step 1: get method an uuid (for method history entries)
-        setObjectMethodUID(addItem, const Uuid().v4());
-        //Step 2: save the objects a first time to get it the method history change
-        await setObjectMethod(newUser, false, false);
-        //Step 3: add the output objects with updated method history to the method
-        addOutputobject(addItem, newUser, "item");
-        //Step 4: update method history in all affected objects (will also tag them for syncing)
-        await updateMethodHistories(addItem);
-        //Step 5: again add Outputobjects to generate valid representation in the method
-        newUser = await getLocalObjectMethod(getObjectMethodUID(newUser));
-        addOutputobject(addItem, newUser, "item");
-        //Step 6: persist process
-        await setObjectMethod(addItem, true, true); //sign it!
+          final addItem = await getOpenRALTemplate("generateDigitalSibling");
+          //Add Executor
+          addItem["executor"] = newUser;
+          addItem["methodState"] = "finished";
+          //Step 1: get method an uuid (for method history entries)
+          setObjectMethodUID(addItem, const Uuid().v4());
+          //Step 2: save the objects a first time to get it the method history change
+          await setObjectMethod(newUser, false, false);
+          //Step 3: add the output objects with updated method history to the method
+          addOutputobject(addItem, newUser, "item");
+          //Step 4: update method history in all affected objects (will also tag them for syncing)
+          await updateMethodHistories(addItem);
+          //Step 5: again add Outputobjects to generate valid representation in the method
+          newUser = await getLocalObjectMethod(getObjectMethodUID(newUser));
+          addOutputobject(addItem, newUser, "item");
+          //Step 6: persist process
+          await setObjectMethod(addItem, true, true); //sign it!
 
-        appUserDoc = await getLocalObjectMethod(getObjectMethodUID(newUser));
+          appUserDoc = await getLocalObjectMethod(getObjectMethodUID(newUser));
+          await cloudLogService
+              .info('SplashScreen: New user profile created successfully');
+        } catch (e) {
+          await cloudLogService.error(
+              'SplashScreen: Failed to create new user profile',
+              data: {'error': e.toString()});
+        }
       } else {
         //User mit dieser deviceId schon vorhanden.
       }
@@ -446,11 +532,14 @@ class _SplashScreenState extends State<SplashScreen>
           final l10n = AppLocalizations.of(context);
           snackbarMessageNotifier.value = l10n?.debugUploadingUserProfile ??
               "DEBUG: Uploading user profile to the cloud...";
-
+          await cloudLogService.warn(
+              'SplashScreen: User profile missing from TFC_objects – uploading directly');
           await userDocRef.set(appUserDoc!);
         }
       } catch (e) {
-        // Fehler beim Cloud-Upload
+        await cloudLogService.error(
+            'SplashScreen: Failed to verify/upload user profile to TFC_objects',
+            data: {'error': e.toString()});
       }
     }
 
@@ -458,6 +547,10 @@ class _SplashScreenState extends State<SplashScreen>
     print('🚀 [SplashScreen] Ermittle Benutzerrolle');
     print('🚀 [SplashScreen] - isConnected: ${appState.isConnected}');
     print('🚀 [SplashScreen] - appUserDoc vorhanden: ${appUserDoc != null}');
+    await cloudLogService.info('SplashScreen: Determining user role', data: {
+      'connected': appState.isConnected,
+      'hasUserDoc': appUserDoc != null
+    });
     String finalRole = '';
 
     if (appState.isConnected) {
@@ -468,6 +561,8 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (cloudRole.isNotEmpty) {
           print('✅ [SplashScreen] Cloud-Rolle gefunden: $cloudRole');
+          await cloudLogService
+              .info('SplashScreen: Cloud role found: $cloudRole');
           finalRole = cloudRole;
 
           // Aktualisiere das lokale appUserDoc mit der Cloud-Rolle
@@ -488,12 +583,18 @@ class _SplashScreenState extends State<SplashScreen>
               ? localRole
               : '';
           print('📋 [SplashScreen] Lokale Rolle: $finalRole');
+          await cloudLogService.warn(
+              'SplashScreen: No cloud role – falling back to local role',
+              data: {'localRole': finalRole});
         }
       } catch (e) {
         final localRole = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
         finalRole = (localRole != "" && localRole != "-no data found-")
             ? localRole
             : '';
+        await cloudLogService.error(
+            'SplashScreen: Error fetching cloud role – using local fallback',
+            data: {'error': e.toString(), 'localRole': finalRole});
       }
     } else {
       // Offline - nutze lokale Rolle
@@ -502,15 +603,20 @@ class _SplashScreenState extends State<SplashScreen>
       finalRole =
           (localRole != "" && localRole != "-no data found-") ? localRole : '';
       print('📋 [SplashScreen] Lokale Rolle (offline): $finalRole');
+      await cloudLogService.info('SplashScreen: Offline – using local role',
+          data: {'localRole': finalRole});
     }
 
     if (finalRole.isNotEmpty) {
       print('✅ [SplashScreen] Setze finale Rolle in AppState: $finalRole');
+      await cloudLogService.info('SplashScreen: Role set: $finalRole');
       appState.setUserRole(finalRole);
     } else {
       // Neuer User ohne Rolle - setze Standard-Rolle "Trader"
       print(
           '⚠️ [SplashScreen] Keine Rolle gefunden - setze Standard-Rolle "Trader"');
+      await cloudLogService.warn(
+          'SplashScreen: No role found – assigning default role "Trader"');
       final newUser =
           setSpecificPropertyJSON(appUserDoc!, "userRole", 'Trader', "String");
       await changeObjectData(newUser); // Nutze changeObjectData für Logging
@@ -568,8 +674,13 @@ class _SplashScreenState extends State<SplashScreen>
           ? kDebugViewRole.toLowerCase()
           : appState.userRole?.toLowerCase() ?? '';
       if (userRole == 'registrar') {
+        await cloudLogService.closeSession('registrar_screen');
+        await cloudLogService
+            .info('SplashScreen: Navigating to RegistrarScreen');
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {
+        await cloudLogService.closeSession('home_screen');
+        await cloudLogService.info('SplashScreen: Navigating to HomeScreen');
         Navigator.of(context).pushReplacement(
           FadeRoute(builder: (_) => const HomeScreen()),
         );

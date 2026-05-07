@@ -4338,6 +4338,54 @@ abstract class AppLocalizations {
   /// **'Recording in progress...'**
   String get recordingInProgress;
 
+  /// No description provided for @statusSavingFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving farmer data locally...'**
+  String get statusSavingFarmer;
+
+  /// No description provided for @statusSavingFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving farm data locally...'**
+  String get statusSavingFarm;
+
+  /// No description provided for @statusSigningFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing & syncing farmer record...'**
+  String get statusSigningFarmer;
+
+  /// No description provided for @statusSigningFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing & syncing farm record...'**
+  String get statusSigningFarm;
+
+  /// No description provided for @statusSigningImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing & syncing image record...'**
+  String get statusSigningImage;
+
+  /// No description provided for @statusUploadingPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading photo: {photoName}'**
+  String statusUploadingPhoto(String photoName);
+
+  /// No description provided for @statusSyncingCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing with cloud...'**
+  String get statusSyncingCloud;
+
+  /// No description provided for @statusSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved locally.'**
+  String get statusSaved;
+
   /// No description provided for @cancelRegistration.
   ///
   /// In en, this message translates to:

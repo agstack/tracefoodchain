@@ -1148,6 +1148,19 @@
   "pleaseEnableGps": "Please enable GPS to continue",
   "waitingForGps": "Waiting for GPS signal...",
   "recordingInProgress": "Recording in progress...",
+  "statusSavingFarmer": "Saving farmer data locally...",
+  "statusSavingFarm": "Saving farm data locally...",
+  "statusSigningFarmer": "Signing & syncing farmer record...",
+  "statusSigningFarm": "Signing & syncing farm record...",
+  "statusSigningImage": "Signing & syncing image record...",
+  "statusUploadingPhoto": "Uploading photo: {photoName}",
+  "@statusUploadingPhoto": {
+    "placeholders": {
+      "photoName": { "type": "String" }
+    }
+  },
+  "statusSyncingCloud": "Syncing with cloud...",
+  "statusSaved": "Saved locally.",
   "cancelRegistration": "Leave Registration?",
   "cancelRegistrationMessage": "Do you want to leave the field registration?",
   "continueRegistration": "Continue",
