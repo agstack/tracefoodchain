@@ -171,8 +171,7 @@ class CloudLogService {
       final now = DateTime.now().toUtc();
       // Use ISO-8601-formatted timestamp as document ID so logs are
       // sorted chronologically by default in the Firestore console.
-      final docId =
-          '${now.year.toString().padLeft(4, '0')}-'
+      final docId = '${now.year.toString().padLeft(4, '0')}-'
           '${now.month.toString().padLeft(2, '0')}-'
           '${now.day.toString().padLeft(2, '0')}T'
           '${now.hour.toString().padLeft(2, '0')}-'
