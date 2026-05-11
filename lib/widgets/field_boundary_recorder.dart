@@ -1325,7 +1325,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                             PolygonRecorderWidget(
                               key: ValueKey(_selectedDraftKey ?? 'new'),
                               onPolygonComplete: _saveField,
-                              minDistanceMeters: 10,
+                              minDistanceMeters: 5,
                               farmId: _selectedFarm?['identity']?['UID'],
                               draftKey: _selectedDraftKey,
                               onCancel: () {},
