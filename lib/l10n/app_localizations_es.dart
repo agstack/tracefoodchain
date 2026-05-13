@@ -2926,4 +2926,68 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get polygonPreviewRedo => 'Volver a capturar';
+
+  @override
+  String get noEmail => 'Sin correo electrónico';
+
+  @override
+  String get noValidAdminRole => 'No hay un rol de administrador válido';
+
+  @override
+  String noPermissionForRole(String role) {
+    return 'Sin permiso para gestionar el rol: $role';
+  }
+
+  @override
+  String get noValidUserRoleFound => 'No se encontró un rol de usuario válido';
+
+  @override
+  String noPermissionForCurrentRole(String role) {
+    return 'Sin permiso para gestionar el rol actual: $role';
+  }
+
+  @override
+  String get onlySuperadminCanUpdateEmail =>
+      'Solo SUPERADMIN puede agregar direcciones de correo electrónico';
+
+  @override
+  String get emailUpdateOnlineOnly =>
+      'La actualización de correo solo está disponible en línea';
+
+  @override
+  String get addEmailTitle => 'Agregar correo electrónico';
+
+  @override
+  String get emailRequired =>
+      'La dirección de correo electrónico es obligatoria';
+
+  @override
+  String emailSaved(String email) {
+    return 'Correo guardado: $email';
+  }
+
+  @override
+  String uidCopied(String uid) {
+    return 'UID copiado: $uid';
+  }
+
+  @override
+  String errorChangingRole(String error) {
+    return 'Error al cambiar el rol: $error';
+  }
+
+  @override
+  String errorLoadingUser(String error) {
+    return 'Error al cargar el usuario: $error';
+  }
+
+  @override
+  String errorUpdatingEmail(String error) {
+    return 'Error al actualizar el correo electrónico: $error';
+  }
+
+  @override
+  String noPermissionForUserManagementWithRole(String role) {
+    return 'Sin permiso para la gestión de usuarios. Su rol: $role';
+  }
 }

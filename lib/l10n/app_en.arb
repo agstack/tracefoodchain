@@ -1348,5 +1348,61 @@
   "polygonPreviewTitle": "Verify Polygon",
   "polygonPreviewDescription": "Does the captured polygon look correct? If not, you can redo the entire capture.",
   "polygonPreviewConfirm": "Looks correct",
-  "polygonPreviewRedo": "Redo capture"
+  "polygonPreviewRedo": "Redo capture",
+
+  "noEmail": "No email",
+  "noValidAdminRole": "No valid administrator role",
+  "noPermissionForRole": "No permission to manage role: {role}",
+  "@noPermissionForRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "noValidUserRoleFound": "No valid user role found",
+  "noPermissionForCurrentRole": "No permission to manage current role: {role}",
+  "@noPermissionForCurrentRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "onlySuperadminCanUpdateEmail": "Only SUPERADMIN can add email addresses",
+  "emailUpdateOnlineOnly": "Email update is only available online",
+  "addEmailTitle": "Add email",
+  "emailRequired": "Email address is required",
+  "emailSaved": "Email saved: {email}",
+  "@emailSaved": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  },
+  "uidCopied": "UID copied: {uid}",
+  "@uidCopied": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "errorChangingRole": "Error changing role: {error}",
+  "@errorChangingRole": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorLoadingUser": "Error loading user: {error}",
+  "@errorLoadingUser": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorUpdatingEmail": "Error updating email: {error}",
+  "@errorUpdatingEmail": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noPermissionForUserManagementWithRole": "No permission for user management. Your role: {role}",
+  "@noPermissionForUserManagementWithRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  }
 }

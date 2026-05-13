@@ -2929,4 +2929,67 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get polygonPreviewRedo => 'Recapturer';
+
+  @override
+  String get noEmail => 'Aucun e-mail';
+
+  @override
+  String get noValidAdminRole => 'Aucun rôle d\'administrateur valide';
+
+  @override
+  String noPermissionForRole(String role) {
+    return 'Aucune autorisation pour gérer le rôle : $role';
+  }
+
+  @override
+  String get noValidUserRoleFound => 'Aucun rôle d\'utilisateur valide trouvé';
+
+  @override
+  String noPermissionForCurrentRole(String role) {
+    return 'Aucune autorisation pour gérer le rôle actuel : $role';
+  }
+
+  @override
+  String get onlySuperadminCanUpdateEmail =>
+      'Seul SUPERADMIN peut ajouter des adresses e-mail';
+
+  @override
+  String get emailUpdateOnlineOnly =>
+      'La mise à jour de l\'e-mail n\'est disponible qu\'en ligne';
+
+  @override
+  String get addEmailTitle => 'Ajouter un e-mail';
+
+  @override
+  String get emailRequired => 'L\'adresse e-mail est obligatoire';
+
+  @override
+  String emailSaved(String email) {
+    return 'E-mail enregistré : $email';
+  }
+
+  @override
+  String uidCopied(String uid) {
+    return 'UID copié : $uid';
+  }
+
+  @override
+  String errorChangingRole(String error) {
+    return 'Erreur lors du changement de rôle : $error';
+  }
+
+  @override
+  String errorLoadingUser(String error) {
+    return 'Erreur lors du chargement de l\'utilisateur : $error';
+  }
+
+  @override
+  String errorUpdatingEmail(String error) {
+    return 'Erreur lors de la mise à jour de l\'e-mail : $error';
+  }
+
+  @override
+  String noPermissionForUserManagementWithRole(String role) {
+    return 'Aucune autorisation pour la gestion des utilisateurs. Votre rôle : $role';
+  }
 }

@@ -1348,5 +1348,61 @@
   "polygonPreviewTitle": "Polygon überprüfen",
   "polygonPreviewDescription": "Sieht das erfasste Polygon korrekt aus? Falls nicht, können Sie die gesamte Aufnahme von vorne beginnen.",
   "polygonPreviewConfirm": "Sieht korrekt aus",
-  "polygonPreviewRedo": "Erneut aufnehmen"
+  "polygonPreviewRedo": "Erneut aufnehmen",
+
+  "noEmail": "Keine E-Mail",
+  "noValidAdminRole": "Keine gültige Administratorrolle",
+  "noPermissionForRole": "Keine Berechtigung zur Verwaltung der Rolle: {role}",
+  "@noPermissionForRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "noValidUserRoleFound": "Keine gültige Benutzerrolle gefunden",
+  "noPermissionForCurrentRole": "Keine Berechtigung zur Verwaltung der aktuellen Rolle: {role}",
+  "@noPermissionForCurrentRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "onlySuperadminCanUpdateEmail": "Nur SUPERADMIN kann E-Mail-Adressen nachtragen",
+  "emailUpdateOnlineOnly": "E-Mail-Aktualisierung ist nur online verfügbar",
+  "addEmailTitle": "E-Mail nachtragen",
+  "emailRequired": "E-Mail-Adresse ist erforderlich",
+  "emailSaved": "E-Mail gespeichert: {email}",
+  "@emailSaved": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  },
+  "uidCopied": "UID kopiert: {uid}",
+  "@uidCopied": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "errorChangingRole": "Fehler beim Ändern der Benutzerrolle: {error}",
+  "@errorChangingRole": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorLoadingUser": "Fehler beim Laden des Benutzers: {error}",
+  "@errorLoadingUser": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorUpdatingEmail": "Fehler beim Aktualisieren der E-Mail: {error}",
+  "@errorUpdatingEmail": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noPermissionForUserManagementWithRole": "Keine Berechtigung für Benutzerverwaltung. Ihre Rolle: {role}",
+  "@noPermissionForUserManagementWithRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  }
 }

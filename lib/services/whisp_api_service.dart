@@ -18,7 +18,7 @@ class WhispApiService {
       throw ArgumentError('Geo IDs list cannot be empty');
     }
 
-    // geoIds = ["ea5b12fc6d5fe9d89af141874de4f51cde6a7312090860a19c4ea8d1db6d4315"];
+    geoIds = ["ea5b12fc6d5fe9d89af141874de4f51cde6a7312090860a19c4ea8d1db6d4315"];
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/submit/geo-ids'),
@@ -39,7 +39,7 @@ class WhispApiService {
     } catch (e) {
       // Log the error
       
-      throw Exception('An error occurred while analyzing Geo IDs');
+      throw Exception('An error occurred while analyzing Geo IDs: $e');
     }
   }
 

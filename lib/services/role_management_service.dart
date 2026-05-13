@@ -5,6 +5,7 @@ import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:trace_foodchain_app/l10n/app_localizations.dart';
 
 /// Service für Rollenverwaltung mit openRAL changeObjectData Integration
 /// Stellt sicher, dass alle Rollenänderungen über methodHistory geloggt werden
@@ -83,9 +84,9 @@ class RoleManagementService {
 
   /// Lädt die aktuellste Rolle des aktuellen Users aus der Cloud
   Future<String> getCurrentUserRoleFromCloud() async {
-    print('☁️ [RoleManagementService] getCurrentUserRoleFromCloud aufgerufen');
+    // print('☁️ [RoleManagementService] getCurrentUserRoleFromCloud aufgerufen');
     if (!await isOnline()) {
-      print('📴 [RoleManagementService] Offline - nutze lokale Rolle');
+      // print('📴 [RoleManagementService] Offline - nutze lokale Rolle');
       return getCurrentUserRole(); // Fallback auf lokale Rolle
     }
 
@@ -103,11 +104,11 @@ class RoleManagementService {
           .get();
 
       if (userDoc.exists) {
-        print('✅ [RoleManagementService] User-Dokument in Cloud gefunden');
+        // print('✅ [RoleManagementService] User-Dokument in Cloud gefunden');
         final userData = userDoc.data()!;
         final role = getSpecificPropertyfromJSON(userData, "userRole");
         final finalRole = (role != "" && role != "-no data found-") ? role : '';
-        print('📋 [RoleManagementService] Cloud-Rolle: $finalRole');
+        // print('📋 [RoleManagementService] Cloud-Rolle: $finalRole');
 
         // Aktualisiere das lokale appUserDoc falls es nicht synchron ist
         if (appUserDoc != null) {
@@ -167,7 +168,7 @@ class RoleManagementService {
 
   /// Holt die aktuelle Rolle des eingeloggten Users
   String getCurrentUserRole() {
-    print('📖 [RoleManagementService] getCurrentUserRole aufgerufen');
+    // print('📖 [RoleManagementService] getCurrentUserRole aufgerufen');
     if (appUserDoc == null) {
       print('❌ [RoleManagementService] appUserDoc ist null!');
       return '';
@@ -175,15 +176,16 @@ class RoleManagementService {
 
     final role = getSpecificPropertyfromJSON(appUserDoc!, "userRole");
     final finalRole = (role != "" && role != "-no data found-") ? role : '';
-    print('📋 [RoleManagementService] Lokale Rolle aus appUserDoc: $finalRole');
+    // print('📋 [RoleManagementService] Lokale Rolle aus appUserDoc: $finalRole');
 
     return finalRole;
   }
 
   /// Lädt alle User aus der Firebase-Datenbank und merged mit lokalen Daten
-  Future<List<Map<String, dynamic>>> getAllUsers() async {
+  Future<List<Map<String, dynamic>>> getAllUsers(
+      {required AppLocalizations l10n}) async {
     if (!await isOnline()) {
-      throw Exception('Rollenverwaltung ist nur online verfügbar');
+      throw Exception(l10n.userManagementOnlineOnly);
     }
 
     try {
@@ -213,18 +215,19 @@ class RoleManagementService {
 
       return enrichedUsers;
     } catch (e) {
-      throw Exception('Fehler beim Laden der Benutzer: $e');
+      throw Exception(l10n.errorLoadingUser(e.toString()));
     }
   }
 
   /// Lädt User die der aktuelle Admin verwalten kann (basierend auf seiner Rolle)
-  Future<List<Map<String, dynamic>>> getManagedUsers() async {
+  Future<List<Map<String, dynamic>>> getManagedUsers(
+      {required AppLocalizations l10n}) async {
     final currentRole = await getCurrentUserRoleFromCloud();
     if (currentRole.isEmpty) {
-      throw Exception('Keine gültige Benutzerrolle gefunden');
+      throw Exception(l10n.noValidUserRoleFound);
     }
 
-    final allUsers = await getAllUsers();
+    final allUsers = await getAllUsers(l10n: l10n);
     final managedUsers = <Map<String, dynamic>>[];
 
     for (final user in allUsers) {
@@ -261,30 +264,30 @@ class RoleManagementService {
   Future<void> changeUserRole({
     required String targetUserUID,
     required String newRole,
+    required AppLocalizations l10n,
     String reason = '',
   }) async {
     // SICHERHEIT: SUPERADMIN kann niemals zugewiesen werden
     if (newRole == 'SUPERADMIN') {
-      throw Exception(
-          'SICHERHEITSFEHLER: SUPERADMIN-Rolle kann nicht zugewiesen werden');
+      throw Exception(l10n.superadminCannotBeAssigned);
     }
 
     // Validierungen
     if (!await isOnline()) {
-      throw Exception('Rollenverwaltung ist nur online verfügbar');
+      throw Exception(l10n.userManagementOnlineOnly);
     }
 
     if (!isValidRole(newRole)) {
-      throw Exception('Ungültige Rolle: $newRole');
+      throw Exception(l10n.noPermissionForRole(newRole));
     }
 
     final currentUserRole = getCurrentUserRole();
     if (currentUserRole.isEmpty) {
-      throw Exception('Keine gültige Administratorrolle');
+      throw Exception(l10n.noValidAdminRole);
     }
 
     if (!canManageRole(currentUserRole, newRole)) {
-      throw Exception('Keine Berechtigung zur Verwaltung der Rolle: $newRole');
+      throw Exception(l10n.noPermissionForRole(newRole));
     }
 
     // Lade den Ziel-User
@@ -296,12 +299,12 @@ class RoleManagementService {
           .get();
 
       if (!userDoc.exists) {
-        throw Exception('Benutzer nicht gefunden');
+        throw Exception(l10n.userNotFound);
       }
 
       targetUser = Map<String, dynamic>.from(userDoc.data()!);
     } catch (e) {
-      throw Exception('Fehler beim Laden des Benutzers: $e');
+      throw Exception(l10n.errorLoadingUser(e.toString()));
     }
 
     // Aktuelle Rolle ermitteln
@@ -311,14 +314,12 @@ class RoleManagementService {
 
     // SICHERHEIT: SUPERADMIN kann niemals entfernt oder geändert werden
     if (oldRoleStr == 'SUPERADMIN') {
-      throw Exception(
-          'SICHERHEITSFEHLER: SUPERADMIN-Rolle kann nicht geändert oder entfernt werden');
+      throw Exception(l10n.superadminCannotBeChanged);
     }
 
     // Prüfe ob aktuelle Rolle verwaltet werden kann
     if (oldRoleStr != NO_ROLE && !canManageRole(currentUserRole, oldRoleStr)) {
-      throw Exception(
-          'Keine Berechtigung zur Verwaltung der aktuellen Rolle: $oldRoleStr');
+      throw Exception(l10n.noPermissionForCurrentRole(oldRoleStr));
     }
 
     try {
@@ -327,7 +328,7 @@ class RoleManagementService {
           setSpecificPropertyJSON(targetUser, "userRole", newRole, "String");
 
       // changeObjectData verwenden für automatisches Logging
-      await changeObjectData(targetUser);
+      await changeObjectData(targetUser, syncFromCloud: false);
 
       // Zusätzlich spezifische changeUserRole Methode für detailliertes Audit-Log
       await _createChangeUserRoleMethod(
@@ -337,7 +338,7 @@ class RoleManagementService {
         reason: reason,
       );
     } catch (e) {
-      throw Exception('Fehler beim Ändern der Benutzerrolle: $e');
+      throw Exception(l10n.errorChangingRole(e.toString()));
     }
   }
 
@@ -376,7 +377,8 @@ class RoleManagementService {
       await updateMethodHistories(changeUserRoleMethod);
 
       // Method persistieren und signieren
-      await setObjectMethod(changeUserRoleMethod, true, true);
+      await setObjectMethod(changeUserRoleMethod, true, true,
+          syncFromCloud: false);
 
       // Falls die Rolle des aktuellen Users geändert wurde, aktualisiere AppState
       if (targetUser['identity']?['UID'] ==
@@ -409,11 +411,11 @@ class RoleManagementService {
   }
 
   /// Formatiert User-Informationen für die Anzeige
-  Future<Map<String, dynamic>> formatUserForDisplay(
-      Map<String, dynamic> user) async {
+  Future<Map<String, dynamic>> formatUserForDisplay(Map<String, dynamic> user,
+      {required AppLocalizations l10n}) async {
     final email = user['email'] ?? getSpecificPropertyfromJSON(user, "email");
     final userRole = getSpecificPropertyfromJSON(user, "userRole");
-    final userName = user['identity']?['name'] ?? 'Unbekannt';
+    final userName = user['identity']?['name'] ?? l10n.unknown;
     final userUID = user['identity']?['UID'] ?? '';
 
     // Für den aktuellen User, hole die aktuellste Rolle aus der Cloud
@@ -466,7 +468,11 @@ class RoleManagementService {
     return {
       'uid': userUID,
       'name': userName,
-      'email': email != "-no data found-" ? email : 'Keine E-Mail',
+      'email': (email != "-no data found-" &&
+              email != null &&
+              (email as String).isNotEmpty)
+          ? email
+          : l10n.noEmail,
       'role': targetUserRole,
       'canManage': canManageUser,
     };
@@ -490,6 +496,52 @@ class RoleManagementService {
       return querySnapshot.docs.map((doc) => doc.data()).toList();
     } catch (e) {
       return [];
+    }
+  }
+
+  /// Trägt eine E-Mail-Adresse nachträglich für einen Benutzer ein (nur SUPERADMIN)
+  /// Aktualisiert sowohl das Top-Level-Feld als auch die specificProperties
+  Future<void> updateUserEmail({
+    required String targetUserUID,
+    required String email,
+    required AppLocalizations l10n,
+  }) async {
+    // Sicherheitsprüfung: Nur SUPERADMIN darf E-Mails nachträglich eintragen
+    final currentRole = getCurrentUserRole();
+    if (currentRole != 'SUPERADMIN') {
+      throw Exception(l10n.onlySuperadminCanUpdateEmail);
+    }
+
+    if (!await isOnline()) {
+      throw Exception(l10n.emailUpdateOnlineOnly);
+    }
+
+    // Valide E-Mail prüfen (einfache Prüfung)
+    if (!email.contains('@') || !email.contains('.')) {
+      throw Exception(l10n.invalidEmail);
+    }
+
+    try {
+      final docRef = FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .doc(targetUserUID);
+
+      final userDoc = await docRef.get();
+      if (!userDoc.exists) {
+        throw Exception(l10n.userNotFound);
+      }
+
+      var userData = Map<String, dynamic>.from(userDoc.data()!);
+
+      // specificProperties aktualisieren
+      userData = setSpecificPropertyJSON(userData, "email", email, "String");
+
+      // Top-Level-Feld aktualisieren
+      userData['email'] = email;
+
+      await docRef.set(userData);
+    } catch (e) {
+      throw Exception(l10n.errorUpdatingEmail(e.toString()));
     }
   }
 }

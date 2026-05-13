@@ -1342,5 +1342,61 @@
   "polygonPreviewTitle": "Verificar polígono",
   "polygonPreviewDescription": "¿El polígono capturado se ve correcto? Si no, puede rehacer la captura completa.",
   "polygonPreviewConfirm": "Se ve correcto",
-  "polygonPreviewRedo": "Volver a capturar"
+  "polygonPreviewRedo": "Volver a capturar",
+
+  "noEmail": "Sin correo electrónico",
+  "noValidAdminRole": "No hay un rol de administrador válido",
+  "noPermissionForRole": "Sin permiso para gestionar el rol: {role}",
+  "@noPermissionForRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "noValidUserRoleFound": "No se encontró un rol de usuario válido",
+  "noPermissionForCurrentRole": "Sin permiso para gestionar el rol actual: {role}",
+  "@noPermissionForCurrentRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "onlySuperadminCanUpdateEmail": "Solo SUPERADMIN puede agregar direcciones de correo electrónico",
+  "emailUpdateOnlineOnly": "La actualización de correo solo está disponible en línea",
+  "addEmailTitle": "Agregar correo electrónico",
+  "emailRequired": "La dirección de correo electrónico es obligatoria",
+  "emailSaved": "Correo guardado: {email}",
+  "@emailSaved": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  },
+  "uidCopied": "UID copiado: {uid}",
+  "@uidCopied": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "errorChangingRole": "Error al cambiar el rol: {error}",
+  "@errorChangingRole": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorLoadingUser": "Error al cargar el usuario: {error}",
+  "@errorLoadingUser": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorUpdatingEmail": "Error al actualizar el correo electrónico: {error}",
+  "@errorUpdatingEmail": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noPermissionForUserManagementWithRole": "Sin permiso para la gestión de usuarios. Su rol: {role}",
+  "@noPermissionForUserManagementWithRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  }
 }

@@ -2875,4 +2875,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get polygonPreviewRedo => 'Redo capture';
+
+  @override
+  String get noEmail => 'No email';
+
+  @override
+  String get noValidAdminRole => 'No valid administrator role';
+
+  @override
+  String noPermissionForRole(String role) {
+    return 'No permission to manage role: $role';
+  }
+
+  @override
+  String get noValidUserRoleFound => 'No valid user role found';
+
+  @override
+  String noPermissionForCurrentRole(String role) {
+    return 'No permission to manage current role: $role';
+  }
+
+  @override
+  String get onlySuperadminCanUpdateEmail =>
+      'Only SUPERADMIN can add email addresses';
+
+  @override
+  String get emailUpdateOnlineOnly => 'Email update is only available online';
+
+  @override
+  String get addEmailTitle => 'Add email';
+
+  @override
+  String get emailRequired => 'Email address is required';
+
+  @override
+  String emailSaved(String email) {
+    return 'Email saved: $email';
+  }
+
+  @override
+  String uidCopied(String uid) {
+    return 'UID copied: $uid';
+  }
+
+  @override
+  String errorChangingRole(String error) {
+    return 'Error changing role: $error';
+  }
+
+  @override
+  String errorLoadingUser(String error) {
+    return 'Error loading user: $error';
+  }
+
+  @override
+  String errorUpdatingEmail(String error) {
+    return 'Error updating email: $error';
+  }
+
+  @override
+  String noPermissionForUserManagementWithRole(String role) {
+    return 'No permission for user management. Your role: $role';
+  }
 }

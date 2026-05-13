@@ -483,7 +483,7 @@ class _SplashScreenState extends State<SplashScreen>
         try {
           Map<String, dynamic> newUser = await getOpenRALTemplate("human");
           newUser["identity"]["UID"] = FirebaseAuth.instance.currentUser?.uid;
-          setSpecificPropertyJSON(newUser, "email",
+          newUser = setSpecificPropertyJSON(newUser, "email",
               FirebaseAuth.instance.currentUser?.email, "String");
           newUser["email"] = FirebaseAuth.instance.currentUser
               ?.email; // Necessary to find the user later by email!
@@ -540,6 +540,34 @@ class _SplashScreenState extends State<SplashScreen>
         await cloudLogService.error(
             'SplashScreen: Failed to verify/upload user profile to TFC_objects',
             data: {'error': e.toString()});
+      }
+    }
+
+    // Self-healing: backfill missing email from Firebase Auth
+    if (appUserDoc != null) {
+      final authEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+      final storedEmail = getSpecificPropertyfromJSON(appUserDoc!, "email");
+      final storedEmailValid =
+          storedEmail != "" && storedEmail != "-no data found-";
+      final topLevelEmail = (appUserDoc!['email'] ?? '') as String;
+
+      if (authEmail.isNotEmpty &&
+          (!storedEmailValid || topLevelEmail.isEmpty)) {
+        try {
+          if (!storedEmailValid) {
+            appUserDoc = setSpecificPropertyJSON(
+                appUserDoc!, "email", authEmail, "String");
+          }
+          if (topLevelEmail.isEmpty) {
+            appUserDoc!['email'] = authEmail;
+          }
+          await changeObjectData(appUserDoc!, syncFromCloud: false);
+          await cloudLogService.info(
+              'SplashScreen: Backfilled missing email from Firebase Auth');
+        } catch (e) {
+          await cloudLogService.warn('SplashScreen: Failed to backfill email',
+              data: {'error': e.toString()});
+        }
       }
     }
 

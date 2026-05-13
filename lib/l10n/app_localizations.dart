@@ -5165,6 +5165,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Redo capture'**
   String get polygonPreviewRedo;
+
+  /// No description provided for @noEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'No email'**
+  String get noEmail;
+
+  /// No description provided for @noValidAdminRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid administrator role'**
+  String get noValidAdminRole;
+
+  /// No description provided for @noPermissionForRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to manage role: {role}'**
+  String noPermissionForRole(String role);
+
+  /// No description provided for @noValidUserRoleFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid user role found'**
+  String get noValidUserRoleFound;
+
+  /// No description provided for @noPermissionForCurrentRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to manage current role: {role}'**
+  String noPermissionForCurrentRole(String role);
+
+  /// No description provided for @onlySuperadminCanUpdateEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Only SUPERADMIN can add email addresses'**
+  String get onlySuperadminCanUpdateEmail;
+
+  /// No description provided for @emailUpdateOnlineOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Email update is only available online'**
+  String get emailUpdateOnlineOnly;
+
+  /// No description provided for @addEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add email'**
+  String get addEmailTitle;
+
+  /// No description provided for @emailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address is required'**
+  String get emailRequired;
+
+  /// No description provided for @emailSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Email saved: {email}'**
+  String emailSaved(String email);
+
+  /// No description provided for @uidCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'UID copied: {uid}'**
+  String uidCopied(String uid);
+
+  /// No description provided for @errorChangingRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Error changing role: {error}'**
+  String errorChangingRole(String error);
+
+  /// No description provided for @errorLoadingUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading user: {error}'**
+  String errorLoadingUser(String error);
+
+  /// No description provided for @errorUpdatingEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Error updating email: {error}'**
+  String errorUpdatingEmail(String error);
+
+  /// No description provided for @noPermissionForUserManagementWithRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission for user management. Your role: {role}'**
+  String noPermissionForUserManagementWithRole(String role);
 }
 
 class _AppLocalizationsDelegate

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
@@ -42,17 +44,28 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     // Prüfe Grundberechtigung für User Management
     if (!_permissionService.hasPermission('user_management')) {
-      setState(() {
-        _errorMessage =
-            'Keine Berechtigung für Benutzerverwaltung. Ihre Rolle: $currentRole';
+      // l10n erst nach dem ersten Frame verfügbar sicherstellen
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          setState(() {
+            _errorMessage =
+                l10n.noPermissionForUserManagementWithRole(currentRole);
+          });
+        }
       });
       return;
     }
 
     // Prüfe Online-Status
     if (!await _roleService.isOnline()) {
-      setState(() {
-        _errorMessage = 'Benutzerverwaltung ist nur online verfügbar';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          setState(() {
+            _errorMessage = l10n.userManagementOnlineOnly;
+          });
+        }
       });
       return;
     }
@@ -68,11 +81,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     });
 
     try {
-      final users = await _roleService.getManagedUsers();
+      final users = await _roleService.getManagedUsers(
+          l10n: AppLocalizations.of(context)!);
       // Da formatUserForDisplay jetzt async ist, müssen wir alle User einzeln formatieren
       final List<Map<String, dynamic>> formattedUsers = [];
       for (final user in users) {
-        final formattedUser = await _roleService.formatUserForDisplay(user);
+        final formattedUser = await _roleService.formatUserForDisplay(user,
+            l10n: AppLocalizations.of(context)!);
         formattedUsers.add(formattedUser);
       }
 
@@ -234,6 +249,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         targetUserUID: userUID,
         newRole: newRole,
         reason: reason,
+        l10n: l10n,
       );
 
       Navigator.of(context).pop(); // Schließe Loading-Dialog
@@ -271,38 +287,57 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.userManagement),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailRow('Name', user['name']),
-              _buildDetailRow('E-Mail', user['email']),
-              _buildDetailRow(AppLocalizations.of(context)!.currentRole,
-                  _getLocalizedRole(user['role'])),
-              _buildDetailRow('User ID', user['uid']),
-              _buildDetailRow(
-                  'Verwaltbar',
-                  user['canManage']
-                      ? AppLocalizations.of(context)!.yes
-                      : AppLocalizations.of(context)!.no),
-            ],
-          ),
-          actions: [
-            if (user['canManage'])
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _showRoleAssignmentDialog(user);
-                },
-                child: Text(AppLocalizations.of(context)!.assignRole),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(AppLocalizations.of(context)!.userManagement),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow(
+                      AppLocalizations.of(context)!.name, user['name']),
+                  if (_permissionService.isSuperAdmin())
+                    _buildDetailRowWithEmailEdit(context, user,
+                        onEmailSaved: (newEmail) {
+                      setDialogState(() {
+                        user['email'] = newEmail;
+                      });
+                    })
+                  else
+                    _buildDetailRow(
+                        AppLocalizations.of(context)!.email, user['email']),
+                  _buildDetailRow(AppLocalizations.of(context)!.currentRole,
+                      _getLocalizedRole(user['role'])),
+                  if (kDebugMode && _permissionService.isSuperAdmin())
+                    _buildDetailRowWithCopy(context,
+                        AppLocalizations.of(context)!.userID, user['uid'])
+                  else
+                    _buildDetailRow(
+                        AppLocalizations.of(context)!.userID, user['uid']),
+                  _buildDetailRow(
+                      AppLocalizations.of(context)!.manageable,
+                      user['canManage']
+                          ? AppLocalizations.of(context)!.yes
+                          : AppLocalizations.of(context)!.no),
+                ],
               ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(AppLocalizations.of(context)!.cancel),
-            ),
-          ],
+              actions: [
+                if (user['canManage'])
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showRoleAssignmentDialog(user);
+                    },
+                    child: Text(AppLocalizations.of(context)!.assignRole),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(AppLocalizations.of(context)!.cancel),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -326,6 +361,172 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ],
       ),
     );
+  }
+
+  /// Hilfsmethode für Detail-Zeilen mit Clipboard-Button (nur Debug/SUPERADMIN)
+  Widget _buildDetailRowWithCopy(
+      BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(child: Text(value)),
+          InkWell(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: value));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppLocalizations.of(context)!.uidCopied(value)),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.only(left: 4),
+              child: Icon(Icons.copy, size: 16, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// E-Mail-Zeile mit Bearbeiten-Icon (nur SUPERADMIN)
+  Widget _buildDetailRowWithEmailEdit(
+      BuildContext context, Map<String, dynamic> user,
+      {void Function(String newEmail)? onEmailSaved}) {
+    final l10n = AppLocalizations.of(context)!;
+    final emailValue = (user['email'] == null ||
+            user['email'].toString().isEmpty ||
+            user['email'] == l10n.noEmail)
+        ? l10n.noEmail
+        : user['email'].toString();
+    final isMissing = emailValue == l10n.noEmail;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text('${l10n.email}:',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: Text(
+              emailValue,
+              style: TextStyle(
+                  color: isMissing ? Colors.red[700] : Colors.black87),
+            ),
+          ),
+          InkWell(
+            onTap: () => _showEditEmailDialog(user, onEmailSaved: onEmailSaved),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 4),
+              child: Icon(Icons.edit, size: 16, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Dialog zum manuellen Nachtragen einer E-Mail-Adresse (nur SUPERADMIN)
+  Future<void> _showEditEmailDialog(Map<String, dynamic> user,
+      {void Function(String newEmail)? onEmailSaved}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final currentEmail = user['email']?.toString() ?? '';
+    final controller = TextEditingController(
+        text: (currentEmail == l10n.noEmail || currentEmail.isEmpty)
+            ? ''
+            : currentEmail);
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          title: Text(l10n.addEmailTitle,
+              style: const TextStyle(color: Colors.black)),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: Colors.black),
+              decoration: InputDecoration(
+                labelText: l10n.email,
+                labelStyle: const TextStyle(color: Colors.black87),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return l10n.emailRequired;
+                if (!v.contains('@') || !v.contains('.')) {
+                  return l10n.invalidEmail;
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(ctx).pop(true);
+                }
+              },
+              child: Text(l10n.save),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _roleService.updateUserEmail(
+        targetUserUID: user['uid'],
+        email: controller.text.trim(),
+        l10n: AppLocalizations.of(context)!,
+      );
+      // Lokal im angezeigten User aktualisieren
+      user['email'] = controller.text.trim();
+      // Callback aufrufen, damit der Details-Dialog sich neu aufbaut
+      onEmailSaved?.call(controller.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!
+                .emailSaved(controller.text.trim())),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        setState(() {}); // Liste neu aufbauen
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.errorWithParam(e.toString())),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   /// Holt verfügbare Rollen für Filter-Dropdown (ohne SUPERADMIN)

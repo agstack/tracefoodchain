@@ -1342,5 +1342,61 @@
   "polygonPreviewTitle": "Vérifier le polygone",
   "polygonPreviewDescription": "Le polygone capturé semble-t-il correct ? Sinon, vous pouvez recommencer la capture complète.",
   "polygonPreviewConfirm": "Semble correct",
-  "polygonPreviewRedo": "Recapturer"
+  "polygonPreviewRedo": "Recapturer",
+
+  "noEmail": "Aucun e-mail",
+  "noValidAdminRole": "Aucun rôle d'administrateur valide",
+  "noPermissionForRole": "Aucune autorisation pour gérer le rôle : {role}",
+  "@noPermissionForRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "noValidUserRoleFound": "Aucun rôle d'utilisateur valide trouvé",
+  "noPermissionForCurrentRole": "Aucune autorisation pour gérer le rôle actuel : {role}",
+  "@noPermissionForCurrentRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "onlySuperadminCanUpdateEmail": "Seul SUPERADMIN peut ajouter des adresses e-mail",
+  "emailUpdateOnlineOnly": "La mise à jour de l'e-mail n'est disponible qu'en ligne",
+  "addEmailTitle": "Ajouter un e-mail",
+  "emailRequired": "L'adresse e-mail est obligatoire",
+  "emailSaved": "E-mail enregistré : {email}",
+  "@emailSaved": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  },
+  "uidCopied": "UID copié : {uid}",
+  "@uidCopied": {
+    "placeholders": {
+      "uid": {"type": "String"}
+    }
+  },
+  "errorChangingRole": "Erreur lors du changement de rôle : {error}",
+  "@errorChangingRole": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorLoadingUser": "Erreur lors du chargement de l'utilisateur : {error}",
+  "@errorLoadingUser": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorUpdatingEmail": "Erreur lors de la mise à jour de l'e-mail : {error}",
+  "@errorUpdatingEmail": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noPermissionForUserManagementWithRole": "Aucune autorisation pour la gestion des utilisateurs. Votre rôle : {role}",
+  "@noPermissionForUserManagementWithRole": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  }
 }
