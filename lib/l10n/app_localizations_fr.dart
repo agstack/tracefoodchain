@@ -2992,4 +2992,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String noPermissionForUserManagementWithRole(String role) {
     return 'Aucune autorisation pour la gestion des utilisateurs. Votre rôle : $role';
   }
+
+  @override
+  String whispMissingGeoJsonWarning(String fields) {
+    return 'Les champs suivants n\'ont pas de limite GeoJSON valide et seront ignorés dans l\'analyse de déforestation. Ils seront signalés dans le PDF : $fields';
+  }
+
+  @override
+  String get whispNoGeoJsonLabel => 'Aucune donnée de limite disponible';
+
+  @override
+  String get whispAnalysisInProgress => 'Analyse du risque de déforestation…';
+
+  @override
+  String get ddsGeneratingPdf => 'Génération du PDF…';
 }

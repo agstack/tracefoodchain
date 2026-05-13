@@ -1063,6 +1063,16 @@ Map<String, dynamic> initialCloudConnectorTraceFoodchain = {
           },
           "unit": "json",
           "key": "getRALMethodByUID"
+        },
+        {
+          "value": {
+            "definition":
+                "Endpoint that allows to retrieve a specific object by its UID from cloud",
+            "url":
+                "https://europe-west3-tracefoodchain.cloudfunctions.net/getRalObjectByUid"
+          },
+          "unit": "json",
+          "key": "getRALObjectByUID"
         }
         //  ?UID=
       ],

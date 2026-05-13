@@ -1398,5 +1398,14 @@
     "placeholders": {
       "role": {"type": "String"}
     }
-  }
+  },
+  "whispMissingGeoJsonWarning": "Les champs suivants n'ont pas de limite GeoJSON valide et seront ignorés dans l'analyse de déforestation. Ils seront signalés dans le PDF : {fields}",
+  "@whispMissingGeoJsonWarning": {
+    "placeholders": {
+      "fields": {"type": "String"}
+    }
+  },
+  "whispNoGeoJsonLabel": "Aucune donnée de limite disponible",
+  "whispAnalysisInProgress": "Analyse du risque de déforestation…",
+  "ddsGeneratingPdf": "Génération du PDF…"
 }

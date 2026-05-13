@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
@@ -20,7 +21,7 @@ import 'dart:io';
 class ContainerActionsMenu extends StatefulWidget {
   final Map<String, dynamic> container;
   final List<Map<String, dynamic>> contents;
-  final Function(List<String>) onPerformAnalysis;
+  final Function(List<Map<String, dynamic>>) onPerformAnalysis;
   final Function(List<Map<String, dynamic>>, double, String)
       onGenerateAndSharePdf;
   final Function() onRepaint;
@@ -270,17 +271,37 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
       rebuildDDS.value = true;
     }
 
-    List<String> plotList = [];
+    List<Map<String, dynamic>> plotData = [];
     String? reportingUnit = "kg";
     double? reportingAmount;
     for (final coffee in widget.contents) {
       Map<String, dynamic> firstSale = Map<String, dynamic>.from(
           await _databaseHelper.getFirstSale(context, coffee));
       final field = firstSale["inputObjects"][1];
-      plotList.add(field["identity"]["alternateIDs"][0]["UID"].replaceAll(
-          RegExp(r'\s+'),
-          '')); //This is because some CIAT cards have a space in the UID
-      
+      final geoid = (field["identity"]["alternateIDs"][0]["UID"] as String)
+          .replaceAll(RegExp(r'\s+'), '');
+
+      // Build GeoJSON Feature from stored boundaries polygon
+      Map<String, dynamic> feature = {"type": "Feature", "geometry": null};
+      try {
+        final boundariesStr =
+            getSpecificPropertyfromJSON(field, "boundaries")?.toString() ?? "";
+        if (boundariesStr.isNotEmpty) {
+          final parsed = jsonDecode(boundariesStr) as Map<String, dynamic>;
+          feature = {
+            "type": "Feature",
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [parsed["coordinates"]]
+            }
+          };
+        }
+      } catch (e) {
+        debugPrint("Error parsing boundaries for plot $geoid: $e");
+      }
+
+      plotData.add({"geoid": geoid, "feature": feature});
+
       final convertedAmount = convertToGreenBeanEquivalent(
           Map<String, dynamic>.from(firstSale["outputObjects"][0]),
           reportingUnit); //Converts the amount to green bean equivalent and into the right unit for reporting
@@ -289,11 +310,122 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
           : reportingAmount + convertedAmount;
     }
 
+    // Load test field and append as additional plot (debug mode only)
+    if (kDebugMode) {
+      try {
+        const debugFieldUID = '00d3e20f-3344-4701-aae4-8024889c1914';
+        Map<String, dynamic> debugField =
+            await getLocalObjectMethod(debugFieldUID);
+        // Not in localStorage → try to fetch from cloud and use directly
+        if (debugField.isEmpty && widget.isConnected) {
+          debugPrint(
+              "DEBUG: Field not in localStorage, fetching from cloud...");
+          final cloudDoc = await cloudSyncService.apiClient
+              .getDocumentFromCloud("tracefoodchain.org", debugFieldUID,
+                  searchScope: "objects");
+          if (cloudDoc.isNotEmpty) {
+            debugPrint("DEBUG: Cloud doc fetched, ${cloudDoc.keys.toList()}");
+            debugField = cloudDoc;
+          } else {
+            debugPrint("DEBUG: Cloud returned empty for $debugFieldUID");
+          }
+        }
+        if (debugField.isNotEmpty) {
+          final debugName = debugField["identity"]?["name"]?.toString();
+          final debugGeoId = (debugField["identity"]["alternateIDs"] as List?)
+                  ?.firstWhere((id) => id["issuedBy"] == "Asset Registry",
+                      orElse: () => null)?["UID"]
+                  ?.toString()
+                  .replaceAll(RegExp(r'\s+'), '') ??
+              debugFieldUID;
+          final debugLabel = debugName != null && debugName.isNotEmpty
+              ? "[DEBUG] $debugName ($debugGeoId)"
+              : "[DEBUG] $debugGeoId";
+          Map<String, dynamic> debugFeature = {
+            "type": "Feature",
+            "geometry": null
+          };
+          try {
+            final boundariesStr =
+                getSpecificPropertyfromJSON(debugField, "boundaries")
+                        ?.toString() ??
+                    "";
+            if (boundariesStr.isNotEmpty) {
+              final parsed = jsonDecode(boundariesStr) as Map<String, dynamic>;
+              debugFeature = {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [parsed["coordinates"]]
+                }
+              };
+            }
+          } catch (e) {
+            debugPrint("DEBUG: Error parsing boundaries for debug field: $e");
+          }
+          plotData.add({"geoid": debugLabel, "feature": debugFeature});
+          debugPrint("DEBUG: Added test field $debugLabel to plotData");
+        } else {
+          debugPrint("DEBUG: Field $debugFieldUID not found");
+        }
+      } catch (e) {
+        debugPrint("DEBUG: Error loading debug field: $e");
+      }
+    }
+
     await fshowInfoDialog(context, l10n.ddsGenerationDemo);
 
-    final results = await widget.onPerformAnalysis(plotList);
-    await widget.onGenerateAndSharePdf(
-        results, reportingAmount!, reportingUnit);
+    // Warn user about fields without valid GeoJSON before making the API call
+    final missingGeoJsonIds = plotData
+        .where(
+            (p) => (p['feature'] as Map<String, dynamic>)['geometry'] == null)
+        .map((p) => p['geoid'] as String)
+        .toList();
+
+    if (missingGeoJsonIds.isNotEmpty) {
+      await fshowInfoDialog(
+        context,
+        l10n.whispMissingGeoJsonWarning(missingGeoJsonIds.join(', ')),
+      );
+    }
+
+    if (!mounted) return;
+
+    // Show non-dismissable progress dialog
+    final statusNotifier = ValueNotifier<String>(l10n.whispAnalysisInProgress);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          content: ValueListenableBuilder<String>(
+            valueListenable: statusNotifier,
+            builder: (_, status, __) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: Color(0xFF35DB00)),
+                const SizedBox(height: 16),
+                Text(status, style: const TextStyle(color: Colors.black87)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final results = await widget.onPerformAnalysis(plotData);
+      if (!mounted) return;
+      statusNotifier.value = l10n.ddsGeneratingPdf;
+      await widget.onGenerateAndSharePdf(
+          results, reportingAmount!, reportingUnit);
+    } finally {
+      statusNotifier.dispose();
+      if (mounted)
+        Navigator.of(context).pop(); // ignore: use_build_context_synchronously
+    }
     _isBuilding = false;
     if (mounted) {
       rebuildDDS.value = true;
@@ -396,11 +528,10 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
         final file = File(filePath)
           ..createSync(recursive: true)
           ..writeAsBytesSync(fileBytes);
-        
+
         await fshowInfoDialog(context, "${l10n.excelFileSavedAt}: $filePath");
       }
     } else {
-      
       await fshowInfoDialog(context, l10n.failedToGenerateExcelFile);
     }
   }

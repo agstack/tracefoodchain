@@ -63,14 +63,14 @@ class CloudApiClient {
     return false;
   }
 
-  Future<Map<String, dynamic>> getDocumentFromCloud(
-      String domain, documentUID) async {
+  Future<Map<String, dynamic>> getDocumentFromCloud(String domain, documentUID,
+      {String searchScope = "methods"}) async {
     String? urlString;
     try {
       urlString = getCloudConnectionProperty(
         domain,
         "cloudFunctionsConnector",
-        "getRALMethodByUID",
+        searchScope == "objects" ? "getRALObjectByUID" : "getRALMethodByUID",
       )["url"];
     } catch (e) {
       return {};

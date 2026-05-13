@@ -306,7 +306,7 @@ class DatabaseHelper {
     //if this method has not been synced from cloud, we need to force downsync!
     if (firstSale.isEmpty && appState.isConnected) {
       final firstSaleDoc = await cloudSyncService.apiClient
-          .getDocumentFromCloud("tracefoodchain.org", firstSaleUID);
+          .getDocumentFromCloud("tracefoodchain.org", firstSaleUID,searchScope: "methods");
       if (firstSaleDoc.isNotEmpty) {
         await setObjectMethod(firstSaleDoc, false, false);
         firstSale = await getLocalObjectMethod(firstSaleUID);

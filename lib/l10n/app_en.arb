@@ -1404,5 +1404,14 @@
     "placeholders": {
       "role": {"type": "String"}
     }
-  }
+  },
+  "whispMissingGeoJsonWarning": "The following fields have no valid GeoJSON boundary and will be skipped in the deforestation analysis. They will be marked accordingly in the PDF: {fields}",
+  "@whispMissingGeoJsonWarning": {
+    "placeholders": {
+      "fields": {"type": "String"}
+    }
+  },
+  "whispNoGeoJsonLabel": "No boundary data available",
+  "whispAnalysisInProgress": "Analyzing deforestation risk\u2026",
+  "ddsGeneratingPdf": "Generating PDF\u2026"
 }

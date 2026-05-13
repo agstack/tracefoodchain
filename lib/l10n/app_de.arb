@@ -1404,5 +1404,14 @@
     "placeholders": {
       "role": {"type": "String"}
     }
-  }
+  },
+  "whispMissingGeoJsonWarning": "Die folgenden Felder haben keine gültige GeoJSON-Grenze und werden bei der Entwaldungsanalyse übersprungen. Sie werden im PDF entsprechend gekennzeichnet: {fields}",
+  "@whispMissingGeoJsonWarning": {
+    "placeholders": {
+      "fields": {"type": "String"}
+    }
+  },
+  "whispNoGeoJsonLabel": "Keine Grenzdaten verfügbar",
+  "whispAnalysisInProgress": "Entwaldungsrisiko wird analysiert…",
+  "ddsGeneratingPdf": "PDF wird erstellt…"
 }

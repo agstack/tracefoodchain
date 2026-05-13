@@ -5255,6 +5255,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No permission for user management. Your role: {role}'**
   String noPermissionForUserManagementWithRole(String role);
+
+  /// No description provided for @whispMissingGeoJsonWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'The following fields have no valid GeoJSON boundary and will be skipped in the deforestation analysis. They will be marked accordingly in the PDF: {fields}'**
+  String whispMissingGeoJsonWarning(String fields);
+
+  /// No description provided for @whispNoGeoJsonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No boundary data available'**
+  String get whispNoGeoJsonLabel;
+
+  /// No description provided for @whispAnalysisInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing deforestation risk…'**
+  String get whispAnalysisInProgress;
+
+  /// No description provided for @ddsGeneratingPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating PDF…'**
+  String get ddsGeneratingPdf;
 }
 
 class _AppLocalizationsDelegate

@@ -1,16 +1,13 @@
 ﻿import 'package:auto_size_text/auto_size_text.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:trace_foodchain_app/screens/settings_screen.dart';
+import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/helpers/helpers.dart';
 import 'package:trace_foodchain_app/helpers/container_sort_filter_helper.dart';
-import 'package:trace_foodchain_app/main.dart';
-import 'package:trace_foodchain_app/models/whisp_result_model.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
-import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/pdf_generator_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
@@ -202,19 +199,7 @@ class _ItemsListState extends State<ItemsList> {
     });
   }
 
-  final WhispApiService _apiService = WhispApiService(
-      baseUrl: 'https://whisp.openforis.org',
-      apiKey: "379620da-05a2-40d7-8c20-15f840092e1d");
-  //ToDo: Read from WHISP cloudConnector
-  Map<String, dynamic>? _result;
-
-  final PdfGenerator _pdfGenerator = PdfGenerator();
-
-  String? _errorMessage;
-
-  bool _isLoading = false;
-
-  bool _isGeneratingPdf = false;
+  final WhispApiService _apiService = WhispApiService();
 
   void _toggleItemSelection(String uid) {
     if (selectedItems.contains(uid)) {
@@ -227,38 +212,59 @@ class _ItemsListState extends State<ItemsList> {
   }
 
   Future<List<Map<String, dynamic>>> _performAnalysis(
-      List<String> plotList) async {
+      List<Map<String, dynamic>> plotData) async {
     final l10n = AppLocalizations.of(context)!;
-    _errorMessage = null;
-    _isLoading = true;
     rebuildDDS.value = true;
 
     List<Map<String, dynamic>> rList = [];
     try {
-      final result = await _apiService.analyzeGeoIds(plotList);
+      // Split into plots with and without valid GeoJSON geometry
+      final validPlots = plotData
+          .where(
+              (p) => (p['feature'] as Map<String, dynamic>)['geometry'] != null)
+          .toList();
+      final invalidPlots = plotData
+          .where(
+              (p) => (p['feature'] as Map<String, dynamic>)['geometry'] == null)
+          .toList();
 
-      _result = result;
-
-      // Create a set to track which plots received results
-      Set<String> processedPlots = {};
-
-      int plotcount = 0;
-      for (final plot in result["data"]["features"]) {
-        String currentPlotId = plotList[plotcount];
-        processedPlots.add(currentPlotId);
-
+      // Plots without GeoJSON go directly into result list
+      for (final p in invalidPlots) {
         rList.add({
-          "geoid": currentPlotId,
-          "deforestation_risk": plot["properties"]
-              ["risk_pcrop"] //Was EUDR_risk before 31.05.2025
+          'geoid': p['geoid'] as String,
+          'deforestation_risk': l10n.whispNoGeoJsonLabel,
         });
-        plotcount++;
       }
 
-      // Add entries for plots that didn't receive results
-      for (String plotId in plotList) {
-        if (!processedPlots.contains(plotId)) {
-          rList.add({"geoid": plotId, "deforestation_risk": "plot not found"});
+      if (validPlots.isNotEmpty) {
+        final features = validPlots
+            .map((p) => p['feature'] as Map<String, dynamic>)
+            .toList();
+        final result = await _apiService.checkWhispGeoJson(features);
+
+        // Create a set to track which plots received results
+        Set<String> processedPlots = {};
+
+        int plotcount = 0;
+        for (final plot in result["data"]["features"]) {
+          final currentPlotId = validPlots[plotcount]['geoid'] as String;
+          processedPlots.add(currentPlotId);
+
+          rList.add({
+            "geoid": currentPlotId,
+            "deforestation_risk": plot["properties"]
+                ["risk_pcrop"] //Was EUDR_risk before 31.05.2025
+          });
+          plotcount++;
+        }
+
+        // Add entries for valid plots that didn't receive results from API
+        for (final plotItem in validPlots) {
+          final plotId = plotItem['geoid'] as String;
+          if (!processedPlots.contains(plotId)) {
+            rList
+                .add({"geoid": plotId, "deforestation_risk": "plot not found"});
+          }
         }
       }
     } catch (e) {
@@ -268,7 +274,6 @@ class _ItemsListState extends State<ItemsList> {
             content: Text(l10n.pdfGenerationError)),
       );
     } finally {
-      _isLoading = false;
       rebuildDDS.value = true;
     }
     return rList;
@@ -277,16 +282,6 @@ class _ItemsListState extends State<ItemsList> {
   Future<void> _generateAndSharePdf(List<Map<String, dynamic>> plots,
       double reportingAmount, String reportingUnit) async {
     final l10n = AppLocalizations.of(context)!;
-    if (_result == null) {
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('Please perform analysis first')),
-      // );
-      return;
-    }
-
-    setState(() {
-      _isGeneratingPdf = true;
-    });
 
     try {
       final pdfGenerator = PdfGenerator();
@@ -316,10 +311,6 @@ class _ItemsListState extends State<ItemsList> {
           content: Text(AppLocalizations.of(context)!.pdfError(e.toString())),
         ),
       );
-    } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
     }
   }
 
