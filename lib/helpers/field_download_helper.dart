@@ -6,8 +6,8 @@ import '../utils/file_download.dart';
 
 /// Shared helper for downloading field boundaries as GeoJSON or KML.
 class FieldDownloadHelper {
-  /// Parses a boundaries JSON string (format: {"coordinates": [[lon, lat], ...]})
-  /// into a list of [lon, lat] pairs.
+  /// Parses a boundaries JSON string (format: {"coordinates": [[lat, lon], ...]})
+  /// into a list of [lat, lon] pairs.
   static List<List<double>>? parseBoundaries(String? boundariesValue) {
     if (boundariesValue == null || boundariesValue.isEmpty) return null;
     try {
@@ -52,6 +52,7 @@ class FieldDownloadHelper {
     if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
       ring.add(ring.first);
     }
+    final geoJsonRing = ring.map((c) => [c[1], c[0]]).toList();
     final properties = <String, dynamic>{'name': name};
     if (area != null && area.isNotEmpty) properties['area_ha'] = area;
     if (geoId != null && geoId.isNotEmpty) properties['geoId'] = geoId;
@@ -63,7 +64,7 @@ class FieldDownloadHelper {
           'type': 'Feature',
           'geometry': {
             'type': 'Polygon',
-            'coordinates': [ring],
+            'coordinates': [geoJsonRing],
           },
           'properties': properties,
         }
@@ -100,7 +101,7 @@ class FieldDownloadHelper {
     if (ring.first[0] != ring.last[0] || ring.first[1] != ring.last[1]) {
       ring.add(ring.first);
     }
-    final coordStr = ring.map((c) => '${c[0]},${c[1]},0').join(' ');
+    final coordStr = ring.map((c) => '${c[1]},${c[0]},0').join(' ');
     final descParts = <String>[];
     if (area != null && area.isNotEmpty) {
       descParts.add('Area: ${escapeXml(area)} ha');
