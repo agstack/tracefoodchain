@@ -4104,6 +4104,12 @@ abstract class AppLocalizations {
   /// **'Register Farm'**
   String get registerFarm;
 
+  /// No description provided for @registerAdditionalFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Register Additional Farm'**
+  String get registerAdditionalFarm;
+
   /// No description provided for @registerFarmer.
   ///
   /// In en, this message translates to:
@@ -4115,6 +4121,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Register Field'**
   String get registerField;
+
+  /// No description provided for @addFarmToFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Farm'**
+  String get addFarmToFarmer;
+
+  /// No description provided for @addFieldToFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Field'**
+  String get addFieldToFarm;
 
   /// No description provided for @recordFieldBoundary.
   ///
@@ -4283,6 +4301,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Farm Name'**
   String get farmName;
+
+  /// No description provided for @farmNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm name is required'**
+  String get farmNameRequired;
 
   /// No description provided for @farmAddress.
   ///

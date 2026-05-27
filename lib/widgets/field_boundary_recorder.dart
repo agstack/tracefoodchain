@@ -17,7 +17,12 @@ import 'stepper_registrar_registration.dart';
 
 /// Widget für die Feldgrenzen-Aufzeichnung mit Pflicht-Verknüpfung zu einer Farm
 class FieldBoundaryRecorder extends StatefulWidget {
-  const FieldBoundaryRecorder({super.key});
+  const FieldBoundaryRecorder({
+    super.key,
+    this.initialFarm,
+  });
+
+  final Map<String, dynamic>? initialFarm;
 
   @override
   State<FieldBoundaryRecorder> createState() => _FieldBoundaryRecorderState();
@@ -44,6 +49,10 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialFarm != null) {
+      _selectedFarm = Map<String, dynamic>.from(widget.initialFarm!);
+      _showFarmSelector = false;
+    }
     _loadAvailableFarms();
   }
 
@@ -86,6 +95,17 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
 
       setState(() {
         _availableFarms = farms;
+        if (_selectedFarm != null) {
+          final selectedUid = _selectedFarm!['identity']?['UID']?.toString();
+          if (selectedUid != null && selectedUid.isNotEmpty) {
+            final selectedFarm = farms.where((f) {
+              return f['identity']?['UID']?.toString() == selectedUid;
+            }).toList();
+            if (selectedFarm.isNotEmpty) {
+              _selectedFarm = selectedFarm.first;
+            }
+          }
+        }
         _isLoadingFarms = false;
       });
     } catch (e) {
@@ -911,7 +931,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       updatedFarm['linkedObjectRef'].add({
         'UID': fieldUID,
         'RALType': 'field',
-        'role': 'parcel', 
+        'role': 'parcel',
       });
 
       // Aktualisiere totalAreaHa der Farm

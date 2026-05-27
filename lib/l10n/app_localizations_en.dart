@@ -2314,10 +2314,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerFarm => 'Register Farm';
 
   @override
+  String get registerAdditionalFarm => 'Register Additional Farm';
+
+  @override
   String get registerFarmer => 'Register Farmer';
 
   @override
   String get registerField => 'Register Field';
+
+  @override
+  String get addFarmToFarmer => 'Add Farm';
+
+  @override
+  String get addFieldToFarm => 'Add Field';
 
   @override
   String get recordFieldBoundary => 'Record Field Boundary';
@@ -2406,6 +2415,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get farmName => 'Farm Name';
+
+  @override
+  String get farmNameRequired => 'Farm name is required';
 
   @override
   String get farmAddress => 'Farm Address';

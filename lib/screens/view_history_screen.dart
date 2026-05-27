@@ -3,14 +3,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
+import '../services/firebase_storage_service.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
 import '../helpers/field_download_helper.dart';
+import '../screens/register_additional_farm_screen.dart';
+import '../widgets/field_boundary_recorder.dart';
 import '../main.dart';
 
 class ViewHistoryScreen extends StatefulWidget {
@@ -38,6 +42,7 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
 
     try {
       final registrations = <Map<String, dynamic>>[];
+      final currentAppUserUid = appUserDoc?['identity']?['UID']?.toString();
 
       if (!isLocalStorageInitialized()) {
         setState(() {
@@ -56,6 +61,14 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
             // Prüfe ob es ein registriertes Objekt ist (farm, human, field)
             final objectType = doc['template']["RALType"]?.toString();
             if (objectType == null) continue;
+
+            // Hide the app user's own human profile from registrar history.
+            final objectUid = doc['identity']?['UID']?.toString();
+            if (objectType == 'human' &&
+                currentAppUserUid != null &&
+                objectUid == currentAppUserUid) {
+              continue;
+            }
 
             // Zeige Objekte mit verschiedenen Status an
             final status = doc['objectState']?.toString();
@@ -136,8 +149,11 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
             // Überspringe Einträge ohne gültiges Registrierungsdatum
             if (registrationDate == null) continue;
 
+            final registrationUid = objectUid ?? doc['UID']?.toString() ?? '';
+            if (registrationUid.isEmpty) continue;
+
             registrations.add({
-              'uid': doc['UID'],
+              'uid': registrationUid,
               'displayName': displayName,
               'objectType': objectTypeLabel,
               'status': status,
@@ -176,6 +192,180 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
     return _registrations
         .where((reg) => reg['objectType'] == _filterType)
         .toList();
+  }
+
+  List<Map<String, String>> _getLinkedFarmsForFarmer(
+      Map<String, dynamic> farmerDoc) {
+    final farmerUid = farmerDoc['identity']?['UID']?.toString();
+    if (farmerUid == null || farmerUid.isEmpty) return [];
+
+    final linkedFarms = <Map<String, String>>[];
+    final seenFarmUids = <String>{};
+
+    for (final registration in _registrations) {
+      if (registration['objectType'] != 'farm') continue;
+
+      final rawData = registration['rawData'] as Map<String, dynamic>?;
+      if (rawData == null) continue;
+
+      final farmUid = rawData['identity']?['UID']?.toString();
+      if (farmUid == null ||
+          farmUid.isEmpty ||
+          seenFarmUids.contains(farmUid)) {
+        continue;
+      }
+
+      final linkedObjectRef = rawData['linkedObjectRef'] as List?;
+      if (linkedObjectRef == null) continue;
+
+      final isLinked = linkedObjectRef.any((ref) {
+        if (ref is! Map) return false;
+        final uid = ref['UID']?.toString();
+        final role = ref['role']?.toString();
+        return uid == farmerUid && role == 'owner';
+      });
+
+      if (!isLinked) continue;
+
+      final farmName = rawData['identity']?['name']?.toString();
+      linkedFarms.add({
+        'name': (farmName == null || farmName.trim().isEmpty)
+            ? 'Unnamed Farm'
+            : farmName,
+        'uid': farmUid,
+      });
+      seenFarmUids.add(farmUid);
+    }
+
+    linkedFarms.sort((a, b) => (a['name'] ?? '')
+        .toLowerCase()
+        .compareTo((b['name'] ?? '').toLowerCase()));
+    return linkedFarms;
+  }
+
+  List<Map<String, String>> _getLinkedFieldsForFarm(
+      Map<String, dynamic> farmDoc) {
+    final farmUid = farmDoc['identity']?['UID']?.toString();
+    if (farmUid == null || farmUid.isEmpty) return [];
+
+    final linkedFields = <Map<String, String>>[];
+    final seenFieldUids = <String>{};
+
+    for (final registration in _registrations) {
+      if (registration['objectType'] != 'field') continue;
+
+      final rawData = registration['rawData'] as Map<String, dynamic>?;
+      if (rawData == null) continue;
+
+      final fieldUid = rawData['identity']?['UID']?.toString();
+      if (fieldUid == null ||
+          fieldUid.isEmpty ||
+          seenFieldUids.contains(fieldUid)) {
+        continue;
+      }
+
+      final containerUid =
+          rawData['currentGeolocation']?['container']?['UID']?.toString();
+
+      bool isLinked = containerUid == farmUid;
+      if (!isLinked) {
+        final linkedObjectRef = rawData['linkedObjectRef'] as List?;
+        if (linkedObjectRef != null) {
+          isLinked = linkedObjectRef.any((ref) {
+            if (ref is! Map) return false;
+            final uid = ref['UID']?.toString();
+            final ralType = ref['RALType']?.toString();
+            return uid == farmUid && ralType == 'farm';
+          });
+        }
+      }
+
+      if (!isLinked) continue;
+
+      final fieldName = rawData['identity']?['name']?.toString();
+      linkedFields.add({
+        'name': (fieldName == null || fieldName.trim().isEmpty)
+            ? 'Unnamed Field'
+            : fieldName,
+        'uid': fieldUid,
+      });
+      seenFieldUids.add(fieldUid);
+    }
+
+    linkedFields.sort((a, b) => (a['name'] ?? '')
+        .toLowerCase()
+        .compareTo((b['name'] ?? '').toLowerCase()));
+    return linkedFields;
+  }
+
+  Widget _buildRelationshipSection({
+    required String title,
+    required IconData icon,
+    required List<Map<String, String>> entries,
+    required String emptyMessage,
+    required String uidLabel,
+    required void Function(String uid) onEntryTap,
+  }) {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: const EdgeInsets.only(bottom: 8),
+      leading: Icon(icon, size: 20, color: Colors.blueGrey[700]),
+      title: Text(
+        '$title (${entries.length})',
+        style: const TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+      children: entries.isEmpty
+          ? [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Text(
+                  emptyMessage,
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ]
+          : entries
+              .map(
+                (entry) => ListTile(
+                  dense: true,
+                  visualDensity: VisualDensity.compact,
+                  onTap: () {
+                    final uid = entry['uid']?.trim();
+                    if (uid != null && uid.isNotEmpty) {
+                      onEntryTap(uid);
+                    }
+                  },
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: Colors.grey[600],
+                  ),
+                  title: Text(
+                    entry['name'] ?? '',
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '$uidLabel: ${entry['uid'] ?? ''}',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -331,6 +521,14 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         typeLabel = objectType;
     }
 
+    final rawData = registration['rawData'] as Map<String, dynamic>;
+    final linkedFarms = objectType == 'farmer'
+        ? _getLinkedFarmsForFarmer(rawData)
+        : const <Map<String, String>>[];
+    final linkedFields = objectType == 'farm'
+        ? _getLinkedFieldsForFarm(rawData)
+        : const <Map<String, String>>[];
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -446,6 +644,34 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                 ],
               ),
 
+              if (objectType == 'farmer') ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                _buildRelationshipSection(
+                  title: l10n.farms,
+                  icon: Icons.agriculture,
+                  entries: linkedFarms,
+                  emptyMessage: l10n.noFarmsRegisteredYet,
+                  uidLabel: l10n.uid,
+                  onEntryTap: (uid) =>
+                      _showLinkedRegistrationDetails(uid, l10n),
+                ),
+              ],
+
+              if (objectType == 'farm') ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                _buildRelationshipSection(
+                  title: l10n.fields,
+                  icon: Icons.map,
+                  entries: linkedFields,
+                  emptyMessage: l10n.noRegistrationsFound,
+                  uidLabel: l10n.uid,
+                  onEntryTap: (uid) =>
+                      _showLinkedRegistrationDetails(uid, l10n),
+                ),
+              ],
+
               // Download-Aktionen nur für Felder
               if (objectType == 'field') ...[
                 const SizedBox(height: 8),
@@ -518,6 +744,54 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
               ],
 
               // Edit-Schaltfläche für Farm/Farmer innerhalb der 24h-Frist
+              if (objectType == 'farmer') ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _openAdditionalFarmRegistration(
+                        registration['rawData']),
+                    icon: const Icon(Icons.agriculture, size: 16),
+                    label: Text(
+                      l10n.addFarmToFarmer,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.green[700],
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
+
+              if (objectType == 'farm') ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        _openFieldRegistrationForFarm(registration['rawData']),
+                    icon: const Icon(Icons.add_location_alt, size: 16),
+                    label: Text(
+                      l10n.addFieldToFarm,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.teal[700],
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
+
               if ((objectType == 'farm' || objectType == 'farmer') &&
                   _isWithin24Hours(registration)) ...[
                 const SizedBox(height: 8),
@@ -555,6 +829,54 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openAdditionalFarmRegistration(
+      Map<String, dynamic> farmerDoc) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => RegisterAdditionalFarmScreen(
+          farmerDoc: Map<String, dynamic>.from(farmerDoc),
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      await _loadRegistrations();
+    }
+  }
+
+  Future<void> _openFieldRegistrationForFarm(
+      Map<String, dynamic> farmDoc) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FieldBoundaryRecorder(
+          initialFarm: Map<String, dynamic>.from(farmDoc),
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _loadRegistrations();
+    }
+  }
+
+  void _showLinkedRegistrationDetails(String uid, AppLocalizations l10n) {
+    final linkedRegistration = _registrations
+        .where((registration) {
+          final regUid = registration['uid']?.toString();
+          if (regUid == uid) return true;
+
+          final rawData = registration['rawData'] as Map<String, dynamic>?;
+          final identityUid = rawData?['identity']?['UID']?.toString();
+          final rootUid = rawData?['UID']?.toString();
+          return identityUid == uid || rootUid == uid;
+        })
+        .cast<Map<String, dynamic>>()
+        .firstOrNull;
+
+    if (linkedRegistration == null) return;
+    _showRegistrationDetails(linkedRegistration, l10n);
   }
 
   void _showRegistrationDetails(
@@ -681,6 +1003,9 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
     Map<String, dynamic> doc,
     String objectType,
     Map<String, TextEditingController> controllers,
+    XFile? nationalIdPhotoFile,
+    XFile? consentFormPhotoFile,
+    XFile? consentFormPhoto2File,
   ) async {
     if (objectType == 'farmer') {
       var updated = setSpecificPropertyJSON(
@@ -689,6 +1014,17 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
           updated, 'lastName', controllers['lastName']!.text.trim(), 'String');
       updated = setSpecificPropertyJSON(updated, 'phoneNumber',
           controllers['phoneNumber']!.text.trim(), 'String');
+      updated = setSpecificPropertyJSON(
+          updated, 'email', controllers['email']!.text.trim(), 'String');
+
+      final farmerPostalAddress =
+          updated['currentGeolocation']?['postalAddress'] as Map?;
+      if (farmerPostalAddress != null) {
+        farmerPostalAddress['cityName'] = controllers['cityName']!.text.trim();
+        farmerPostalAddress['stateName'] =
+            controllers['stateName']!.text.trim();
+      }
+
       // Update full display name
       updated['identity']['name'] =
           '${controllers['firstName']!.text.trim()} ${controllers['lastName']!.text.trim()}'
@@ -711,6 +1047,17 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
           });
         }
       }
+
+      if (nationalIdPhotoFile != null) {
+        await _replaceLinkedImageByRole(
+          updated,
+          role: 'nationalIDPhoto',
+          imageName:
+              'National ID - ${updated['identity']?['name']?.toString() ?? 'Farmer'}',
+          file: nationalIdPhotoFile,
+        );
+      }
+
       final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(updated))
           as Map<String, dynamic>;
       await changeObjectData(processedDoc);
@@ -739,6 +1086,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         postalAddress['cityName'] = controllers['cityName']!.text.trim();
         postalAddress['stateName'] = controllers['stateName']!.text.trim();
       }
+      doc = setSpecificPropertyJSON(
+          doc, 'email', controllers['email']!.text.trim(), 'String');
       final areaText =
           controllers['totalArea']!.text.trim().replaceAll(',', '.');
       if (areaText.isNotEmpty) {
@@ -748,10 +1097,97 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
               doc, 'totalAreaEstimatedHa', areaVal, 'double');
         }
       }
+
+      if (consentFormPhotoFile != null) {
+        await _replaceLinkedImageByRole(
+          doc,
+          role: 'consentFormPhoto',
+          imageName:
+              'Consent Form - ${doc['identity']?['name']?.toString() ?? 'Farm'}',
+          file: consentFormPhotoFile,
+        );
+      }
+
+      if (consentFormPhoto2File != null) {
+        await _replaceLinkedImageByRole(
+          doc,
+          role: 'consentFormPhoto2',
+          imageName:
+              'Consent Form 2 - ${doc['identity']?['name']?.toString() ?? 'Farm'}',
+          file: consentFormPhoto2File,
+        );
+      }
+
       final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(doc))
           as Map<String, dynamic>;
       await changeObjectData(processedDoc);
     }
+  }
+
+  String? _getLinkedImagePathByRole(Map<String, dynamic> doc, String role) {
+    final linkedObjectRef = doc['linkedObjectRef'] as List?;
+    if (linkedObjectRef == null) return null;
+
+    for (final ref in linkedObjectRef) {
+      if (ref is! Map) continue;
+      final refRole = ref['role']?.toString();
+      final refType = ref['RALType']?.toString();
+      final refUid = ref['UID']?.toString();
+      if (refRole != role || refType != 'image' || refUid == null) continue;
+
+      final imageObjRaw = localStorage?.get(refUid);
+      if (imageObjRaw is! Map) continue;
+
+      final imageObj = Map<String, dynamic>.from(imageObjRaw);
+      final cloudUrl = getSpecificPropertyfromJSON(imageObj, 'downloadURL');
+      if (cloudUrl != null &&
+          cloudUrl.toString().isNotEmpty &&
+          cloudUrl.toString() != '-no data found-') {
+        return cloudUrl.toString();
+      }
+
+      final localUrl =
+          getSpecificPropertyfromJSON(imageObj, 'localDownloadURL');
+      if (localUrl != null &&
+          localUrl.toString().isNotEmpty &&
+          localUrl.toString() != '-no data found-') {
+        return localUrl.toString();
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _replaceLinkedImageByRole(
+    Map<String, dynamic> doc, {
+    required String role,
+    required String imageName,
+    required XFile file,
+  }) async {
+    final imageObj = await createImageObject(
+      localPath: file.path,
+      position: null,
+      imageName: imageName,
+    );
+
+    final processedImage = jsonFullDoubleToInt(sortJsonAlphabetically(imageObj))
+        as Map<String, dynamic>;
+    await generateDigitalSibling(processedImage);
+
+    final newImageUid = getObjectMethodUID(processedImage);
+
+    final linkedRefs = (doc['linkedObjectRef'] as List?) ?? <dynamic>[];
+    linkedRefs.removeWhere((ref) {
+      if (ref is! Map) return false;
+      return ref['RALType']?.toString() == 'image' &&
+          ref['role']?.toString() == role;
+    });
+    linkedRefs.add({
+      'UID': newImageUid,
+      'RALType': 'image',
+      'role': role,
+    });
+    doc['linkedObjectRef'] = linkedRefs;
   }
 
   Future<void> _showEditDialog(
@@ -783,6 +1219,16 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
             text: getSpecificPropertyfromJSON(doc, 'lastName') ?? ''),
         'phoneNumber': TextEditingController(
             text: getSpecificPropertyfromJSON(doc, 'phoneNumber') ?? ''),
+        'email': TextEditingController(
+            text: getSpecificPropertyfromJSON(doc, 'email') ?? ''),
+        'cityName': TextEditingController(
+            text: doc['currentGeolocation']?['postalAddress']?['cityName']
+                    ?.toString() ??
+                ''),
+        'stateName': TextEditingController(
+            text: doc['currentGeolocation']?['postalAddress']?['stateName']
+                    ?.toString() ??
+                ''),
         'nationalID': TextEditingController(text: nationalId),
       };
     } else {
@@ -801,6 +1247,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         'farmName': TextEditingController(
             text: doc['identity']?['name']?.toString() ?? ''),
         'farmID': TextEditingController(text: farmId),
+        'email': TextEditingController(
+            text: getSpecificPropertyfromJSON(doc, 'email') ?? ''),
         'cityName': TextEditingController(
             text: doc['currentGeolocation']?['postalAddress']?['cityName']
                     ?.toString() ??
@@ -818,7 +1266,20 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
     final title =
         objectType == 'farmer' ? l10n.editFarmerTitle : l10n.editFarmTitle;
     bool isSaving = false;
+    bool isUploadingPhoto = false;
     bool saved = false;
+    XFile? newNationalIdPhoto;
+    XFile? newConsentFormPhoto;
+    XFile? newConsentFormPhoto2;
+    String? nationalIdPhotoPath = objectType == 'farmer'
+        ? _getLinkedImagePathByRole(doc, 'nationalIDPhoto')
+        : null;
+    String? consentFormPhotoPath = objectType == 'farm'
+        ? _getLinkedImagePathByRole(doc, 'consentFormPhoto')
+        : null;
+    String? consentFormPhoto2Path = objectType == 'farm'
+        ? _getLinkedImagePathByRole(doc, 'consentFormPhoto2')
+        : null;
 
     await showDialog<void>(
       context: context,
@@ -832,6 +1293,51 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (objectType == 'farmer') ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: (isSaving || isUploadingPhoto)
+                            ? null
+                            : () async {
+                                setDialogState(() => isUploadingPhoto = true);
+                                try {
+                                  final picked = await FirebaseStorageService
+                                      .showImageSourceDialog(ctx);
+                                  if (picked != null) {
+                                    setDialogState(() {
+                                      newNationalIdPhoto = picked;
+                                      nationalIdPhotoPath = picked.path;
+                                    });
+                                  }
+                                } finally {
+                                  setDialogState(
+                                      () => isUploadingPhoto = false);
+                                }
+                              },
+                        icon: isUploadingPhoto
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                (newNationalIdPhoto != null ||
+                                        (nationalIdPhotoPath != null &&
+                                            nationalIdPhotoPath!.isNotEmpty))
+                                    ? Icons.refresh
+                                    : Icons.camera_alt,
+                              ),
+                        label: Text(
+                          (newNationalIdPhoto != null ||
+                                  (nationalIdPhotoPath != null &&
+                                      nationalIdPhotoPath!.isNotEmpty))
+                              ? l10n.retakeIDPhoto
+                              : l10n.takeIDPhoto,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     _buildEditField(l10n.firstName, controllers['firstName']!),
                     const SizedBox(height: 12),
                     _buildEditField(l10n.lastName, controllers['lastName']!),
@@ -840,12 +1346,112 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                         l10n.phoneNumber, controllers['phoneNumber']!,
                         keyboardType: TextInputType.phone),
                     const SizedBox(height: 12),
+                    _buildEditField(l10n.email, controllers['email']!,
+                        keyboardType: TextInputType.emailAddress),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.cityName, controllers['cityName']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.stateName, controllers['stateName']!),
+                    const SizedBox(height: 12),
                     _buildEditField(
                         l10n.nationalID, controllers['nationalID']!),
                   ] else ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: (isSaving || isUploadingPhoto)
+                            ? null
+                            : () async {
+                                setDialogState(() => isUploadingPhoto = true);
+                                try {
+                                  final picked = await FirebaseStorageService
+                                      .showImageSourceDialog(ctx);
+                                  if (picked != null) {
+                                    setDialogState(() {
+                                      newConsentFormPhoto = picked;
+                                      consentFormPhotoPath = picked.path;
+                                    });
+                                  }
+                                } finally {
+                                  setDialogState(
+                                      () => isUploadingPhoto = false);
+                                }
+                              },
+                        icon: isUploadingPhoto
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                (newConsentFormPhoto != null ||
+                                        (consentFormPhotoPath != null &&
+                                            consentFormPhotoPath!.isNotEmpty))
+                                    ? Icons.refresh
+                                    : Icons.camera_alt,
+                              ),
+                        label: Text(
+                          (newConsentFormPhoto != null ||
+                                  (consentFormPhotoPath != null &&
+                                      consentFormPhotoPath!.isNotEmpty))
+                              ? l10n.retakeConsentFormPhoto
+                              : l10n.takeConsentFormPhoto,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: (isSaving || isUploadingPhoto)
+                            ? null
+                            : () async {
+                                setDialogState(() => isUploadingPhoto = true);
+                                try {
+                                  final picked = await FirebaseStorageService
+                                      .showImageSourceDialog(ctx);
+                                  if (picked != null) {
+                                    setDialogState(() {
+                                      newConsentFormPhoto2 = picked;
+                                      consentFormPhoto2Path = picked.path;
+                                    });
+                                  }
+                                } finally {
+                                  setDialogState(
+                                      () => isUploadingPhoto = false);
+                                }
+                              },
+                        icon: isUploadingPhoto
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                (newConsentFormPhoto2 != null ||
+                                        (consentFormPhoto2Path != null &&
+                                            consentFormPhoto2Path!.isNotEmpty))
+                                    ? Icons.refresh
+                                    : Icons.camera_alt,
+                              ),
+                        label: Text(
+                          (newConsentFormPhoto2 != null ||
+                                  (consentFormPhoto2Path != null &&
+                                      consentFormPhoto2Path!.isNotEmpty))
+                              ? l10n.retakeConsentFormPhoto2
+                              : l10n.takeConsentFormPhoto2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     _buildEditField(l10n.farmName, controllers['farmName']!),
                     const SizedBox(height: 12),
                     _buildEditField(l10n.farmID, controllers['farmID']!),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.email, controllers['email']!,
+                        keyboardType: TextInputType.emailAddress),
                     const SizedBox(height: 12),
                     _buildEditField(l10n.cityName, controllers['cityName']!),
                     const SizedBox(height: 12),
@@ -873,7 +1479,14 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                       if (!formKey.currentState!.validate()) return;
                       setDialogState(() => isSaving = true);
                       try {
-                        await _applyEditChanges(doc, objectType, controllers);
+                        await _applyEditChanges(
+                          doc,
+                          objectType,
+                          controllers,
+                          newNationalIdPhoto,
+                          newConsentFormPhoto,
+                          newConsentFormPhoto2,
+                        );
                         saved = true;
                         if (dialogContext.mounted) {
                           Navigator.of(dialogContext).pop();
