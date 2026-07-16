@@ -7,6 +7,7 @@ import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
+import 'package:trace_foodchain_app/services/service_functions.dart';
 
 class AppState extends ChangeNotifier {
   String? _userRole;
@@ -44,7 +45,24 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadAreaUnitPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    _preferredAreaUnitSymbol = prefs.getString('preferredAreaUnit') ?? 'ha';
+    final savedUnit = prefs.getString('preferredAreaUnit');
+    if (savedUnit != null && savedUnit.isNotEmpty) {
+      _preferredAreaUnitSymbol = savedUnit;
+      return;
+    }
+
+    final availableUnits = getAreaUnits(country);
+    final hasMzUnit = availableUnits.any((u) => u['symbol'] == 'mz');
+    final isSpanishLocale = _locale?.languageCode == 'es';
+
+    if (isSpanishLocale && hasMzUnit) {
+      _preferredAreaUnitSymbol = 'mz';
+      return;
+    }
+
+    _preferredAreaUnitSymbol = availableUnits.isNotEmpty
+        ? (availableUnits.first['symbol'] as String)
+        : 'ha';
   }
 
   void setLocale(Locale? newLocale) {

@@ -29,6 +29,40 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
   bool _isLoading = true;
   String _filterType = 'all'; // 'all', 'farm', 'human', 'field'
 
+  String _formatEditableNumber(dynamic value) {
+    if (value == null) return '';
+    if (value is int) return value.toString();
+    if (value is double) {
+      return value == value.truncateToDouble()
+          ? value.toInt().toString()
+          : value.toString();
+    }
+    return value.toString();
+  }
+
+  String _getFormattedFieldArea(Map<String, dynamic> doc) {
+    final areaValue = getSpecificPropertyfromJSON(doc, 'area') ??
+        getSpecificPropertyfromJSON(doc, 'totalAreaEstimatedHa') ??
+        getSpecificPropertyfromJSON(doc, 'totalArea');
+
+    if (areaValue == null) return 'N/A';
+
+    final areaText = areaValue.toString().trim();
+    if (areaText.isEmpty || areaText == '-no data found-') return 'N/A';
+
+    final parsed = double.tryParse(areaText.replaceAll(',', '.'));
+    if (parsed == null) return '$areaText ha';
+
+    final formatted = parsed == parsed.truncateToDouble()
+        ? parsed.toInt().toString()
+        : parsed
+            .toStringAsFixed(4)
+            .replaceFirst(RegExp(r'0+$'), '')
+            .replaceFirst(RegExp(r'\.$'), '');
+
+    return '$formatted ha';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -883,6 +917,9 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       Map<String, dynamic> registration, AppLocalizations l10n) {
     final rawData = registration['rawData'] as Map<String, dynamic>;
     final uid = registration['uid'] as String?;
+    final fieldArea = registration['objectType'] == 'field'
+        ? _getFormattedFieldArea(rawData)
+        : null;
 
     showDialog(
       context: context,
@@ -904,6 +941,10 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                     _formatDate(registration['registrationDate'] as DateTime)),
                 _formatDate(registration['registrationDate'] as DateTime),
               ),
+
+              if (registration['objectType'] == 'field') ...[
+                _buildDetailRow(l10n.fieldArea, fieldArea),
+              ],
 
               // Zusätzliche Informationen basierend auf Objekttyp
               if (registration['objectType'] == 'farm') ...[
@@ -1020,6 +1061,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       final farmerPostalAddress =
           updated['currentGeolocation']?['postalAddress'] as Map?;
       if (farmerPostalAddress != null) {
+        farmerPostalAddress['municipalityName'] =
+            controllers['municipalityName']!.text.trim();
         farmerPostalAddress['cityName'] = controllers['cityName']!.text.trim();
         farmerPostalAddress['stateName'] =
             controllers['stateName']!.text.trim();
@@ -1083,6 +1126,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       }
       final postalAddress = doc['currentGeolocation']?['postalAddress'] as Map?;
       if (postalAddress != null) {
+        postalAddress['municipalityName'] =
+            controllers['municipalityName']!.text.trim();
         postalAddress['cityName'] = controllers['cityName']!.text.trim();
         postalAddress['stateName'] = controllers['stateName']!.text.trim();
       }
@@ -1214,13 +1259,21 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       }
       controllers = {
         'firstName': TextEditingController(
-            text: getSpecificPropertyfromJSON(doc, 'firstName') ?? ''),
+            text: getSpecificPropertyfromJSON(doc, 'firstName')?.toString() ??
+                ''),
         'lastName': TextEditingController(
-            text: getSpecificPropertyfromJSON(doc, 'lastName') ?? ''),
+            text:
+                getSpecificPropertyfromJSON(doc, 'lastName')?.toString() ?? ''),
         'phoneNumber': TextEditingController(
-            text: getSpecificPropertyfromJSON(doc, 'phoneNumber') ?? ''),
+            text: getSpecificPropertyfromJSON(doc, 'phoneNumber')?.toString() ??
+                ''),
         'email': TextEditingController(
-            text: getSpecificPropertyfromJSON(doc, 'email') ?? ''),
+            text: getSpecificPropertyfromJSON(doc, 'email')?.toString() ?? ''),
+        'municipalityName': TextEditingController(
+            text: doc['currentGeolocation']?['postalAddress']
+                        ?['municipalityName']
+                    ?.toString() ??
+                ''),
         'cityName': TextEditingController(
             text: doc['currentGeolocation']?['postalAddress']?['cityName']
                     ?.toString() ??
@@ -1248,7 +1301,12 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
             text: doc['identity']?['name']?.toString() ?? ''),
         'farmID': TextEditingController(text: farmId),
         'email': TextEditingController(
-            text: getSpecificPropertyfromJSON(doc, 'email') ?? ''),
+            text: getSpecificPropertyfromJSON(doc, 'email')?.toString() ?? ''),
+        'municipalityName': TextEditingController(
+            text: doc['currentGeolocation']?['postalAddress']
+                        ?['municipalityName']
+                    ?.toString() ??
+                ''),
         'cityName': TextEditingController(
             text: doc['currentGeolocation']?['postalAddress']?['cityName']
                     ?.toString() ??
@@ -1258,8 +1316,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                     ?.toString() ??
                 ''),
         'totalArea': TextEditingController(
-            text:
-                getSpecificPropertyfromJSON(doc, 'totalAreaEstimatedHa') ?? ''),
+            text: _formatEditableNumber(
+                getSpecificPropertyfromJSON(doc, 'totalAreaEstimatedHa'))),
       };
     }
 
@@ -1348,6 +1406,9 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                     const SizedBox(height: 12),
                     _buildEditField(l10n.email, controllers['email']!,
                         keyboardType: TextInputType.emailAddress),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.municipalityName,
+                        controllers['municipalityName']!),
                     const SizedBox(height: 12),
                     _buildEditField(l10n.cityName, controllers['cityName']!),
                     const SizedBox(height: 12),
@@ -1452,6 +1513,9 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                     const SizedBox(height: 12),
                     _buildEditField(l10n.email, controllers['email']!,
                         keyboardType: TextInputType.emailAddress),
+                    const SizedBox(height: 12),
+                    _buildEditField(l10n.municipalityName,
+                        controllers['municipalityName']!),
                     const SizedBox(height: 12),
                     _buildEditField(l10n.cityName, controllers['cityName']!),
                     const SizedBox(height: 12),

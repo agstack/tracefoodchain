@@ -296,7 +296,47 @@ void main() async {
   // Enable detailed stack traces for debugging
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    // Stack trace information available for debugging
+
+    // DEBUG: Gezieltes Logging für den "_RenderLayoutBuilder was mutated"-Fehler.
+    // Gibt die ungekürzte Stacktrace und den Render-Tree aus, damit wir sehen,
+    // welches Widget den betroffenen LayoutBuilder erzeugt.
+    final String message = details.exceptionAsString();
+    if (message.contains('_RenderLayoutBuilder was mutated') ||
+        message.contains('was mutated in') ||
+        message.contains('_debugCanPerformMutations')) {
+      try {
+        debugPrint('\n════════ LAYOUT-MUTATION DEBUG ════════');
+        debugPrint('Exception: $message');
+
+        // Vollständige, ungekürzte Stacktrace (jede Zeile einzeln, damit die
+        // Konsole nichts abschneidet). Wichtig: der interessante Teil liegt
+        // NACH der von Flutter normalerweise elidierten Framework-Sektion.
+        final StackTrace? stack = details.stack;
+        if (stack != null) {
+          debugPrint('---- FULL STACK (untruncated) ----');
+          for (final String line in stack.toString().split('\n')) {
+            debugPrint(line);
+          }
+        }
+
+        // Alle beteiligten Diagnose-Knoten (enthalten u.a. den debugCreator der
+        // RenderObjects, d.h. den Quellort des jeweiligen LayoutBuilder).
+        debugPrint('---- DIAGNOSTICS ----');
+        for (final DiagnosticsNode node
+            in details.informationCollector?.call() ??
+                const <DiagnosticsNode>[]) {
+          debugPrint(node.toStringDeep());
+        }
+
+        // Kompletter Render-Tree: hier tauchen beide _RenderLayoutBuilder mit
+        // ihrem "creator" (Widget + Quelldatei) auf.
+        debugPrint('---- RENDER TREE DUMP ----');
+        debugDumpRenderTree();
+        debugPrint('════════ END LAYOUT-MUTATION DEBUG ════════\n');
+      } catch (e) {
+        debugPrint('LAYOUT-MUTATION DEBUG failed to collect info: $e');
+      }
+    }
   };
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");

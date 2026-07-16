@@ -323,12 +323,15 @@ class RoleManagementService {
     }
 
     try {
-      // Neue Rolle setzen
+      // Neue Rolle direkt in der Cloud speichern, ohne den lokalen openRAL-Sync-Pfad
       targetUser =
           setSpecificPropertyJSON(targetUser, "userRole", newRole, "String");
+      targetUser['userRole'] = newRole;
 
-      // changeObjectData verwenden für automatisches Logging
-      await changeObjectData(targetUser, syncFromCloud: false);
+      final docRef = FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .doc(targetUserUID);
+      await docRef.set(targetUser);
 
       // Zusätzlich spezifische changeUserRole Methode für detailliertes Audit-Log
       await _createChangeUserRoleMethod(
@@ -412,7 +415,7 @@ class RoleManagementService {
 
   /// Formatiert User-Informationen für die Anzeige
   Future<Map<String, dynamic>> formatUserForDisplay(Map<String, dynamic> user,
-      {required AppLocalizations l10n}) async {
+      {required AppLocalizations l10n, String? currentUserRole}) async {
     final email = user['email'] ?? getSpecificPropertyfromJSON(user, "email");
     final userRole = getSpecificPropertyfromJSON(user, "userRole");
     final userName = user['identity']?['name'] ?? l10n.unknown;
@@ -436,7 +439,8 @@ class RoleManagementService {
     //
 
     // Bestimme ob dieser User verwaltet werden kann
-    final currentUserRole = await getCurrentUserRoleFromCloud();
+    final resolvedCurrentUserRole =
+        currentUserRole ?? await getCurrentUserRoleFromCloud();
     final targetUserRole = displayRole != "" && displayRole != "-no data found-"
         ? displayRole
         : NO_ROLE;
@@ -448,13 +452,13 @@ class RoleManagementService {
       canManageUser = false;
     }
     // SUPERADMIN kann alle anderen verwalten
-    else if (currentUserRole == 'SUPERADMIN') {
+    else if (resolvedCurrentUserRole == 'SUPERADMIN') {
       canManageUser = true;
     }
     // Andere Admins können basierend auf Rollenhierarchie verwalten
-    else if (roleManagementPermissions.containsKey(currentUserRole)) {
+    else if (roleManagementPermissions.containsKey(resolvedCurrentUserRole)) {
       // Kann die Zielrolle verwalten ODER User hat keine Rolle
-      canManageUser = canManageRole(currentUserRole, targetUserRole) ||
+      canManageUser = canManageRole(resolvedCurrentUserRole, targetUserRole) ||
           targetUserRole == NO_ROLE;
     }
 

@@ -11,10 +11,10 @@ class FadeRoute<T> extends PageRoute<T> {
   final Duration duration;
 
   @override
-  bool get opaque => false;  // Changed from Color? to bool
+  bool get opaque => true;
 
   @override
-  Color? get barrierColor => null;  // Added this property
+  Color? get barrierColor => null;
 
   @override
   bool get barrierDismissible => false;

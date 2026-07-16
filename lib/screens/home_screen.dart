@@ -57,8 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
               syncStatusNotifier.value =
                   "${l10n.syncingWith} $cloudKey ↑ ($current/$total)";
             }, onFetchingFromCloud: () {
-              syncStatusNotifier.value =
-                  "${l10n.syncingWith} $cloudKey ↓ ...";
+              syncStatusNotifier.value = "${l10n.syncingWith} $cloudKey ↓ ...";
             }, onDownloadProgress: (current, total) {
               syncStatusNotifier.value =
                   "${l10n.syncingWith} $cloudKey ↓ ($current/$total)";
@@ -263,7 +262,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               valueListenable: rebuildList,
                               builder: (context, bool value, child) {
                                 if (!mounted) return Container();
-                                rebuildList.value = false;
+                                if (value) {
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    if (mounted && rebuildList.value) {
+                                      rebuildList.value = false;
+                                    }
+                                  });
+                                }
                                 Widget? screen;
                                 switch (appState.userRole) {
                                   // case 'Farmer':
@@ -318,7 +324,13 @@ class _HomeScreenState extends State<HomeScreen> {
             valueListenable: rebuildList,
             builder: (context, bool value, child) {
               if (!mounted) return Container();
-              rebuildList.value = false;
+              if (value) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && rebuildList.value) {
+                    rebuildList.value = false;
+                  }
+                });
+              }
               return RoleBasedSpeedDial(displayContext: displayContext);
             }),
         // bottomNavigationBar: isSmallScreen ? _buildBottomMenu(context) : null,

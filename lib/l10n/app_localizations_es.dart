@@ -2564,7 +2564,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get closeAutomatically => '¿Cerrar automáticamente?';
 
   @override
-  String get cityName => 'Ciudad/Pueblo';
+  String get cityName => 'Aldea/Comunidad';
+
+  @override
+  String get municipalityName => 'Municipio';
 
   @override
   String get stateName => 'Estado/Departamento';

@@ -44,6 +44,8 @@ class _StepperRegistrarRegistrationState
   // Farm Daten
   final TextEditingController _farmNameController = TextEditingController();
   final TextEditingController _farmIDController = TextEditingController();
+  final TextEditingController _farmMunicipalityController =
+      TextEditingController();
   final TextEditingController _farmCityController = TextEditingController();
   final TextEditingController _farmStateController = TextEditingController();
   final TextEditingController _farmEmailController = TextEditingController();
@@ -313,6 +315,10 @@ class _StepperRegistrarRegistrationState
       }
       farmer['currentGeolocation']['postalAddress']['country'] =
           'Honduras'; //ToDo: Make dynamic
+      if (_farmMunicipalityController.text.isNotEmpty) {
+        farmer['currentGeolocation']['postalAddress']['municipalityName'] =
+            _farmMunicipalityController.text;
+      }
       if (_farmCityController.text.isNotEmpty) {
         farmer['currentGeolocation']['postalAddress']['cityName'] =
             _farmCityController.text;
@@ -383,6 +389,10 @@ class _StepperRegistrarRegistrationState
         debugPrint('Farm coordinates set');
       }
       farm['currentGeolocation']['postalAddress']['country'] = 'Honduras';
+      if (_farmMunicipalityController.text.isNotEmpty) {
+        farm['currentGeolocation']['postalAddress']['municipalityName'] =
+            _farmMunicipalityController.text;
+      }
       if (_farmCityController.text.isNotEmpty) {
         farm['currentGeolocation']['postalAddress']['cityName'] =
             _farmCityController.text;
@@ -1232,6 +1242,7 @@ class _StepperRegistrarRegistrationState
     _farmerEmailController.dispose();
     _farmNameController.dispose();
     _farmIDController.dispose();
+    _farmMunicipalityController.dispose();
     _farmCityController.dispose();
     _farmStateController.dispose();
     _farmEmailController.dispose();
@@ -1251,6 +1262,7 @@ class _StepperRegistrarRegistrationState
         _farmerEmailController.text.isNotEmpty ||
         _farmNameController.text.isNotEmpty ||
         _farmIDController.text.isNotEmpty ||
+        _farmMunicipalityController.text.isNotEmpty ||
         _farmCityController.text.isNotEmpty ||
         _farmStateController.text.isNotEmpty ||
         _farmEmailController.text.isNotEmpty ||
@@ -1904,6 +1916,16 @@ class _StepperRegistrarRegistrationState
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.tag),
             hintText: 'e.g., FARM-2025-001',
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _farmMunicipalityController,
+          style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            labelText: l10n.municipalityName,
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.account_balance),
           ),
         ),
         const SizedBox(height: 16),

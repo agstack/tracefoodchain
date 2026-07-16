@@ -851,9 +851,15 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                               mapController = controller;
                               Future.delayed(
                                 const Duration(milliseconds: 300),
-                                () => mapController?.animateCamera(
-                                  CameraUpdate.newLatLngBounds(bounds, 40),
-                                ),
+                                () {
+                                  try {
+                                    mapController?.animateCamera(
+                                      CameraUpdate.newLatLngBounds(bounds, 40),
+                                    );
+                                  } catch (_) {
+                                    // Web can throw if map lifecycle races with dialog close.
+                                  }
+                                },
                               );
                             },
                             polygons: {
@@ -938,7 +944,13 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
       },
     );
 
-    mapController?.dispose();
+    if (!kIsWeb) {
+      try {
+        mapController?.dispose();
+      } catch (_) {
+        // Ignore disposal races on platform views.
+      }
+    }
     return result ?? false;
   }
 
@@ -953,15 +965,6 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     }
 
     // Auto-close Polygon wenn erste und letzte Punkte nahe beieinander
-    final firstPoint = _points.first;
-    final lastPoint = _points.last;
-    final distance = Geolocator.distanceBetween(
-      firstPoint[0],
-      firstPoint[1],
-      lastPoint[0],
-      lastPoint[1],
-    );
-
     // Sortiere Punkte zu einem sinnvollen Polygon
     List<List<double>> sortedPoints = _sortPointsToPolygon(List.from(_points));
 
@@ -974,6 +977,8 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
       sortedLastPoint[0],
       sortedLastPoint[1],
     );
+    final unclosedAreaHa =
+        _calculateAreaInHectares([...sortedPoints, sortedFirstPoint]);
 
     List<List<double>> finalPoints = List.from(sortedPoints);
     if (sortedDistance < 10 && sortedDistance > 0) {
@@ -989,7 +994,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
             style: const TextStyle(color: Colors.black),
           ),
           content: Text(
-            '${l10n.polygonNotClosed} (${sortedDistance.toStringAsFixed(1)}m). ${l10n.closeAutomatically}',
+            '${l10n.fieldArea}: ${unclosedAreaHa.toStringAsFixed(4)}. ${l10n.closeAutomatically}',
             style: const TextStyle(color: Colors.black87),
           ),
           actions: [
@@ -1077,6 +1082,14 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     return sorted;
   }
 
+  double _calculateLiveEstimatedArea() {
+    if (_points.length < 4) return 0.0;
+
+    // Keep live estimate consistent with finalize flow by using sorted points.
+    final sortedPoints = _sortPointsToPolygon(List.from(_points));
+    return _calculateAreaInHectares([...sortedPoints, sortedPoints.first]);
+  }
+
   /// Berechnet die Fläche eines Polygons in Hektar mittels Shoelace-Formel
   double _calculateAreaInHectares(List<List<double>> points) {
     if (points.length < 3) return 0.0;
@@ -1104,24 +1117,38 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   @override
   void dispose() {
     _positionStream?.cancel();
-    _recordingMapController?.dispose();
+    if (!kIsWeb) {
+      try {
+        _recordingMapController?.dispose();
+      } catch (_) {
+        // Ignore disposal races on platform views.
+      }
+    }
     super.dispose();
   }
 
   void _updateRecordingMapCamera() {
     if (_recordingMapController == null || _points.isEmpty) return;
     if (_points.length == 1) {
-      _recordingMapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(LatLng(_points[0][0], _points[0][1]), 17),
-      );
+      try {
+        _recordingMapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(_points[0][0], _points[0][1]), 17),
+        );
+      } catch (_) {
+        _recordingMapController = null;
+      }
       return;
     }
     final bounds = _calculateLatLngBounds(
       _points.map((p) => LatLng(p[0], p[1])).toList(),
     );
-    _recordingMapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 50),
-    );
+    try {
+      _recordingMapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 50),
+      );
+    } catch (_) {
+      _recordingMapController = null;
+    }
   }
 
   // Hilfsmethode: Erstellt Index-Mapping und sortierte Punkte
@@ -1384,9 +1411,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final estimatedArea = _points.length >= 4
-        ? _calculateAreaInHectares([..._points, _points.first])
-        : 0.0;
+    final estimatedArea = _calculateLiveEstimatedArea();
 
     return PopScope(
       canPop: _points.isEmpty,
@@ -1678,7 +1703,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  '${_points.length} ${l10n.points} • ${displayArea.toStringAsFixed(2)} $symbol',
+                                  '${_points.length} ${l10n.points} • ${displayArea.toStringAsFixed(4)} $symbol',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,

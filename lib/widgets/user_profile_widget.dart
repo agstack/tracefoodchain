@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/open_ral_service.dart';
 import '../services/profile_update_notifier.dart';
@@ -91,61 +90,26 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
     }
 
     final avatarUrl = _userProfile['downloadURL'];
-    final firstName = _userProfile['firstName'] ?? '';
-    final lastName = _userProfile['lastName'] ?? '';
-    final hasName = firstName.isNotEmpty || lastName.isNotEmpty;
+    final avatar = CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.grey[300],
+      backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+          ? CachedNetworkImageProvider(avatarUrl)
+          : null,
+      child: (avatarUrl == null || avatarUrl.isEmpty)
+          ? Icon(
+              Icons.person,
+              size: 16,
+              color: Colors.grey[600],
+            )
+          : null,
+    );
 
+    // Das AppBar-Leading ist auf kToolbarHeight (56px) begrenzt, daher passt
+    // nur der Avatar hinein.
     return GestureDetector(
       onTap: _navigateToProfile,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.grey[300],
-              backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                  ? CachedNetworkImageProvider(avatarUrl)
-                  : null,
-              child: (avatarUrl == null || avatarUrl.isEmpty)
-                  ? Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Colors.grey[600],
-                    )
-                  : null,
-            ),
-            if (hasName) ...[
-              const SizedBox(width: 8),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (firstName.isNotEmpty)
-                    Text(
-                      firstName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  if (lastName.isNotEmpty)
-                    Text(
-                      lastName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
+      child: Center(child: avatar),
     );
   }
 }

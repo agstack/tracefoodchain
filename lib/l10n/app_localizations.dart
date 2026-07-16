@@ -4509,8 +4509,14 @@ abstract class AppLocalizations {
   /// No description provided for @cityName.
   ///
   /// In en, this message translates to:
-  /// **'City/Town'**
+  /// **'Village/Community'**
   String get cityName;
+
+  /// No description provided for @municipalityName.
+  ///
+  /// In en, this message translates to:
+  /// **'Municipality'**
+  String get municipalityName;
 
   /// No description provided for @stateName.
   ///

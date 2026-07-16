@@ -81,13 +81,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     });
 
     try {
+      final currentRole = await _roleService.getCurrentUserRoleFromCloud();
       final users = await _roleService.getManagedUsers(
           l10n: AppLocalizations.of(context)!);
       // Da formatUserForDisplay jetzt async ist, müssen wir alle User einzeln formatieren
       final List<Map<String, dynamic>> formattedUsers = [];
       for (final user in users) {
         final formattedUser = await _roleService.formatUserForDisplay(user,
-            l10n: AppLocalizations.of(context)!);
+            l10n: AppLocalizations.of(context)!, currentUserRole: currentRole);
         formattedUsers.add(formattedUser);
       }
 
