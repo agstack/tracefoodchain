@@ -26,6 +26,7 @@ import '../services/get_device_id.dart';
 import '../widgets/safe_asset_widgets.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
+import 'package:trace_foodchain_app/services/sync_settings_service.dart';
 
 bool canResendEmail = true;
 
@@ -299,7 +300,9 @@ class _SplashScreenState extends State<SplashScreen>
     await cloudLogService.info('SplashScreen: Starting full app initialization',
         data: {'connected': appState.isConnected});
 
-    if (appState.isConnected) {
+    // WP A2: bei pausiertem Upload gar keinen Sync-Banner zeigen - es geht
+    // nichts über die Leitung, die Erfassung läuft rein lokal weiter.
+    if (appState.isConnected && !syncSettings.isUploadPaused) {
       // Starte Synchronisierung - zeige persistentes Banner
       isSyncing.value = true;
 

@@ -5,9 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/services/background_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
+import 'package:trace_foodchain_app/services/sync_settings_service.dart';
 
 class AppState extends ChangeNotifier {
   String? _userRole;
@@ -119,6 +121,55 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  //! ---------------------------------------------- WP A2: upload pause switch
+
+  /// True while the user has suspended all cloud traffic. Local capture keeps
+  /// working and items stay flagged `needsSync`.
+  bool get uploadPaused => syncSettings.isUploadPaused;
+
+  ValueListenable<bool> get uploadPausedListenable => syncSettings.uploadPaused;
+  ValueListenable<int> get pendingItemCountListenable =>
+      syncSettings.pendingItemCount;
+  ValueListenable<DateTime?> get lastSuccessfulSyncListenable =>
+      syncSettings.lastSuccessfulSync;
+
+  /// Pauses or resumes cloud traffic. Resuming immediately kicks off a sync so
+  /// the user does not have to wait for the next timer tick.
+  Future<void> setUploadPaused(bool paused) async {
+    await syncSettings.setUploadPaused(paused);
+    notifyListeners();
+    if (!paused && _isConnected && _isAuthenticated) {
+      await syncNow();
+    } else {
+      refreshPendingItemCount();
+    }
+  }
+
+  /// "Sync now" - the manual trigger behind the settings button.
+  Future<void> syncNow() async {
+    if (!_isConnected || !_isAuthenticated) return;
+    if (syncSettings.isUploadPaused) return;
+    isSyncing.value = true;
+    try {
+      await runFullSync(
+        syncFromCloud: !isWebLandscape,
+        onStatus: (cloudKey) =>
+            syncStatusNotifier.value = "Synchronisierung mit $cloudKey",
+      );
+      repaintContainerList.value = true;
+      if (FirebaseAuth.instance.currentUser != null) {
+        final databaseHelper = DatabaseHelper();
+        inbox = await databaseHelper
+            .getInboxItems(FirebaseAuth.instance.currentUser!.uid);
+        inboxCount.value = inbox.length;
+      }
+    } finally {
+      refreshPendingItemCount();
+      isSyncing.value = false;
+      syncStatusNotifier.value = null;
+    }
+  }
+
   void startConnectivityListener() {
     Connectivity().onConnectivityChanged.listen((dynamic result) {
       if (result is List<ConnectivityResult>) {
@@ -143,19 +194,21 @@ class AppState extends ChangeNotifier {
       setConnected(hasConnection);
       if ((oldConnectionState == false) && (hasConnection == true)) {
         //If state changes from offline to online, sync data to cloud!
+        //WP A2: unless the user has deliberately paused uploads.
+        if (syncSettings.isUploadPaused) {
+          debugPrint(
+              'Connectivity restored, but uploads are paused - staying local');
+          return;
+        }
         isSyncing.value = true;
 
         final databaseHelper = DatabaseHelper();
         // Upload pending photos first to avoid internal loops
-        await cloudSyncService.uploadPendingPhotos();
-
-        for (final cloudKey in cloudConnectors.keys) {
-          if (cloudKey != "open-ral.io") {
-            syncStatusNotifier.value = "Synchronisierung mit $cloudKey";
-            await cloudSyncService.syncMethods(cloudKey,
-                syncFromCloud: !isWebLandscape);
-          }
-        }
+        await runFullSync(
+          syncFromCloud: !isWebLandscape,
+          onStatus: (cloudKey) =>
+              syncStatusNotifier.value = "Synchronisierung mit $cloudKey",
+        );
         //Repaint Container list
         repaintContainerList.value = true;
         //Repaint Inbox count

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
@@ -9,6 +10,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:trace_foodchain_app/l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/services/excel_farmer_import_objects.dart';
+import 'package:trace_foodchain_app/services/excel_farmer_import_service.dart';
+import 'package:trace_foodchain_app/services/ihcafe_matching_service.dart';
+import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
+import 'package:trace_foodchain_app/widgets/ihcafe_producer_widgets.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
@@ -59,6 +65,22 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
   String? _selectedFileName;
   String? _csvContent;
 
+  // ── Temporärer Excel-Import (Bauern ohne Asset-Registry-Plot) ─────────────
+  // Rohbytes der gewählten .xlsx-Datei; null solange eine CSV geladen ist.
+  Uint8List? _excelBytes;
+
+  // Ergebnis des letzten Parse-Laufs (noch ohne DB-Persistierung).
+  final List<ImportedPlotRow> _importedPlots = [];
+
+  // Ecken des erzeugten Pseudo-Polygons (4 = Quadrat, 16 = kreisähnlich).
+  // Die Fläche bleibt unabhängig von der Eckenzahl exakt erhalten.
+  int _pseudoPolygonVertices = 16;
+
+  // Bestätigte IHCafe-Treffer (Name + Municipio), Personenname → Produzent.
+  // Nur diese werden beim Objektbau übernommen; unbestätigte und mehrdeutige
+  // Treffer bleiben bewusst außen vor.
+  final Map<String, IhcafeProducer> _ihcafeConfirmed = {};
+
   // Feldnamen aus der CSV in Reihenfolge (Index=0 → result[0])
   final List<String> _parsedFieldNames = [];
 
@@ -88,9 +110,12 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
     _parsedFieldCoords.clear();
     _collectedGeoIds.clear();
     _persistableResults.clear();
+    _importedPlots.clear();
+    _ihcafeConfirmed.clear();
     setState(() {
       _selectedFileName = null;
       _csvContent = null;
+      _excelBytes = null;
       _isPersisting = false;
       _persistenceComplete = false;
     });
@@ -136,7 +161,7 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
         withReadStream: true,
         allowMultiple: false,
         type: FileType.custom,
-        allowedExtensions: ['csv', 'txt'],
+        allowedExtensions: ['csv', 'txt', 'xlsx'],
       );
 
       if (result == null) {
@@ -147,26 +172,40 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
       final file = result.files.first;
       _log(_l10n.fuLogFileSelected(file.name, _formatBytes(file.size)));
 
-      // Bytes lesen
-      String csvContent = '';
+      // Rohbytes lesen (Web: Stream, Native: Datei)
+      final List<int> bytes = [];
       if (kIsWeb) {
         _log(_l10n.fuLogWebPlatform);
-        final List<int> bytes = [];
         await file.readStream
             ?.listen((chunk) => bytes.addAll(chunk))
             .asFuture();
         _log(_l10n.fuLogBytesReceived(_formatBytes(bytes.length)));
-        csvContent = _decodeBytes(bytes);
       } else {
         _log(_l10n.fuLogNativePlatform);
-        final bytes = await File(file.path!).readAsBytes();
+        bytes.addAll(await File(file.path!).readAsBytes());
         _log(_l10n.fuLogBytesRead(_formatBytes(bytes.length)));
-        csvContent = _decodeBytes(bytes);
       }
 
+      final isExcel = file.name.toLowerCase().endsWith('.xlsx');
+      if (isExcel) {
+        setState(() {
+          _selectedFileName = file.name;
+          _csvContent = null;
+          _excelBytes = Uint8List.fromList(bytes);
+        });
+        _log('Excel file loaded (${_formatBytes(bytes.length)})',
+            level: _LogLevel.success);
+        _log('');
+        _log('Ready - click "Analyze Excel" to parse rows and build '
+            'pseudo polygons.');
+        return;
+      }
+
+      final csvContent = _decodeBytes(bytes);
       setState(() {
         _selectedFileName = file.name;
         _csvContent = csvContent;
+        _excelBytes = null;
       });
 
       final lineCount = csvContent.split('\n').length;
@@ -180,6 +219,448 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
     } catch (e, st) {
       _log(_l10n.fuLogFileLoadError(e.toString()), level: _LogLevel.error);
       _log('   ${st.toString().split('\n').first}', level: _LogLevel.error);
+    }
+  }
+
+  // ── Excel → Plots + Pseudo-Polygone (TEMPORÄRER IMPORTER) ────────────────
+  //
+  // Liest die Bauern-/Plot-Liste, erzeugt aus Centroid + Ertragsfläche je Zeile
+  // ein flächengleiches Pseudo-Polygon und zeigt alles im Terminal an.
+  // Es werden bewusst noch KEINE openRAL-Objekte angelegt oder persistiert.
+
+  Future<void> _analyzeExcel() async {
+    final bytes = _excelBytes;
+    if (bytes == null) {
+      _log('No Excel file loaded.', level: _LogLevel.warning);
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    // Treffer eines früheren Laufs verwerfen - sie gehören zur alten Datei.
+    _ihcafeConfirmed.clear();
+    _logDivider();
+    _log('EXCEL IMPORT (preview only - nothing is written to the database)');
+    _logDivider();
+
+    try {
+      _log('');
+      _logSection('Step 1: parse workbook');
+      final result = parseFarmerExcel(bytes, vertices: _pseudoPolygonVertices);
+
+      _log('Sheet      : ${result.sheetName}');
+      _log('Columns    : ${result.headers.where((h) => h.isNotEmpty).join(', ')}');
+
+      if (result.missingColumns.isNotEmpty) {
+        for (final w in result.warnings) {
+          _log(w, level: _LogLevel.error);
+        }
+        return;
+      }
+
+      _log('Valid rows : ${result.plots.length}',
+          level: _LogLevel.success);
+      _log('Skipped    : ${result.warnings.length}',
+          level: result.warnings.isEmpty ? _LogLevel.info : _LogLevel.warning);
+      for (final w in result.warnings) {
+        _log('   $w', level: _LogLevel.warning);
+      }
+
+      if (result.plots.isEmpty) {
+        _log('Nothing to import.', level: _LogLevel.error);
+        return;
+      }
+
+      // ── Schritt 2: Überblick über die Stammdaten ──────────────────────
+      _log('');
+      _logSection('Step 2: master data overview');
+
+      final persons = <String, List<ImportedPlotRow>>{};
+      for (final p in result.plots) {
+        persons.putIfAbsent(p.personName, () => []).add(p);
+      }
+      final intermediaries = <String, int>{};
+      final municipalities = <String, int>{};
+      final buyers = <String, int>{};
+      double totalArea = 0;
+      int withGeoId = 0;
+      for (final p in result.plots) {
+        intermediaries[p.intermediary] =
+            (intermediaries[p.intermediary] ?? 0) + 1;
+        municipalities[p.municipality] =
+            (municipalities[p.municipality] ?? 0) + 1;
+        buyers[p.buyer] = (buyers[p.buyer] ?? 0) + 1;
+        totalArea += p.areaHectares;
+        if (p.geoId.isNotEmpty) withGeoId++;
+      }
+
+      _log('Plots            : ${result.plots.length}');
+      _log('Distinct persons : ${persons.length}');
+      final multiPlot = persons.entries.where((e) => e.value.length > 1);
+      _log('  thereof with >1 plot: ${multiPlot.length}',
+          level: multiPlot.isEmpty ? _LogLevel.info : _LogLevel.warning);
+      for (final e in multiPlot) {
+        _log('    "${e.key}" → ${e.value.map((p) => p.fieldName).join(', ')}',
+            level: _LogLevel.warning);
+      }
+      _log('Intermediaries   : ${intermediaries.length} '
+          '(${intermediaries.entries.map((e) => '${e.key}=${e.value}').join(', ')})');
+      _log('Buyers           : ${buyers.length} '
+          '(${buyers.entries.map((e) => '${e.key}=${e.value}').join(', ')})');
+      _log('Municipalities   : ${municipalities.length} (after normalization)');
+      _log('Total area       : ${totalArea.toStringAsFixed(2)} ha');
+      _log('GeoIDs in file   : $withGeoId / ${result.plots.length}');
+      _log('  → stored as alternateID (issuedBy "Asset Registry"), '
+          'NOT used for lookups - the IDs are dead until Asset Registry 2.0.',
+          level: _LogLevel.warning);
+
+      // ── Zusammengeführte Ortsnamen ────────────────────────────────────
+      _log('');
+      _logSection('Step 2b: place name normalization');
+      if (result.normalizations.isEmpty) {
+        _log('No spelling variants found.');
+      } else {
+        _log('${result.normalizations.length} name(s) merged '
+            '(most frequent spelling wins):');
+        for (final n in result.normalizations) {
+          final from = n.variants.entries
+              .map((e) => '"${e.key}" (${e.value}x)')
+              .join(', ');
+          _log('   [${n.column}] $from → "${n.canonical}"');
+        }
+      }
+
+      // ── Schritt 3: Pseudo-Polygone ────────────────────────────────────
+      _log('');
+      _logSection('Step 3: pseudo polygons from centroid + area');
+      _log('Shape: regular $_pseudoPolygonVertices-gon, area-preserving, '
+          'centered on the given lat/lon.');
+      _log('NOTE: these are NOT surveyed boundaries.', level: _LogLevel.warning);
+      _log('');
+
+      final preview = result.plots.take(3);
+      for (final p in preview) {
+        _log('┌─ [row ${p.excelRow}] ${p.fieldName} — ${p.personName}');
+        _log('│  community : ${p.community} / ${p.municipality}');
+        _log('│  buyer     : ${p.buyer}   intermediary: ${p.intermediary}');
+        _log('│  geoID     : ${p.geoId.isEmpty ? '(none)' : p.geoId}');
+        _log('│  centroid  : ${p.latitude}, ${p.longitude}');
+        _log('│  area      : ${p.areaHectares} ha  → radius approx. '
+            '${_approxRadiusMeters(p.areaHectares).toStringAsFixed(1)} m');
+        _log('│  ring      : ${p.polygon.length} points, '
+            'first ${p.polygon.first}, last ${p.polygon.last}');
+        _log('└${'─' * 52}');
+      }
+      if (result.plots.length > preview.length) {
+        _log('... ${result.plots.length - preview.length} more rows '
+            '(not printed)');
+      }
+
+      // ── Schritt 4: Ergebnis für den Upload bereitstellen ──────────────
+      _log('');
+      _logSection('Step 4: GeoJSON FeatureCollection');
+      _importedPlots
+        ..clear()
+        ..addAll(result.plots);
+      _parsedFieldNames
+        ..clear()
+        ..addAll(result.plots.map((p) => p.fieldName));
+      _parsedFieldCoords
+        ..clear()
+        ..addAll(result.plots.map((p) => p.polygon));
+
+      final featureCollection = {
+        'type': 'FeatureCollection',
+        'features': result.plots.map((p) => p.toGeoJsonFeature()).toList(),
+      };
+      final geoJsonBytes = utf8.encode(jsonEncode(featureCollection));
+      _log('Features : ${result.plots.length}', level: _LogLevel.success);
+      _log('Size     : ${_formatBytes(geoJsonBytes.length)}');
+      _log('');
+      _log('First feature:');
+      final firstPretty = const JsonEncoder.withIndent('  ')
+          .convert(result.plots.first.toGeoJsonFeature());
+      for (final line in firstPretty.split('\n')) {
+        _log('  $line');
+      }
+
+      _log('');
+      _logDivider();
+      _log('Preview complete. No openRAL objects created, nothing persisted.',
+          level: _LogLevel.success);
+      _logDivider();
+    } catch (e, st) {
+      _log('');
+      _logDivider();
+      _log('EXCEL IMPORT FAILED: $e', level: _LogLevel.error);
+      _log('   ${st.toString().split('\n').first}', level: _LogLevel.error);
+      _logDivider();
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  /// Radius des flächengleichen Kreises - nur für die Log-Ausgabe.
+  double _approxRadiusMeters(double hectares) =>
+      math.sqrt(hectares * 10000.0 / math.pi);
+
+  // ── Excel → openRAL-Objektgraph (DRY RUN) ────────────────────────────────
+  //
+  // Baut farmer/farm/field/company im Speicher auf und zeigt sie an.
+  // Es wird nichts persistiert und keine Methode ausgeführt.
+
+  Future<void> _buildObjectsDryRun() async {
+    if (_importedPlots.isEmpty) {
+      _log('Run "Analyze Excel" first.', level: _LogLevel.warning);
+      return;
+    }
+    if (appUserDoc == null) {
+      _log('No app user loaded - cannot determine the registrar.',
+          level: _LogLevel.error);
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    _logDivider();
+    _log('BUILD openRAL OBJECTS (dry run - nothing is persisted)');
+    _logDivider();
+
+    try {
+      final registrarUID = getObjectMethodUID(appUserDoc!);
+      _log('Registrar (currentOwner of farmer/farm/company): $registrarUID');
+      _log('');
+
+      if (_ihcafeConfirmed.isEmpty) {
+        _log('No confirmed IHCafé matches applied - run "Match against '
+            'IHCafé" first if you want the identidad and the IHCafé IDs on '
+            'the objects.', level: _LogLevel.warning);
+      } else {
+        _log('Applying ${_ihcafeConfirmed.length} confirmed IHCafé match(es).',
+            level: _LogLevel.success);
+      }
+      _log('');
+
+      final graph = await buildImportObjects(
+        plots: _importedPlots,
+        registrarUID: registrarUID,
+        ihcafeByPerson: _ihcafeConfirmed,
+      );
+
+      _logSection('Result');
+      _log('company objects : ${graph.companies.length}',
+          level: _LogLevel.success);
+      _log('human  (farmer) : ${graph.farmers.length}',
+          level: _LogLevel.success);
+      _log('farm   objects  : ${graph.farmers.length}',
+          level: _LogLevel.success);
+      _log('field  objects  : ${graph.fieldCount}', level: _LogLevel.success);
+      _log('');
+      _log('Structure: farm = farmer (one farm per person), fields hang off '
+          'the farm, currentOwner of each field is its farm.');
+      _log('The intermediary is linked to the farm as linkedObjectRef with '
+          'role "preferredIntermediary" - NOT as a buyer.');
+
+      _log('');
+      _logSection('Assumptions - please review');
+      for (final n in graph.notes) {
+        _log('• $n', level: _LogLevel.warning);
+      }
+
+      // ── Beispiel-Bündel vollständig ausgeben ──────────────────────────
+      _log('');
+      _logSection('Sample objects');
+      final encoder = const JsonEncoder.withIndent('  ');
+
+      void dump(String label, Map<String, dynamic> obj) {
+        _log('');
+        _log('── $label ──');
+        for (final line in encoder.convert(obj).split('\n')) {
+          _log('  $line');
+        }
+      }
+
+      if (graph.companies.isNotEmpty) {
+        dump('company (intermediary)', graph.companies.first);
+      }
+
+      // Bevorzugt ein Bündel mit mehreren Feldern zeigen, das ist der
+      // interessantere Fall.
+      final sample = graph.farmers.firstWhere(
+        (b) => b.fields.length > 1,
+        orElse: () => graph.farmers.first,
+      );
+      _log('');
+      _log('Sample farmer "${sample.personName}" with '
+          '${sample.fields.length} field(s)');
+      dump('human (farmer)', sample.farmer);
+      dump('farm', sample.farm);
+      dump('field [1/${sample.fields.length}]', sample.fields.first);
+      if (sample.fields.length > 1) {
+        _log('');
+        _log('   (${sample.fields.length - 1} further field(s) of this farm '
+            'not printed)');
+      }
+
+      _log('');
+      _logDivider();
+      _log('Dry run complete. Nothing written to the database.',
+          level: _LogLevel.success);
+      _logDivider();
+    } catch (e, st) {
+      _log('');
+      _logDivider();
+      _log('OBJECT BUILD FAILED: $e', level: _LogLevel.error);
+      _log('   ${st.toString().split('\n').first}', level: _LogLevel.error);
+      _logDivider();
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  // ── Abgleich gegen das IHCafe-Verzeichnis ────────────────────────────────
+
+  Future<void> _matchAgainstIhcafe() async {
+    if (_importedPlots.isEmpty) {
+      _log('Run "Analyze Excel" first.', level: _LogLevel.warning);
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    _logDivider();
+    _log('IHCAFÉ MATCHING');
+    _logDivider();
+
+    try {
+      final catalog = await IhcafeProducerService.instance.load();
+      if (catalog == null) {
+        _log('No IHCafé directory on this device. Import the export file '
+            'first (card on the left).', level: _LogLevel.error);
+        return;
+      }
+
+      _log('Catalog: ${catalog.meta.recordCount} producers'
+          '${catalog.meta.scopeDepartamento.isNotEmpty ? ', departamento ${catalog.meta.scopeDepartamento}' : ''}');
+      _log('Project: ${catalog.meta.proyectoUid}');
+      _log('');
+
+      final persons = personsFromPlots(_importedPlots);
+      _log('Distinct persons in import: ${persons.length}');
+
+      final report = matchPersonsAgainstCatalog(
+        catalog: catalog,
+        persons: persons,
+      );
+
+      // Nur bestätigte Treffer werden für den Objektbau gemerkt. Ein reiner
+      // Namenstreffer ohne geografische Bestätigung wäre bei 26.904
+      // verschiedenen Namen zu unsicher, um daraus eine Ausweisnummer zu
+      // übernehmen.
+      _ihcafeConfirmed.clear();
+      for (final m in report.matches) {
+        if (m.quality == IhcafeMatchQuality.confirmed && m.best != null) {
+          _ihcafeConfirmed[m.personName] = m.best!;
+        }
+      }
+
+      // Scope-Warnung zuerst - sie erklärt ein leeres Ergebnis.
+      if (report.scopeMismatch) {
+        _log('');
+        _log('SCOPE MISMATCH: none of the municipalities in the import data '
+            'occur in this catalog.', level: _LogLevel.error);
+        _log('Import municipalities : '
+            '${report.municipalitiesOutsideCatalog.join(', ')}');
+        _log('Catalog municipios    : ${catalog.municipios.join(', ')}');
+        _log('You most likely loaded the export for a different departamento.',
+            level: _LogLevel.error);
+      } else if (report.municipalitiesOutsideCatalog.isNotEmpty) {
+        _log('');
+        _log('Municipalities not covered by the catalog: '
+            '${report.municipalitiesOutsideCatalog.join(', ')}',
+            level: _LogLevel.warning);
+      }
+
+      _log('');
+      _logSection('Result');
+      _log('confirmed (name + municipio) : '
+          '${report.countOf(IhcafeMatchQuality.confirmed)}',
+          level: _LogLevel.success);
+      _log('name only (unconfirmed)      : '
+          '${report.countOf(IhcafeMatchQuality.nameOnly)}',
+          level: _LogLevel.warning);
+      _log('ambiguous                    : '
+          '${report.countOf(IhcafeMatchQuality.ambiguous)}',
+          level: _LogLevel.warning);
+      _log('no match                     : '
+          '${report.countOf(IhcafeMatchQuality.none)}');
+
+      // Details nur für die verwertbaren und die kritischen Fälle.
+      final interesting = report.matches
+          .where((m) => m.quality != IhcafeMatchQuality.none)
+          .toList();
+      if (interesting.isNotEmpty) {
+        _log('');
+        _logSection('Matches in detail');
+        for (final m in interesting) {
+          final level = m.quality == IhcafeMatchQuality.confirmed
+              ? _LogLevel.success
+              : _LogLevel.warning;
+          _log('┌─ ${m.personName}  [${m.quality.name}]', level: level);
+          _log('│  import municipio : ${m.municipality}');
+          _log('│  reason           : ${m.reason}');
+          if (m.best != null) {
+            _log('│  → identidad      : ${m.best!.identidad}');
+            _log('│  → clave          : ${m.best!.clave}');
+            _log('│  → location       : ${m.best!.locationLabel}');
+            _log('│  → vigente        : ${m.best!.esVigente}');
+          } else {
+            for (final c in m.candidates.take(5)) {
+              _log('│  candidate        : ${c.identidad} · '
+                  '${c.locationLabel} · clave ${c.clave}');
+            }
+            if (m.candidates.length > 5) {
+              _log('│  ... ${m.candidates.length - 5} more candidates');
+            }
+          }
+          _log('└${'─' * 52}');
+        }
+      }
+
+      _log('');
+      _logDivider();
+      _log('Matching complete. ${_ihcafeConfirmed.length} confirmed match(es) '
+          'will be applied on the next "Build objects (dry run)": identidad as '
+          'National ID, clave and productor_id on the farmer, finca_id on the '
+          'farm - all issuedBy "IHCafe". Nothing is persisted.',
+          level: _LogLevel.success);
+      _logDivider();
+    } catch (e, st) {
+      _log('MATCHING FAILED: $e', level: _LogLevel.error);
+      _log('   ${st.toString().split('\n').first}', level: _LogLevel.error);
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  /// Exportiert die erzeugten Pseudo-Polygone als GeoJSON zur Sichtprüfung
+  /// (z.B. in QGIS oder geojson.io).
+  Future<void> _saveImportedGeoJson() async {
+    if (_importedPlots.isEmpty) return;
+
+    final featureCollection = {
+      'type': 'FeatureCollection',
+      'features': _importedPlots.map((p) => p.toGeoJsonFeature()).toList(),
+    };
+    final bytes = utf8
+        .encode(const JsonEncoder.withIndent('  ').convert(featureCollection));
+
+    final ts = DateTime.now();
+    final filename =
+        'pseudo_plots_${ts.year}${ts.month.toString().padLeft(2, '0')}${ts.day.toString().padLeft(2, '0')}_${ts.hour.toString().padLeft(2, '0')}${ts.minute.toString().padLeft(2, '0')}.geojson';
+
+    try {
+      await downloadFile(bytes, filename);
+      _log('GeoJSON saved: $filename', level: _LogLevel.success);
+    } catch (e) {
+      _log(_l10n.fuLogSaveError(e.toString()), level: _LogLevel.error);
     }
   }
 
@@ -1147,12 +1628,14 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
               width: 260,
               child: Card(
                 elevation: 2,
-                child: Padding(
+                // Scrollbar, weil die Aktionsliste je nach Dateityp wächst und
+                // in einem niedrigen Fenster sonst überläuft.
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ── CSV-Datei ──────────────────────────────────────────
+                      // ── Quelldatei ─────────────────────────────────────────
                       _SectionLabel(l10n.fastUploadCsvSection),
                       const SizedBox(height: 10),
                       ElevatedButton.icon(
@@ -1174,6 +1657,99 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
                       // ── Aktionen ───────────────────────────────────────────
                       _SectionLabel(l10n.fastUploadActionSection),
                       const SizedBox(height: 10),
+
+                      // ── Temporärer Excel-Import ────────────────────────
+                      if (_excelBytes != null) ...[
+                        ElevatedButton.icon(
+                          onPressed: _isProcessing ? null : _analyzeExcel,
+                          icon: _isProcessing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.table_chart),
+                          label: const Text('Analyze Excel'),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.purple[700],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Text('Polygon:',
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.black54)),
+                            const SizedBox(width: 8),
+                            DropdownButton<int>(
+                              value: _pseudoPolygonVertices,
+                              isDense: true,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.black87),
+                              items: const [
+                                DropdownMenuItem(
+                                    value: 4, child: Text('square (4)')),
+                                DropdownMenuItem(
+                                    value: 8, child: Text('octagon (8)')),
+                                DropdownMenuItem(
+                                    value: 16, child: Text('circle (16)')),
+                                DropdownMenuItem(
+                                    value: 32, child: Text('circle (32)')),
+                              ],
+                              onChanged: _isProcessing
+                                  ? null
+                                  : (v) => setState(() =>
+                                      _pseudoPolygonVertices = v ?? 16),
+                            ),
+                          ],
+                        ),
+                        if (_importedPlots.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          OutlinedButton.icon(
+                            onPressed:
+                                _isProcessing ? null : _saveImportedGeoJson,
+                            icon: const Icon(Icons.download, size: 18),
+                            label: Text(
+                                'Save GeoJSON (${_importedPlots.length})'),
+                          ),
+                          const SizedBox(height: 6),
+                          OutlinedButton.icon(
+                            onPressed:
+                                _isProcessing ? null : _buildObjectsDryRun,
+                            icon: const Icon(Icons.account_tree,
+                                size: 18, color: Colors.orange),
+                            label: const Text(
+                              'Build objects (dry run)',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.orange),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          OutlinedButton.icon(
+                            onPressed:
+                                _isProcessing ? null : _matchAgainstIhcafe,
+                            icon: const Icon(Icons.compare_arrows,
+                                size: 18, color: Colors.indigo),
+                            label: const Text(
+                              'Match against IHCafé',
+                              style: TextStyle(color: Colors.indigo),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.indigo),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                      ],
+
                       ElevatedButton.icon(
                         onPressed: (_isProcessing || _csvContent == null)
                             ? null
@@ -1271,7 +1847,18 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
                         ),
                       ],
 
-                      const Spacer(),
+                      // ── IHCafe-Verzeichnis ─────────────────────────────────
+                      // Hier angeboten, weil der Fast Upload den Abgleich
+                      // braucht. Im Farmer-/Buyer-Workflow bewusst nicht, damit
+                      // dort kein Speicher belegt wird.
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      const IhcafeCatalogCard(dense: true),
+
+                      // Kein Spacer: innerhalb des Scrollviews gibt es keine
+                      // begrenzte Höhe, an der er sich ausrichten könnte.
+                      const SizedBox(height: 24),
                       const Divider(),
 
                       // ── Format-Hinweis ─────────────────────────────────────

@@ -2463,13 +2463,13 @@ abstract class AppLocalizations {
   /// No description provided for @fastUploadCsvSection.
   ///
   /// In en, this message translates to:
-  /// **'CSV File'**
+  /// **'CSV / Excel File'**
   String get fastUploadCsvSection;
 
   /// No description provided for @fastUploadPickCsv.
   ///
   /// In en, this message translates to:
-  /// **'Select CSV File'**
+  /// **'Select CSV / Excel File'**
   String get fastUploadPickCsv;
 
   /// No description provided for @fastUploadActionSection.
@@ -2499,7 +2499,7 @@ abstract class AppLocalizations {
   /// No description provided for @fastUploadFormatHint.
   ///
   /// In en, this message translates to:
-  /// **'CSV Format'**
+  /// **'Supported Formats'**
   String get fastUploadFormatHint;
 
   /// No description provided for @fastUploadSaveGeoIds.
@@ -2535,7 +2535,7 @@ abstract class AppLocalizations {
   /// No description provided for @fastUploadFormatHintBody.
   ///
   /// In en, this message translates to:
-  /// **'Columns: name, dni, polygon\n\nPolygon format:\n[-88.36,14.79];[-88.37,14.79];...\n\nEndpoint:\nPOST /register-field-\nboundaries-geojson'**
+  /// **'CSV columns:\nname, dni, polygon\n\nPolygon format:\n[-88.36,14.79];\n[-88.37,14.79];...\n\nXLSX columns:\nsite, lat, lon, GeoID,\nassignedPersonName,\nMunicipality, Community,\nIntermediary, Buyer,\nproductiveCoffeeArea\nLastHarvestInHectares\n\nXLSX builds a pseudo\npolygon from centroid\n+ area.'**
   String get fastUploadFormatHintBody;
 
   /// No description provided for @fuLogOpeningFilePicker.
@@ -5309,6 +5309,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generating PDF…'**
   String get ddsGeneratingPdf;
+
+  /// No description provided for @copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copy;
+
+  /// No description provided for @whispAnalysisError.
+  ///
+  /// In en, this message translates to:
+  /// **'Deforestation analysis failed: {error}'**
+  String whispAnalysisError(String error);
+
+  /// No description provided for @ihcafeDirectoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'IHCafé producer directory'**
+  String get ihcafeDirectoryTitle;
+
+  /// No description provided for @ihcafeNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available on this device yet. Get the IHCafé export file while you are online (about 33 MB) and import it here. Afterwards you can search and select producers completely offline.'**
+  String get ihcafeNotAvailable;
+
+  /// No description provided for @ihcafeProducersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Producers'**
+  String get ihcafeProducersLabel;
+
+  /// No description provided for @ihcafeDepartamentoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Departamento'**
+  String get ihcafeDepartamentoLabel;
+
+  /// No description provided for @ihcafeProjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get ihcafeProjectLabel;
+
+  /// No description provided for @ihcafeExportedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported'**
+  String get ihcafeExportedLabel;
+
+  /// No description provided for @ihcafeImportedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get ihcafeImportedLabel;
+
+  /// No description provided for @ihcafeStoredSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored size'**
+  String get ihcafeStoredSizeLabel;
+
+  /// No description provided for @ihcafeImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import file'**
+  String get ihcafeImportFile;
+
+  /// No description provided for @ihcafeReplaceFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace file'**
+  String get ihcafeReplaceFile;
+
+  /// No description provided for @ihcafeDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete IHCafé directory?'**
+  String get ihcafeDeleteTitle;
+
+  /// No description provided for @ihcafeDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The producer list will be removed from this device. You need to import it again to select producers offline.'**
+  String get ihcafeDeleteBody;
+
+  /// No description provided for @ihcafeMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'IHCafé directory missing'**
+  String get ihcafeMissingTitle;
+
+  /// No description provided for @ihcafeMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The producer list has not been imported on this device yet. Import it once while you are online, then it works offline.'**
+  String get ihcafeMissingBody;
+
+  /// No description provided for @ihcafeSelectProducerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select producer from IHCafé'**
+  String get ihcafeSelectProducerTitle;
+
+  /// No description provided for @ihcafeSelectProducerButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Select producer from IHCafé list'**
+  String get ihcafeSelectProducerButton;
+
+  /// No description provided for @ihcafeSearchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, identidad or clave'**
+  String get ihcafeSearchLabel;
+
+  /// No description provided for @ihcafeSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. JUAN PEREZ or 0719-1993'**
+  String get ihcafeSearchHint;
+
+  /// No description provided for @ihcafeOnlyVigente.
+  ///
+  /// In en, this message translates to:
+  /// **'Only vigente'**
+  String get ihcafeOnlyVigente;
+
+  /// No description provided for @ihcafeTypeToSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Type at least two characters to search.'**
+  String get ihcafeTypeToSearch;
+
+  /// No description provided for @ihcafeNoProducerFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No producer found.'**
+  String get ihcafeNoProducerFound;
+
+  /// No description provided for @ihcafeProducerCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} producers'**
+  String ihcafeProducerCount(int count);
+
+  /// No description provided for @ihcafeWhichFincaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which finca?'**
+  String get ihcafeWhichFincaTitle;
+
+  /// No description provided for @ihcafeWhichFincaBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has {count} fincas at IHCafé. Pick the one this farm corresponds to - its finca_id is stored on the farm.'**
+  String ihcafeWhichFincaBody(String name, int count);
+
+  /// No description provided for @ihcafeSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get ihcafeSkip;
+
+  /// No description provided for @ihcafeFincaLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'finca {id}'**
+  String ihcafeFincaLabel(String id);
+
+  /// No description provided for @ihcafeClaveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'clave {clave}'**
+  String ihcafeClaveLabel(String clave);
+
+  /// No description provided for @ihcafeNotVigente.
+  ///
+  /// In en, this message translates to:
+  /// **'no vigente'**
+  String get ihcafeNotVigente;
+
+  /// No description provided for @ihcafeRemoveLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove link to IHCafé record'**
+  String get ihcafeRemoveLink;
+
+  /// No description provided for @syncSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Synchronization'**
+  String get syncSectionTitle;
+
+  /// No description provided for @pauseUploads.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause uploads'**
+  String get pauseUploads;
+
+  /// No description provided for @uploadsPausedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploads paused - data is captured locally only'**
+  String get uploadsPausedHint;
+
+  /// No description provided for @uploadsActiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploads active'**
+  String get uploadsActiveHint;
+
+  /// No description provided for @syncNowButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get syncNowButton;
+
+  /// No description provided for @itemsWaitingForUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} item(s) waiting for upload'**
+  String itemsWaitingForUpload(int count);
+
+  /// No description provided for @allItemsSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything synchronized'**
+  String get allItemsSynced;
+
+  /// No description provided for @lastSuccessfulSyncLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last successful sync: {time}'**
+  String lastSuccessfulSyncLabel(String time);
+
+  /// No description provided for @lastSyncNever.
+  ///
+  /// In en, this message translates to:
+  /// **'never'**
+  String get lastSyncNever;
 }
 
 class _AppLocalizationsDelegate

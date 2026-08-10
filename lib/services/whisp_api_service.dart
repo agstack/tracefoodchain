@@ -8,6 +8,11 @@ class WhispApiService {
   static const String _wktProxyUrl =
       'https://europe-west3-tracefoodchain.cloudfunctions.net/checkWhispWkt';
 
+  /// Name of the feature property used to identify a plot across the API call.
+  /// WHISP echoes it back as "external_id" on each result feature when it is
+  /// passed as "externalIdColumn" in the analysis options.
+  static const String externalIdProperty = 'external_id';
+
   Future<Map<String, dynamic>> checkWhispGeoJson(
       List<Map<String, dynamic>> features) async {
     if (features.isEmpty) {
@@ -24,6 +29,7 @@ class WhispApiService {
             'analysisOptions': {
               'unitType': 'ha',
               'nationalCodes': ['hn', 'ke', 'de'],
+              'externalIdColumn': externalIdProperty,
             },
           }),
         )
@@ -33,6 +39,8 @@ class WhispApiService {
       debugPrint('WHISP GeoJSON proxy response: ${response.body}');
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
+      debugPrint(
+          'WHISP GeoJSON proxy error: ${response.statusCode} - ${response.body}');
       throw Exception('WHISP error ${response.statusCode}: ${response.body}');
     }
   }

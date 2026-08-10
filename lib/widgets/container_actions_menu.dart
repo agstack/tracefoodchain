@@ -8,6 +8,7 @@ import 'package:trace_foodchain_app/widgets/online_sale_dialog.dart';
 import 'package:trace_foodchain_app/widgets/shared_widgets.dart';
 import 'package:trace_foodchain_app/widgets/stepper_sell_coffee.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
+import 'package:trace_foodchain_app/services/whisp_api_service.dart';
 import 'package:trace_foodchain_app/widgets/items_list_widget.dart';
 import 'package:trace_foodchain_app/widgets/safe_popup_menu.dart';
 import '../l10n/app_localizations.dart';
@@ -281,8 +282,16 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
       final geoid = (field["identity"]["alternateIDs"][0]["UID"] as String)
           .replaceAll(RegExp(r'\s+'), '');
 
+      // Unique key per plotData entry - the same geoid can occur several times
+      // (one entry per coffee item), so the geoid alone is not a usable key.
+      final plotKey = "plot_${plotData.length}";
+
       // Build GeoJSON Feature from stored boundaries polygon
-      Map<String, dynamic> feature = {"type": "Feature", "geometry": null};
+      Map<String, dynamic> feature = {
+        "type": "Feature",
+        "geometry": null,
+        "properties": {WhispApiService.externalIdProperty: plotKey}
+      };
       try {
         final boundariesStr =
             getSpecificPropertyfromJSON(field, "boundaries")?.toString() ?? "";
@@ -293,14 +302,15 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
             "geometry": {
               "type": "Polygon",
               "coordinates": [parsed["coordinates"]]
-            }
+            },
+            "properties": {WhispApiService.externalIdProperty: plotKey}
           };
         }
       } catch (e) {
         debugPrint("Error parsing boundaries for plot $geoid: $e");
       }
 
-      plotData.add({"geoid": geoid, "feature": feature});
+      plotData.add({"geoid": geoid, "plotKey": plotKey, "feature": feature});
 
       final convertedAmount = convertToGreenBeanEquivalent(
           Map<String, dynamic>.from(firstSale["outputObjects"][0]),
@@ -341,9 +351,11 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
           final debugLabel = debugName != null && debugName.isNotEmpty
               ? "[DEBUG] $debugName ($debugGeoId)"
               : "[DEBUG] $debugGeoId";
+          final debugPlotKey = "plot_${plotData.length}";
           Map<String, dynamic> debugFeature = {
             "type": "Feature",
-            "geometry": null
+            "geometry": null,
+            "properties": {WhispApiService.externalIdProperty: debugPlotKey}
           };
           try {
             final boundariesStr =
@@ -357,13 +369,18 @@ class _ContainerActionsMenuState extends State<ContainerActionsMenu>
                 "geometry": {
                   "type": "Polygon",
                   "coordinates": [parsed["coordinates"]]
-                }
+                },
+                "properties": {WhispApiService.externalIdProperty: debugPlotKey}
               };
             }
           } catch (e) {
             debugPrint("DEBUG: Error parsing boundaries for debug field: $e");
           }
-          plotData.add({"geoid": debugLabel, "feature": debugFeature});
+          plotData.add({
+            "geoid": debugLabel,
+            "plotKey": debugPlotKey,
+            "feature": debugFeature
+          });
           debugPrint("DEBUG: Added test field $debugLabel to plotData");
         } else {
           debugPrint("DEBUG: Field $debugFieldUID not found");

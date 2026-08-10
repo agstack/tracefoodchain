@@ -206,8 +206,8 @@ Map<String, dynamic> initialObjectTemplateCompany = {
   "currentOwners": [],
   "definition": {
     "definitionText":
-        "Eine Firma bezieht sich allgemein auf eine Organisation oder ein Unternehmen, das geschäftliche Aktivitäten ausübt. Es ist eine rechtliche Entität, die gegründet wurde, um Geschäfte zu tätigen, Gewinne zu erzielen und Verantwortung für seine Handlungen zu übernehmen. Der Begriff Firma wird oft als Synonym für ein Unternehmen oder eine Geschäftseinheit verwendet.",
-    "definitionURL": "https://de.wikipedia.org/wiki/Company"
+        "A company generally refers to an organisation or business that carries out commercial activities. It is a legal entity founded to conduct business, generate profit and take responsibility for its actions. The term company is often used synonymously with enterprise or business unit.",
+    "definitionURL": "https://en.wikipedia.org/wiki/Company"
   },
   "objectState": "undefined",
   "template": {

@@ -65,6 +65,8 @@ dependencies:
   cached_network_image: ^3.3.1
   google_maps_flutter: ^2.5.0
   google_maps_flutter_web: ^0.5.4
+  # Used directly for the stable openRAL hashes and the media outbox fingerprints
+  crypto: ^3.0.0
 
 
   # flutter_test: any

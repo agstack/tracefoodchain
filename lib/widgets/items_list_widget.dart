@@ -1,5 +1,6 @@
 ﻿import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
@@ -241,37 +242,67 @@ class _ItemsListState extends State<ItemsList> {
             .map((p) => p['feature'] as Map<String, dynamic>)
             .toList();
         final result = await _apiService.checkWhispGeoJson(features);
+        final returnedFeatures =
+            (result["data"]?["features"] as List?) ?? const [];
 
-        // Create a set to track which plots received results
-        Set<String> processedPlots = {};
+        // Index the results by the external id we sent along with each feature.
+        // Relying on the response order alone would silently assign a risk
+        // value to the wrong plot if WHISP reorders or drops features.
+        final Map<String, dynamic> resultsByExternalId = {};
+        for (final plot in returnedFeatures) {
+          final externalId = (plot["properties"]
+                  ?[WhispApiService.externalIdProperty])
+              ?.toString();
+          if (externalId != null && externalId.isNotEmpty) {
+            resultsByExternalId[externalId] = plot;
+          }
+        }
 
-        int plotcount = 0;
-        for (final plot in result["data"]["features"]) {
-          final currentPlotId = validPlots[plotcount]['geoid'] as String;
-          processedPlots.add(currentPlotId);
+        // Fall back to positional matching if the backend did not echo any
+        // external id (e.g. proxy not forwarding "externalIdColumn" yet).
+        final bool canMatchById = resultsByExternalId.isNotEmpty;
+        if (!canMatchById) {
+          debugPrint("WHISP: no external_id in response, "
+              "falling back to positional matching");
+        }
+
+        for (int i = 0; i < validPlots.length; i++) {
+          final plotItem = validPlots[i];
+          final plotId = plotItem['geoid'] as String;
+          final plotKey = plotItem['plotKey']?.toString();
+
+          final plot = canMatchById
+              ? (plotKey == null ? null : resultsByExternalId[plotKey])
+              : (i < returnedFeatures.length ? returnedFeatures[i] : null);
+
+          if (plot == null) {
+            rList
+                .add({"geoid": plotId, "deforestation_risk": "plot not found"});
+            continue;
+          }
 
           rList.add({
-            "geoid": currentPlotId,
+            "geoid": plotId,
             "deforestation_risk": plot["properties"]
                 ["risk_pcrop"] //Was EUDR_risk before 31.05.2025
           });
-          plotcount++;
-        }
-
-        // Add entries for valid plots that didn't receive results from API
-        for (final plotItem in validPlots) {
-          final plotId = plotItem['geoid'] as String;
-          if (!processedPlots.contains(plotId)) {
-            rList
-                .add({"geoid": plotId, "deforestation_risk": "plot not found"});
-          }
         }
       }
     } catch (e) {
+      debugPrint("WHISP analysis failed: $e");
+      final message = l10n.whispAnalysisError(e.toString());
+      if (!mounted) return rList;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            backgroundColor: Colors.red,
-            content: Text(l10n.pdfGenerationError)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 20),
+          content: Text(message, maxLines: 10),
+          action: SnackBarAction(
+            label: l10n.copy,
+            textColor: Colors.white,
+            onPressed: () => Clipboard.setData(ClipboardData(text: message)),
+          ),
+        ),
       );
     } finally {
       rebuildDDS.value = true;

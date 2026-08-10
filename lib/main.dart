@@ -25,10 +25,12 @@ import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/splash_screen.dart';
 import 'package:trace_foodchain_app/screens/registrar_screen.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
+import 'package:trace_foodchain_app/services/background_sync_service.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/cloud_log_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
+import 'package:trace_foodchain_app/services/sync_settings_service.dart';
 import 'package:trace_foodchain_app/services/google_maps_initializer.dart';
 
 import 'package:trace_foodchain_app/widgets/tracked_value_notifier.dart';
@@ -378,6 +380,14 @@ void main() async {
   // cloudConnectors =
   //     await getCloudConnectors(); //get available cloudConnectors to talk to clouds if available from localStorage
 
+  //*Load the persistent sync preferences (WP A2) before anything can sync
+  await syncSettings.load();
+
+  //*WP A3: register the periodic, connectivity-gated background sync.
+  // workmanager was already a dependency but was never registered, so a device
+  // that came back online while backgrounded never caught up on its own.
+  await BackgroundSyncService.register();
+
   final appState = AppState();
   await appState.initializeApp(); // Initialize locale
 
@@ -410,6 +420,8 @@ Future<void> initializeUserLocalStorage(String userId) async {
   if (Hive.isBoxOpen(boxName)) {
     // Box ist bereits geöffnet, hole Referenz ohne erneutes Öffnen
     localStorage = Hive.box<Map<dynamic, dynamic>>(boxName);
+    // Die Sync-Outboxen teilen den Lebenszyklus von localStorage (WP A1/A3/A4)
+    await openUserSyncBoxes(userId);
     debugPrint('localStorage for $userId already open, reusing existing box');
     return;
   }
@@ -424,12 +436,25 @@ Future<void> initializeUserLocalStorage(String userId) async {
   localStorage = await Hive.openBox<Map<dynamic, dynamic>>(boxName);
   // await localStorage!.deleteFromDisk(); //DEBUG: DELETE DATABASE
 
+  // Media-Outbox (WP A1) sowie Retry-/Staging-Boxen (WP A3/A4) öffnen
+  await openUserSyncBoxes(userId);
+
+  // WP A4: einen abgebrochenen Pull entweder komplett übernehmen oder verwerfen -
+  // niemals einen halb aktualisierten Zustand stehen lassen.
+  await cloudSyncService.recoverInterruptedPull();
+  refreshPendingItemCount();
+
   // Lade cloudConnectors für diesen User
   cloudConnectors = await getCloudConnectors();
 }
 
 // Funktion zum Schließen des User LocalStorage (bei Logout)
 Future<void> closeUserLocalStorage() async {
+  // Sync-Outboxen zusammen mit localStorage schließen, damit keine Medien oder
+  // Retry-Zustände eines Users in die Session des nächsten überlaufen.
+  await closeUserSyncBoxes();
+  syncSettings.pendingItemCount.value = 0;
+
   if (localStorage != null && localStorage!.isOpen) {
     await localStorage!.close();
     localStorage = null;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +12,8 @@ import '../widgets/gps_position_widget.dart';
 import '../widgets/stepper_registrar_registration.dart';
 import '../widgets/field_boundary_recorder.dart';
 import '../widgets/language_selector.dart';
+import '../widgets/sync_control_card.dart';
+import '../services/background_sync_service.dart';
 import '../screens/registrar_qc_screen.dart';
 import '../screens/sign_up_screen.dart';
 import '../screens/view_history_screen.dart';
@@ -18,6 +21,7 @@ import '../providers/app_state.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
+import '../widgets/ihcafe_producer_widgets.dart';
 
 class RegistrarScreen extends StatefulWidget {
   const RegistrarScreen({super.key});
@@ -36,12 +40,37 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
   int _statVerified = 0;
   int _statPending = 0;
 
+  /// WP A3: the registrar dashboard is a route of its own - without this timer
+  /// a failed push would only be retried when the user happens to trigger a
+  /// save, so backoff retries would never fire on their own here.
+  Timer? _syncTimer;
+
   @override
   void initState() {
     super.initState();
     _loadUserName();
     _checkUserRole();
     _loadStats();
+    refreshPendingItemCount();
+    _startPeriodicSync();
+  }
+
+  void _startPeriodicSync() {
+    _syncTimer =
+        Timer.periodic(Duration(seconds: cloudSyncFrequency), (_) async {
+      if (!mounted) return;
+      final appState = Provider.of<AppState>(context, listen: false);
+      if (!appState.isConnected || !appState.isAuthenticated) return;
+      if (appState.uploadPaused) return;
+      await appState.syncNow();
+      if (mounted) _loadStats();
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 
   /// Counts farmer/farm/field objects in localStorage and updates the stats.
@@ -618,6 +647,35 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Sync-Steuerung: Upload pausieren, offene Elemente, manueller
+                // Sync - direkt im Dashboard, weil hier offline gearbeitet wird.
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: Text(
+                            l10n.syncSectionTitle,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                          ),
+                        ),
+                        const SyncControlCard(showAsCard: false),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // Quick Actions Card
                 Card(
                   elevation: 4,
@@ -674,6 +732,11 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // IHCafe-Verzeichnis: nur im Registrar-Workflow angeboten,
+                // damit im Farmer-/Buyer-Workflow kein Speicher belegt wird.
+                const IhcafeCatalogCard(),
                 const SizedBox(height: 24),
 
                 // GPS Position Widget

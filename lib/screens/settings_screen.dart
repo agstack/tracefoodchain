@@ -15,6 +15,7 @@ import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
+import 'package:trace_foodchain_app/widgets/sync_control_card.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Globale Variable zum Speichern des Modus
@@ -33,6 +34,19 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: [
+          // Synchronisierung: Upload pausieren / jetzt synchronisieren (WP A2)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text(
+              l10n.syncSectionTitle,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+          const SyncControlCard(showAsCard: false),
+          const Divider(),
           // Neuer Switch zur Auswahl des Datenmodus (Test-/Echt-Modus)
           StatefulBuilder(
             builder: (context, setState) {

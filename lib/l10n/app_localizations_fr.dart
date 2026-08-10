@@ -1278,10 +1278,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Chargement Rapide – Enregistrement des champs en masse';
 
   @override
-  String get fastUploadCsvSection => 'Fichier CSV';
+  String get fastUploadCsvSection => 'Fichier CSV / Excel';
 
   @override
-  String get fastUploadPickCsv => 'Sélectionner fichier CSV';
+  String get fastUploadPickCsv => 'Sélectionner fichier CSV / Excel';
 
   @override
   String get fastUploadActionSection => 'Action';
@@ -1296,7 +1296,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get fastUploadReset => 'Réinitialiser';
 
   @override
-  String get fastUploadFormatHint => 'Format CSV';
+  String get fastUploadFormatHint => 'Formats pris en charge';
 
   @override
   String fastUploadSaveGeoIds(int count) {
@@ -1319,7 +1319,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fastUploadFormatHintBody =>
-      'Colonnes: name, dni, polygon\n\nFormat polygone:\n[-88.36,14.79];[-88.37,14.79];...\n\nEndpoint:\nPOST /register-field-\nboundaries-geojson';
+      'Colonnes CSV:\nname, dni, polygon\n\nFormat polygone:\n[-88.36,14.79];\n[-88.37,14.79];...\n\nColonnes XLSX:\nsite, lat, lon, GeoID,\nassignedPersonName,\nMunicipality, Community,\nIntermediary, Buyer,\nproductiveCoffeeArea\nLastHarvestInHectares\n\nXLSX crée un pseudo-\npolygone depuis centroïde\n+ surface.';
 
   @override
   String get fuLogOpeningFilePicker => 'Ouverture du sélecteur de fichiers…';
@@ -3021,4 +3021,145 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get ddsGeneratingPdf => 'Génération du PDF…';
+
+  @override
+  String get copy => 'Copier';
+
+  @override
+  String whispAnalysisError(String error) {
+    return 'Échec de l\'analyse de déforestation : $error';
+  }
+
+  @override
+  String get ihcafeDirectoryTitle => 'Répertoire des producteurs IHCafé';
+
+  @override
+  String get ihcafeNotAvailable =>
+      'Pas encore disponible sur cet appareil. Téléchargez le fichier d’export IHCafé en étant en ligne (environ 33 Mo) et importez-le ici. Vous pourrez ensuite rechercher et sélectionner des producteurs entièrement hors ligne.';
+
+  @override
+  String get ihcafeProducersLabel => 'Producteurs';
+
+  @override
+  String get ihcafeDepartamentoLabel => 'Departamento';
+
+  @override
+  String get ihcafeProjectLabel => 'Projet';
+
+  @override
+  String get ihcafeExportedLabel => 'Exporté';
+
+  @override
+  String get ihcafeImportedLabel => 'Importé';
+
+  @override
+  String get ihcafeStoredSizeLabel => 'Taille stockée';
+
+  @override
+  String get ihcafeImportFile => 'Importer le fichier';
+
+  @override
+  String get ihcafeReplaceFile => 'Remplacer le fichier';
+
+  @override
+  String get ihcafeDeleteTitle => 'Supprimer le répertoire IHCafé ?';
+
+  @override
+  String get ihcafeDeleteBody =>
+      'La liste des producteurs sera supprimée de cet appareil. Vous devrez la réimporter pour sélectionner des producteurs hors ligne.';
+
+  @override
+  String get ihcafeMissingTitle => 'Répertoire IHCafé manquant';
+
+  @override
+  String get ihcafeMissingBody =>
+      'La liste des producteurs n’a pas encore été importée sur cet appareil. Importez-la une fois en étant en ligne, elle fonctionnera ensuite hors ligne.';
+
+  @override
+  String get ihcafeSelectProducerTitle => 'Sélectionner un producteur IHCafé';
+
+  @override
+  String get ihcafeSelectProducerButton =>
+      'Sélectionner un producteur dans la liste IHCafé';
+
+  @override
+  String get ihcafeSearchLabel => 'Nom, identidad ou clave';
+
+  @override
+  String get ihcafeSearchHint => 'p. ex. JUAN PEREZ ou 0719-1993';
+
+  @override
+  String get ihcafeOnlyVigente => 'Seulement vigente';
+
+  @override
+  String get ihcafeTypeToSearch =>
+      'Saisissez au moins deux caractères pour rechercher.';
+
+  @override
+  String get ihcafeNoProducerFound => 'Aucun producteur trouvé.';
+
+  @override
+  String ihcafeProducerCount(int count) {
+    return '$count producteurs';
+  }
+
+  @override
+  String get ihcafeWhichFincaTitle => 'Quelle finca ?';
+
+  @override
+  String ihcafeWhichFincaBody(String name, int count) {
+    return '$name a $count fincas chez IHCafé. Choisissez celle qui correspond à cette ferme - son finca_id est enregistré sur la ferme.';
+  }
+
+  @override
+  String get ihcafeSkip => 'Ignorer';
+
+  @override
+  String ihcafeFincaLabel(String id) {
+    return 'finca $id';
+  }
+
+  @override
+  String ihcafeClaveLabel(String clave) {
+    return 'clave $clave';
+  }
+
+  @override
+  String get ihcafeNotVigente => 'no vigente';
+
+  @override
+  String get ihcafeRemoveLink =>
+      'Supprimer le lien vers l’enregistrement IHCafé';
+
+  @override
+  String get syncSectionTitle => 'Synchronisation';
+
+  @override
+  String get pauseUploads => 'Suspendre l\'envoi';
+
+  @override
+  String get uploadsPausedHint =>
+      'Envoi suspendu - les données sont enregistrées uniquement en local';
+
+  @override
+  String get uploadsActiveHint => 'Envoi actif';
+
+  @override
+  String get syncNowButton => 'Synchroniser maintenant';
+
+  @override
+  String itemsWaitingForUpload(int count) {
+    return '$count élément(s) en attente d\'envoi';
+  }
+
+  @override
+  String get allItemsSynced => 'Tout est synchronisé';
+
+  @override
+  String lastSuccessfulSyncLabel(String time) {
+    return 'Dernière synchronisation réussie : $time';
+  }
+
+  @override
+  String get lastSyncNever => 'jamais';
 }

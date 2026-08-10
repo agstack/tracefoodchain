@@ -1,7 +1,7 @@
-{
+﻿{
   "appTitle": "Rastrea Cadenas Alimentarias",
   "traceTheFoodchain": "Rastrea la Cadena Alimentaria",
-  "selectRole": "¡Por favor, selecciona tu rol!",
+  "selectRole": "Seleccionar rol",
   "welcomeMessage": "¡Bienvenido, {role}!",
   "@welcomeMessage": {
     "description": "Mensaje de bienvenida con el rol del usuario",
@@ -87,7 +87,7 @@
   "superadminSecurityError": "ERROR DE SEGURIDAD: Los roles de SUPERADMIN no se pueden cambiar",
   "superadminSecurityInfo": "Los usuarios SUPERADMIN están protegidos por políticas de seguridad",
   "superadminCannotBeAssigned": "El rol de SUPERADMIN no se puede asignar",
-  "superadminCannotBeChanged": "El rol de SUPERADMIN no se puede cambiar", 
+  "superadminCannotBeChanged": "El rol de SUPERADMIN no se puede cambiar",
   "confirmTransfer": "¿El comprador recibió la información correctamente?",
   "errorIncorrectData": "ERROR: ¡Los datos recibidos no son válidos!",
   "provideValidSellerTag": "Por favor, proporciona una etiqueta de vendedor válida.",
@@ -392,7 +392,7 @@
   "errorForbidden": "Error del servidor: Prohibido",
   "errorNotFound": "Error del servidor: No encontrado",
   "errorInternalServerError": "Error del servidor: Error interno del servidor",
-  "errorServiceUnavailabe": "Error del servidor: Servicio no disponible", 
+  "errorServiceUnavailabe": "Error del servidor: Servicio no disponible",
   "errorGatewayTimeout": "Error del servidor: Tiempo de espera en la puerta de enlace",
   "errorUnknown": "Error desconocido",
   "errorNoCloudConnectionProperties": "No se encontraron propiedades de conexión a la nube",
@@ -433,35 +433,44 @@
   "changesSaved": "Cambios guardados exitosamente",
   "editWindowExpired": "Ventana de edición expirada (24 h)",
   "within24hEdit": "Editable por {hours} horas más",
-  "@within24hEdit": { "placeholders": { "hours": {"type": "int"} } },
+  "@within24hEdit": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
   "exportToExcel": "Exportar a Excel",
   "resetPasswordEmailSent": "Se ha enviado un correo electrónico para restablecer la contraseña",
   "forgotPasswordQuestion": "¿Olvidaste tu contraseña?",
   "weightEquivalentGreenBeanKg": "Peso equivalente de oro (kg)",
-  "login": "Iniciar sesión",  "pleaseEnterEmailAndPassword": "Por favor, introduce el correo electrónico y la contraseña",
+  "login": "Iniciar sesión",
+  "pleaseEnterEmailAndPassword": "Por favor, introduce el correo electrónico y la contraseña",
   "loggingIn": "Iniciando sesión...",
   "loginFailed": "Error al iniciar sesión",
   "gettingAuthorityToken": "Obteniendo token de autoridad...",
   "fieldRegistry": "Registro de Campos",
   "fieldRegistryTitle": "Campos Registrados",
-  "fieldName": "Nombre del Campo",
+  "fieldName": "Nombre de la Parcela",
   "geoId": "ID Geográfico",
   "area": "Área",
   "registerNewFields": "Registrar Nuevos Campos",
   "uploadCsv": "Subir CSV",
   "fastUpload": "Carga Rápida",
   "fastUploadTitle": "Carga Rápida – Registro Masivo de Campos",
-  "fastUploadCsvSection": "Archivo CSV",
-  "fastUploadPickCsv": "Seleccionar archivo CSV",
+  "fastUploadCsvSection": "Archivo CSV / Excel",
+  "fastUploadPickCsv": "Seleccionar archivo CSV / Excel",
   "fastUploadActionSection": "Acción",
   "fastUploadProcess": "Procesar y Subir",
   "fastUploadProcessing": "Procesando…",
   "fastUploadReset": "Restablecer",
-  "fastUploadFormatHint": "Formato CSV",
+  "fastUploadFormatHint": "Formatos admitidos",
   "fastUploadSaveGeoIds": "Guardar GeoIDs ({count})",
   "@fastUploadSaveGeoIds": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "fastUploadDryRun": "Vista previa Dry-Run",
@@ -470,212 +479,709 @@
   "fastUploadPersistToDb": "Persistir en BD ({count})",
   "@fastUploadPersistToDb": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
-  "fastUploadFormatHintBody": "Columnas: name, dni, polygon\n\nFormato polígono:\n[-88.36,14.79];[-88.37,14.79];...\n\nEndpoint:\nPOST /register-field-\nboundaries-geojson",
+  "fastUploadFormatHintBody": "Columnas CSV:\nname, dni, polygon\n\nFormato polígono:\n[-88.36,14.79];\n[-88.37,14.79];...\n\nColumnas XLSX:\nsite, lat, lon, GeoID,\nassignedPersonName,\nMunicipality, Community,\nIntermediary, Buyer,\nproductiveCoffeeArea\nLastHarvestInHectares\n\nXLSX genera un pseudo-\npolígono desde centroide\n+ área.",
   "fuLogOpeningFilePicker": "Abriendo selector de archivos…",
   "fuLogCancelled": "Cancelado – ningún archivo seleccionado.",
   "fuLogFileSelected": "Archivo: {name}  ({size})",
-  "@fuLogFileSelected": {"placeholders": {"name": {"type": "String"}, "size": {"type": "String"}}},
+  "@fuLogFileSelected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogWebPlatform": "Plataforma web detectada – leyendo via stream…",
   "fuLogBytesReceived": "{size} bytes recibidos",
-  "@fuLogBytesReceived": {"placeholders": {"size": {"type": "String"}}},
+  "@fuLogBytesReceived": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogNativePlatform": "Plataforma nativa detectada – leyendo via archivo…",
   "fuLogBytesRead": "{size} bytes leídos",
-  "@fuLogBytesRead": {"placeholders": {"size": {"type": "String"}}},
+  "@fuLogBytesRead": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogCsvLoaded": "CSV cargado exitosamente",
   "fuLogTotalLines": "Total líneas : {count}",
-  "@fuLogTotalLines": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogTotalLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogTotalChars": "Total caracteres: {count}",
-  "@fuLogTotalChars": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogTotalChars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogFirst120": "Primeros 120 caracteres:",
   "fuLogCsvReady": "CSV listo. Haga clic en \\\"Procesar y Subir\\\".",
   "fuLogFileLoadError": "ERROR al cargar archivo: {error}",
-  "@fuLogFileLoadError": {"placeholders": {"error": {"type": "String"}}},
+  "@fuLogFileLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogNoCsvLoaded": "No hay CSV cargado – seleccione un archivo primero.",
   "fuLogUploadStarted": "Carga rápida iniciada",
   "fuLogStep1": "PASO 1: PARSEAR CSV",
   "fuLogNoPolygons": "No se encontraron polígonos válidos – abortando.",
   "fuLogPolygonsExtracted": "{count} polígono(s) extraídos exitosamente",
-  "@fuLogPolygonsExtracted": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogPolygonsExtracted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogFieldNamesCached": "Nombres de campos guardados (para correlación): {count}",
-  "@fuLogFieldNamesCached": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogFieldNamesCached": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogStep2": "PASO 2: CREAR GEOJSON",
   "fuLogFeatureCollectionCreated": "FeatureCollection creada",
   "fuLogFeatures": "Features : {count}",
-  "@fuLogFeatures": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogFeatures": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogSize": "Tamaño   : {size}",
-  "@fuLogSize": {"placeholders": {"size": {"type": "String"}}},
+  "@fuLogSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogFeature0Points": "Feature 0: {count} puntos de coordenadas",
-  "@fuLogFeature0Points": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogFeature0Points": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogStep3": "PASO 3: AUTENTICACIÓN",
   "fuLogCredentialsMissing": "¡Faltan credenciales de API en el archivo .env!",
   "fuLogCredentialsNeeded": "Requerido: {key}",
-  "@fuLogCredentialsNeeded": {"placeholders": {"key": {"type": "String"}}},
+  "@fuLogCredentialsNeeded": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogEmail": "E-mail: {email}",
-  "@fuLogEmail": {"placeholders": {"email": {"type": "String"}}},
+  "@fuLogEmail": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogConnecting": "Conectando con AgStack User Registry…",
   "fuLogServiceInitialized": "Servicio inicializado",
   "fuLogLoginFailed": "Login fallido – verifique las credenciales.",
   "fuLogLoginSuccess": "Login exitoso",
   "fuLogTokenPreview": "Token Bearer (primeros 20 chars): {preview}…",
-  "@fuLogTokenPreview": {"placeholders": {"preview": {"type": "String"}}},
+  "@fuLogTokenPreview": {
+    "placeholders": {
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogStep4": "PASO 4: SUBIDA (MULTIPART)",
   "fuLogSendingMultipart": "Enviando multipart/form-data…",
   "fuLogPolygonCount": "Polígonos : {count}",
-  "@fuLogPolygonCount": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogPolygonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogTimeout": "Timeout  : {label}  ({seconds}s = {count} × 2s + 60s buffer)",
-  "@fuLogTimeout": {"placeholders": {"label": {"type": "String"}, "seconds": {"type": "int"}, "count": {"type": "int"}}},
+  "@fuLogTimeout": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "seconds": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogWaitingForServer": "Esperando respuesta del servidor…",
   "fuLogStep5": "PASO 5: RESPUESTA DEL SERVIDOR",
   "fuLogHttpStatus": "HTTP Status   : {code} {text}",
-  "@fuLogHttpStatus": {"placeholders": {"code": {"type": "int"}, "text": {"type": "String"}}},
+  "@fuLogHttpStatus": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogContentType": "Content-Type : {type}",
-  "@fuLogContentType": {"placeholders": {"type": {"type": "String"}}},
+  "@fuLogContentType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogResponseSize": "Tamaño respuesta: {size}",
-  "@fuLogResponseSize": {"placeholders": {"size": {"type": "String"}}},
+  "@fuLogResponseSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogUploadSuccess": "Subida exitosa (HTTP {code})",
-  "@fuLogUploadSuccess": {"placeholders": {"code": {"type": "int"}}},
+  "@fuLogUploadSuccess": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogServerError": "Error de servidor (HTTP {code})",
-  "@fuLogServerError": {"placeholders": {"code": {"type": "int"}}},
+  "@fuLogServerError": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogLoggedOut": "Sesión cerrada del User Registry",
   "fuLogLogoutFailed": "Logout fallido (ignorado)",
   "fuLogException": "EXCEPCIÓN: {error}",
-  "@fuLogException": {"placeholders": {"error": {"type": "String"}}},
+  "@fuLogException": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogProcessDone": "Proceso completado",
   "fuLogSavingGeoIds": "Guardando {count} GeoIDs como \\\"{filename}\\\"…",
-  "@fuLogSavingGeoIds": {"placeholders": {"count": {"type": "int"}, "filename": {"type": "String"}}},
+  "@fuLogSavingGeoIds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogGeoIdsSaved": "Archivo guardado/descargado: {filename}",
-  "@fuLogGeoIdsSaved": {"placeholders": {"filename": {"type": "String"}}},
+  "@fuLogGeoIdsSaved": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogSaveError": "Error al guardar: {error}",
-  "@fuLogSaveError": {"placeholders": {"error": {"type": "String"}}},
+  "@fuLogSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogRawPreview": "RESPUESTA JSON (VISTA PREVIA RAW)",
   "fuLogDetailedAnalysis": "ANÁLISIS DETALLADO DE RESULTADOS",
   "fuLogNotJsonObject": "La respuesta no es un objeto JSON – vista raw:",
   "fuLogServerMessage": "Mensaje del servidor: {msg}",
-  "@fuLogServerMessage": {"placeholders": {"msg": {"type": "String"}}},
+  "@fuLogServerMessage": {
+    "placeholders": {
+      "msg": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogNoResultsArray": "No hay array \\\"results\\\" en la respuesta.",
   "fuLogFullResponse": "Respuesta completa (formateada):",
   "fuLogTotalResults": "Resultados totales: {count}",
-  "@fuLogTotalResults": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogTotalResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogEntryNotObject": "Entrada {index} no es un objeto: {value}",
-  "@fuLogEntryNotObject": {"placeholders": {"index": {"type": "int"}, "value": {"type": "String"}}},
+  "@fuLogEntryNotObject": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogStatusNew": "✅ REGISTRADO NUEVO",
   "fuLogStatusExisting": "ℹ️  YA EXISTE",
   "fuLogStatusError": "❌ ERROR ({status})",
-  "@fuLogStatusError": {"placeholders": {"status": {"type": "String"}}},
+  "@fuLogStatusError": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogGeoIdSource": "Geo-ID  : {id}  (campo: {src})",
-  "@fuLogGeoIdSource": {"placeholders": {"id": {"type": "String"}, "src": {"type": "String"}}},
+  "@fuLogGeoIdSource": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "src": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogGeoIdMissing": "Geo-ID  : (no disponible)",
   "fuLogApiMessage": "Mensaje : {msg}",
-  "@fuLogApiMessage": {"placeholders": {"msg": {"type": "String"}}},
+  "@fuLogApiMessage": {
+    "placeholders": {
+      "msg": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogCoordPoints": "Puntos  : {count} puntos de coordenadas en polígono",
-  "@fuLogCoordPoints": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogCoordPoints": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogSummary": "RESUMEN",
   "fuLogSummaryTotal": "Total                   : {count}",
-  "@fuLogSummaryTotal": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogSummaryTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogSummaryNew": "✅ Registrados nuevos    : {count}",
-  "@fuLogSummaryNew": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogSummaryNew": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogSummaryExisting": "ℹ️  Ya existentes         : {count}",
-  "@fuLogSummaryExisting": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogSummaryExisting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogSummaryErrors": "❌ Errores               : {count}",
-  "@fuLogSummaryErrors": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogSummaryErrors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogErrorDetails": "Detalles de errores:",
   "fuLogGeoIdsReadyForExport": "{count} GeoIDs listos para exportar",
-  "@fuLogGeoIdsReadyForExport": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogGeoIdsReadyForExport": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogClickSaveButton": "→ Clic en botón \\\"Guardar GeoIDs\\\" en el panel izquierdo",
   "fuLogParseError": "Error analizando respuesta: {error}",
-  "@fuLogParseError": {"placeholders": {"error": {"type": "String"}}},
+  "@fuLogParseError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogRawText": "Texto crudo de la respuesta:",
   "fuLogDelimiterDetected": "Delimitador detectado: \\\"{delimiter}\\\" ({semicolons} punto y coma vs. {commas} comas fuera de comillas)",
-  "@fuLogDelimiterDetected": {"placeholders": {"delimiter": {"type": "String"}, "semicolons": {"type": "int"}, "commas": {"type": "int"}}},
+  "@fuLogDelimiterDetected": {
+    "placeholders": {
+      "delimiter": {
+        "type": "String"
+      },
+      "semicolons": {
+        "type": "int"
+      },
+      "commas": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogEolWindows": "Fin de línea: Windows (\\r\\n)",
   "fuLogEolMac": "Fin de línea: Mac OS Classic (\\r)",
   "fuLogEolUnix": "Fin de línea: Unix/macOS (\\n)",
   "fuLogParsedRows": "Filas parseadas: {count} (incl. encabezado)",
-  "@fuLogParsedRows": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogParsedRows": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogNoCsvDataRows": "El CSV no contiene filas de datos",
   "fuLogHeaderColumns": "Columnas de encabezado: {cols}",
-  "@fuLogHeaderColumns": {"placeholders": {"cols": {"type": "String"}}},
+  "@fuLogHeaderColumns": {
+    "placeholders": {
+      "cols": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogNoPolygonColumn": "No se encontró columna \\\"polygon\\\"/\\\"coordinates\\\"/\\\"koordinaten\\\"",
   "fuLogAvailableColumns": "Columnas disponibles: {cols}",
-  "@fuLogAvailableColumns": {"placeholders": {"cols": {"type": "String"}}},
+  "@fuLogAvailableColumns": {
+    "placeholders": {
+      "cols": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPolygonColumn": "Columna polígono  : índice {index} (nombre: \\\"{name}\\\")",
-  "@fuLogPolygonColumn": {"placeholders": {"index": {"type": "int"}, "name": {"type": "String"}}},
+  "@fuLogPolygonColumn": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogNameColumn": "Columna nombre    : índice {index} (nombre: \\\"{name}\\\")",
-  "@fuLogNameColumn": {"placeholders": {"index": {"type": "int"}, "name": {"type": "String"}}},
+  "@fuLogNameColumn": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogNoNameColumn": "Columna nombre    : no encontrada – se usará nombre generado",
   "fuLogRowTooShort": "Fila {row}: solo {count} columnas (necesita > {need}) → omitida",
-  "@fuLogRowTooShort": {"placeholders": {"row": {"type": "int"}, "count": {"type": "int"}, "need": {"type": "int"}}},
+  "@fuLogRowTooShort": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      },
+      "need": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogEmptyCoords": "Fila {row} \\\"{name}\\\": celda de coordenadas vacía → omitida",
-  "@fuLogEmptyCoords": {"placeholders": {"row": {"type": "int"}, "name": {"type": "String"}}},
+  "@fuLogEmptyCoords": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogTooFewPoints": "Fila {row} \\\"{name}\\\": menos de 4 puntos de polígono → omitida",
-  "@fuLogTooFewPoints": {"placeholders": {"row": {"type": "int"}, "name": {"type": "String"}}},
+  "@fuLogTooFewPoints": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogRowParsed": "✔ Fila {row}  \\\"{name}\\\"  →  {count} puntos",
-  "@fuLogRowParsed": {"placeholders": {"row": {"type": "int"}, "name": {"type": "String"}, "count": {"type": "int"}}},
+  "@fuLogRowParsed": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogSkipped": "{count} fila(s) omitidas",
-  "@fuLogSkipped": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogParseSummary": "Parseados exitosamente: {features} features, omitidos: {skipped}",
-  "@fuLogParseSummary": {"placeholders": {"features": {"type": "int"}, "skipped": {"type": "int"}}},
+  "@fuLogParseSummary": {
+    "placeholders": {
+      "features": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogEncodingUtf8": "Encoding: UTF-8",
   "fuLogEncodingLatin1": "Encoding: Latin-1 (ISO-8859-1)",
   "fuLogEncodingFallback": "Encoding: UTF-8 (allow malformed – fallback)",
   "fuLogPersistHeader": "PERSISTENCIA EN BASE DE DATOS ({count} campos)",
-  "@fuLogPersistHeader": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogPersistHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogPersistSubtitle": "Ejecutándose en segundo plano – resultados siendo guardados en BD",
   "fuLogDryRunHeader": "🔍 VISTA PREVIA DRY-RUN ({count} campos) – SIN CAMBIOS EN BD",
-  "@fuLogDryRunHeader": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogDryRunHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogDryRunSubtitle": "Muestra qué se persistiría. Sin interacción con la base de datos.",
   "fuLogDryRunWouldCreate": "   🔍 [DRY-RUN] Crearía via generateDigitalSibling",
   "fuLogDryRunName": "      Nombre      : {name}",
-  "@fuLogDryRunName": {"placeholders": {"name": {"type": "String"}}},
+  "@fuLogDryRunName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunGeoId": "      GeoID       : {geoId}",
-  "@fuLogDryRunGeoId": {"placeholders": {"geoId": {"type": "String"}}},
+  "@fuLogDryRunGeoId": {
+    "placeholders": {
+      "geoId": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunOwner": "      Owner UID   : {uid}",
-  "@fuLogDryRunOwner": {"placeholders": {"uid": {"type": "String"}}},
+  "@fuLogDryRunOwner": {
+    "placeholders": {
+      "uid": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunCoords": "      Coordenadas : {count} puntos (primero: {first})",
-  "@fuLogDryRunCoords": {"placeholders": {"count": {"type": "int"}, "first": {"type": "String"}}},
+  "@fuLogDryRunCoords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "first": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunQuerying": "   🔍 [DRY-RUN] Consultando Firebase para GeoID: {geoId}",
-  "@fuLogDryRunQuerying": {"placeholders": {"geoId": {"type": "String"}}},
+  "@fuLogDryRunQuerying": {
+    "placeholders": {
+      "geoId": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunNotFound": "      Resultado BD: ⚠️  No se encontró entrada",
   "fuLogDryRunWouldCreateNew": "      Acción      : → crearía via generateDigitalSibling",
   "fuLogDryRunFound": "      Resultado BD: ✅ Entrada encontrada",
   "fuLogDryRunDbName": "      Nombre BD   : {name}",
-  "@fuLogDryRunDbName": {"placeholders": {"name": {"type": "String"}}},
+  "@fuLogDryRunDbName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunFlags": "      hasBoundaries: {b}  |  hasStartDate: {d}  |  hasOwner: {o}",
-  "@fuLogDryRunFlags": {"placeholders": {"b": {"type": "String"}, "d": {"type": "String"}, "o": {"type": "String"}}},
+  "@fuLogDryRunFlags": {
+    "placeholders": {
+      "b": {
+        "type": "String"
+      },
+      "d": {
+        "type": "String"
+      },
+      "o": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunNoChange": "      Acción      : ℹ️  No se necesitan cambios",
   "fuLogDryRunActions": "      Acción      : → {actions}",
-  "@fuLogDryRunActions": {"placeholders": {"actions": {"type": "String"}}},
+  "@fuLogDryRunActions": {
+    "placeholders": {
+      "actions": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunAddOwner": "Agregar owner ({uid})",
-  "@fuLogDryRunAddOwner": {"placeholders": {"uid": {"type": "String"}}},
+  "@fuLogDryRunAddOwner": {
+    "placeholders": {
+      "uid": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogDryRunSetBoundaries": "Establecer boundaries",
   "fuLogDryRunSetStartDate": "Establecer existenceStarts",
   "fuLogDryRunSetName": "Nombre → {name}",
-  "@fuLogDryRunSetName": {"placeholders": {"name": {"type": "String"}}},
+  "@fuLogDryRunSetName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPersistedNew": "   ✅ Creado  →  GeoID: {geoId}",
-  "@fuLogPersistedNew": {"placeholders": {"geoId": {"type": "String"}}},
+  "@fuLogPersistedNew": {
+    "placeholders": {
+      "geoId": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPersistedUpdated": "   ✅ Actualizado  →  GeoID: {geoId}",
-  "@fuLogPersistedUpdated": {"placeholders": {"geoId": {"type": "String"}}},
+  "@fuLogPersistedUpdated": {
+    "placeholders": {
+      "geoId": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPersistedAlreadyFull": "   ℹ️  Ya completo  →  GeoID: {geoId}",
-  "@fuLogPersistedAlreadyFull": {"placeholders": {"geoId": {"type": "String"}}},
+  "@fuLogPersistedAlreadyFull": {
+    "placeholders": {
+      "geoId": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPersistedNewFromExisting": "   ✅ Creado (ya registrado en API)  →  GeoID: {geoId}",
-  "@fuLogPersistedNewFromExisting": {"placeholders": {"geoId": {"type": "String"}}},
+  "@fuLogPersistedNewFromExisting": {
+    "placeholders": {
+      "geoId": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPersistError": "   ❌ Error: {error}",
-  "@fuLogPersistError": {"placeholders": {"error": {"type": "String"}}},
+  "@fuLogPersistError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "fuLogPersistDone": "PERSISTENCIA COMPLETADA",
   "fuLogPersistSummaryNew": "   ✅ Creados      : {count}",
-  "@fuLogPersistSummaryNew": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogPersistSummaryNew": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogPersistSummaryUpdated": "   ✅ Actualizados : {count}",
-  "@fuLogPersistSummaryUpdated": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogPersistSummaryUpdated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogDryRunDone": "DRY-RUN COMPLETADO – nada fue escrito",
   "fuLogDryRunSummaryNew": "   🔍 Crearía   : {count}",
-  "@fuLogDryRunSummaryNew": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogDryRunSummaryNew": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogDryRunSummaryUpdated": "   🔍 Actualizaría: {count}",
-  "@fuLogDryRunSummaryUpdated": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogDryRunSummaryUpdated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "fuLogPersistSummaryErrors": "   ❌ Errores      : {count}",
-  "@fuLogPersistSummaryErrors": {"placeholders": {"count": {"type": "int"}}},
+  "@fuLogPersistSummaryErrors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "selectCsvFile": "Seleccionar Archivo CSV",
   "csvUploadSuccess": "CSV subido exitosamente",
   "csvUploadError": "Error al subir CSV",
@@ -683,7 +1189,8 @@
   "registrationComplete": "Registro completo",
   "registrationError": "Error de registro",
   "fieldAlreadyExists": "El campo ya existe",
-  "noFieldsRegistered": "No hay campos registrados",  "csvFormatInfo": "Formato CSV: Nombre, Descripción, Coordenadas",
+  "noFieldsRegistered": "No hay campos registrados",
+  "csvFormatInfo": "Formato CSV: Nombre, Descripción, Coordenadas",
   "invalidCsvFormat": "Formato CSV inválido",
   "fieldRegisteredSuccessfully": "Campo registrado exitosamente",
   "progressStep1InitializingServices": "Paso 1: Inicializando servicios...",
@@ -758,7 +1265,8 @@
     "placeholders": {
       "fieldName": {
         "type": "String"
-      },      "error": {
+      },
+      "error": {
         "type": "String"
       }
     }
@@ -821,7 +1329,8 @@
         "type": "String"
       }
     }
-  },  "fieldRegistrationNewGeoIdFailed": "⚠️ Nuevo campo registrado - Error al extraer GeoID: {error}",
+  },
+  "fieldRegistrationNewGeoIdFailed": "⚠️ Nuevo campo registrado - Error al extraer GeoID: {error}",
   "@fieldRegistrationNewGeoIdFailed": {
     "description": "Mensaje cuando un nuevo campo es registrado pero falló la extracción de GeoID",
     "placeholders": {
@@ -900,7 +1409,7 @@
       }
     }
   },
-  "registeredOn": "Registrado: {date}",
+  "registeredOn": "Registrado el",
   "@registeredOn": {
     "placeholders": {
       "date": {
@@ -992,19 +1501,26 @@
   "confirmRoleChange": "¿Confirmas el cambio de rol de {currentRole} a {newRole} para {userName}?",
   "@confirmRoleChange": {
     "placeholders": {
-      "currentRole": {"type": "String"},
-      "newRole": {"type": "String"},
-      "userName": {"type": "String"}
+      "currentRole": {
+        "type": "String"
+      },
+      "newRole": {
+        "type": "String"
+      },
+      "userName": {
+        "type": "String"
+      }
     }
   },
   "roleChangeSuccess": "Rol cambiado exitosamente para {userName}",
   "@roleChangeSuccess": {
     "placeholders": {
-      "userName": {"type": "String"}
+      "userName": {
+        "type": "String"
+      }
     }
   },
   "insufficientPermissions": "Permisos insuficientes para esta acción",
-  "userNotFound": "Usuario no encontrado",
   "invalidRole": "Rol inválido seleccionado",
   "onlineUsersOnly": "Solo usuarios en línea",
   "userIsOffline": "Usuario está desconectado",
@@ -1019,8 +1535,6 @@
   "firstName": "Nombre",
   "lastName": "Apellido",
   "nationality": "Nacionalidad",
-  "selectCountry": "Seleccionar país",
-  "selectRole": "Seleccionar rol",
   "role": "Rol",
   "pleaseEnterFirstName": "Por favor ingresa tu nombre",
   "pleaseEnterLastName": "Por favor ingresa tu apellido",
@@ -1132,12 +1646,9 @@
   "farmInformation": "Información de la Finca",
   "fieldInformation": "Información de la Parcela",
   "reviewAllData": "Revisar Todos los Datos",
-  "firstName": "Nombre",
-  "lastName": "Apellido",
   "farmName": "Nombre de la Finca",
   "farmNameRequired": "El nombre de la finca es obligatorio",
   "farmAddress": "Dirección de la Finca",
-  "fieldName": "Nombre de la Parcela",
   "addAnotherField": "Agregar Otra Parcela",
   "completeRegistration": "Completar Registro",
   "registrationSuccessful": "Registro exitoso",
@@ -1154,7 +1665,9 @@
   "statusUploadingPhoto": "Subiendo foto: {photoName}",
   "@statusUploadingPhoto": {
     "placeholders": {
-      "photoName": { "type": "String" }
+      "photoName": {
+        "type": "String"
+      }
     }
   },
   "statusSyncingCloud": "Sincronizando con la nube...",
@@ -1248,7 +1761,6 @@
   "startNewField": "Comenzar nuevo campo",
   "pinchToZoom": "Pellizca para zoom, mantén presionado para editar",
   "point": "Punto",
-  "cancel": "Cancelar",
   "optionalNotes": "Notas opcionales (p. ej., documentos verificados, evaluación de calidad)",
   "pleaseProvideReason": "Por favor proporcione una razón para el rechazo",
   "objectNotFound": "Objeto no encontrado",
@@ -1264,13 +1776,17 @@
   "confirmDeleteAllObjects": "¿Está seguro de que desea eliminar todos los {count} objetos mostrados? ¡Esta acción no se puede deshacer!",
   "@confirmDeleteAllObjects": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "objectsDeleted": "{count} objeto(s) eliminado(s)",
   "@objectsDeleted": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "errorDeleting": "Error al eliminar",
@@ -1313,8 +1829,6 @@
   "farm": "Finca",
   "farmer": "Agricultor",
   "field": "Campo",
-  "registeredBy": "Registrado por",
-  "registeredOn": "Registrado el",
   "consentFormPhoto": "Foto del Formulario de Consentimiento",
   "dataUsageConsent": "Consentimiento de Uso de Datos",
   "dataUsageConsentDetails": "Por favor, tome una foto del formulario de consentimiento de uso de datos firmado",
@@ -1348,20 +1862,23 @@
   "polygonPreviewDescription": "¿El polígono capturado se ve correcto? Si no, puede rehacer la captura completa.",
   "polygonPreviewConfirm": "Se ve correcto",
   "polygonPreviewRedo": "Volver a capturar",
-
   "noEmail": "Sin correo electrónico",
   "noValidAdminRole": "No hay un rol de administrador válido",
   "noPermissionForRole": "Sin permiso para gestionar el rol: {role}",
   "@noPermissionForRole": {
     "placeholders": {
-      "role": {"type": "String"}
+      "role": {
+        "type": "String"
+      }
     }
   },
   "noValidUserRoleFound": "No se encontró un rol de usuario válido",
   "noPermissionForCurrentRole": "Sin permiso para gestionar el rol actual: {role}",
   "@noPermissionForCurrentRole": {
     "placeholders": {
-      "role": {"type": "String"}
+      "role": {
+        "type": "String"
+      }
     }
   },
   "onlySuperadminCanUpdateEmail": "Solo SUPERADMIN puede agregar direcciones de correo electrónico",
@@ -1371,46 +1888,138 @@
   "emailSaved": "Correo guardado: {email}",
   "@emailSaved": {
     "placeholders": {
-      "email": {"type": "String"}
+      "email": {
+        "type": "String"
+      }
     }
   },
   "uidCopied": "UID copiado: {uid}",
   "@uidCopied": {
     "placeholders": {
-      "uid": {"type": "String"}
+      "uid": {
+        "type": "String"
+      }
     }
   },
   "errorChangingRole": "Error al cambiar el rol: {error}",
   "@errorChangingRole": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "errorLoadingUser": "Error al cargar el usuario: {error}",
   "@errorLoadingUser": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "errorUpdatingEmail": "Error al actualizar el correo electrónico: {error}",
   "@errorUpdatingEmail": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "noPermissionForUserManagementWithRole": "Sin permiso para la gestión de usuarios. Su rol: {role}",
   "@noPermissionForUserManagementWithRole": {
     "placeholders": {
-      "role": {"type": "String"}
+      "role": {
+        "type": "String"
+      }
     }
   },
   "whispMissingGeoJsonWarning": "Los siguientes campos no tienen un límite GeoJSON válido y se omitirán en el análisis de deforestación. Se marcarán en el PDF: {fields}",
   "@whispMissingGeoJsonWarning": {
     "placeholders": {
-      "fields": {"type": "String"}
+      "fields": {
+        "type": "String"
+      }
     }
   },
   "whispNoGeoJsonLabel": "Sin datos de límites disponibles",
   "whispAnalysisInProgress": "Analizando riesgo de deforestación…",
-  "ddsGeneratingPdf": "Generando PDF…"
+  "ddsGeneratingPdf": "Generando PDF…",
+  "copy": "Copiar",
+  "whispAnalysisError": "Error en el análisis de deforestación: {error}",
+  "@whispAnalysisError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ihcafeDirectoryTitle": "Directorio de productores IHCafé",
+  "ihcafeNotAvailable": "Aún no disponible en este dispositivo. Descarga el archivo de exportación de IHCafé estando en línea (unos 33 MB) e impórtalo aquí. Después podrás buscar y seleccionar productores completamente sin conexión.",
+  "ihcafeProducersLabel": "Productores",
+  "ihcafeDepartamentoLabel": "Departamento",
+  "ihcafeProjectLabel": "Proyecto",
+  "ihcafeExportedLabel": "Exportado",
+  "ihcafeImportedLabel": "Importado",
+  "ihcafeStoredSizeLabel": "Tamaño almacenado",
+  "ihcafeImportFile": "Importar archivo",
+  "ihcafeReplaceFile": "Reemplazar archivo",
+  "ihcafeDeleteTitle": "¿Eliminar el directorio IHCafé?",
+  "ihcafeDeleteBody": "La lista de productores se eliminará de este dispositivo. Deberás importarla de nuevo para seleccionar productores sin conexión.",
+  "ihcafeMissingTitle": "Falta el directorio IHCafé",
+  "ihcafeMissingBody": "La lista de productores aún no se ha importado en este dispositivo. Impórtala una vez estando en línea; después funcionará sin conexión.",
+  "ihcafeSelectProducerTitle": "Seleccionar productor de IHCafé",
+  "ihcafeSelectProducerButton": "Seleccionar productor de la lista IHCafé",
+  "ihcafeSearchLabel": "Nombre, identidad o clave",
+  "ihcafeSearchHint": "p. ej. JUAN PEREZ o 0719-1993",
+  "ihcafeOnlyVigente": "Solo vigente",
+  "ihcafeTypeToSearch": "Escribe al menos dos caracteres para buscar.",
+  "ihcafeNoProducerFound": "No se encontró ningún productor.",
+  "ihcafeProducerCount": "{count} productores",
+  "@ihcafeProducerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ihcafeWhichFincaTitle": "¿Cuál finca?",
+  "ihcafeWhichFincaBody": "{name} tiene {count} fincas en IHCafé. Elige la que corresponde a esta farm: su finca_id se guarda en la farm.",
+  "@ihcafeWhichFincaBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ihcafeSkip": "Omitir",
+  "ihcafeFincaLabel": "finca {id}",
+  "@ihcafeFincaLabel": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "ihcafeClaveLabel": "clave {clave}",
+  "@ihcafeClaveLabel": {
+    "placeholders": {
+      "clave": {
+        "type": "String"
+      }
+    }
+  },
+  "ihcafeNotVigente": "no vigente",
+  "ihcafeRemoveLink": "Quitar el vínculo con el registro de IHCafé",
+  "syncSectionTitle": "Sincronización",
+  "pauseUploads": "Pausar la subida",
+  "uploadsPausedHint": "Subida en pausa: los datos se guardan solo localmente",
+  "uploadsActiveHint": "Subida activa",
+  "syncNowButton": "Sincronizar ahora",
+  "itemsWaitingForUpload": "{count} elemento(s) esperando la subida",
+  "allItemsSynced": "Todo sincronizado",
+  "lastSuccessfulSyncLabel": "Última sincronización correcta: {time}",
+  "lastSyncNever": "nunca"
 }

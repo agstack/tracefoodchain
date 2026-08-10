@@ -9,8 +9,11 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
+import '../services/excel_farmer_import_objects.dart' show splitSpanishName;
+import '../services/ihcafe_producer_service.dart';
 import '../services/open_ral_service.dart';
 import '../services/firebase_storage_service.dart';
+import 'ihcafe_producer_widgets.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../repositories/honduras_specifics.dart';
@@ -40,6 +43,16 @@ class _StepperRegistrarRegistrationState
       TextEditingController();
   final TextEditingController _farmerPhoneController = TextEditingController();
   final TextEditingController _farmerEmailController = TextEditingController();
+
+  /// Aus dem IHCafe-Verzeichnis gewählter Produzent, falls der Registrar die
+  /// Auswahl statt der manuellen Eingabe genutzt hat. clave und productor_id
+  /// werden als alternateIDs am Farmer hinterlegt; die Auswahl ersetzt keine
+  /// Identitätsprüfung per Ausweisfoto.
+  IhcafeProducer? _selectedIhcafeProducer;
+
+  /// Die zugehörige Finca - ihre finca_id wird als alternateID an der Farm
+  /// abgelegt. Bei mehreren Fincas wählt der Registrar aus.
+  IhcafeFinca? _selectedIhcafeFinca;
 
   // Farm Daten
   final TextEditingController _farmNameController = TextEditingController();
@@ -268,6 +281,27 @@ class _StepperRegistrarRegistrationState
         debugPrint('nationalID set in alternateIDs');
       }
 
+      // Verweis auf den IHCafe-Datensatz, falls per Verzeichnis ausgewählt.
+      // Persistiert werden ausschließlich die beiden Kennungen - alle übrigen
+      // IHCafe-Felder bleiben im lokalen Verzeichnis und werden nicht kopiert.
+      if (_selectedIhcafeProducer != null) {
+        final producer = _selectedIhcafeProducer!;
+        if (producer.clave.isNotEmpty) {
+          farmer['identity']['alternateIDs'].add({
+            'UID': producer.clave,
+            'issuedBy': 'IHCafe',
+          });
+        }
+        if (producer.productorId != null) {
+          farmer['identity']['alternateIDs'].add({
+            'UID': '${producer.productorId}',
+            'issuedBy': 'IHCafe',
+          });
+        }
+        debugPrint('IHCafe reference set on farmer: clave=${producer.clave}, '
+            'productor_id=${producer.productorId}');
+      }
+
       if (_farmerPhoneController.text.isNotEmpty) {
         debugPrint('Setting phoneNumber...');
         farmer = setSpecificPropertyJSON(
@@ -368,6 +402,17 @@ class _StepperRegistrarRegistrationState
           'issuedBy': 'Farm Registry',
         });
         debugPrint('Farm ID set: ${_farmIDController.text}');
+      }
+
+      // Verknüpfung zur IHCafe-Finca. Mehr wird von der Finca nicht
+      // übernommen - Ort und Adresse stehen bereits in currentGeolocation.
+      if (_selectedIhcafeFinca?.fincaId != null) {
+        farm['identity']['alternateIDs'].add({
+          'UID': '${_selectedIhcafeFinca!.fincaId}',
+          'issuedBy': 'IHCafe',
+        });
+        debugPrint('IHCafe finca_id set on farm: '
+            '${_selectedIhcafeFinca!.fincaId}');
       }
 
       // Link Farmer zu Farm
@@ -1728,11 +1773,100 @@ class _StepperRegistrarRegistrationState
     );
   }
 
+  /// Übernimmt einen aus dem IHCafe-Verzeichnis gewählten Produzenten in die
+  /// Eingabefelder. Die Felder bleiben editierbar - der Registrar kann also
+  /// korrigieren, wenn die Stammdaten veraltet sind. Die Ausweis-Fotos bleiben
+  /// unverändert Pflicht, die Auswahl ersetzt keine Identitätsprüfung.
+  void _applyIhcafeProducer(IhcafeProducer producer, IhcafeFinca? finca) {
+    final name = splitSpanishName(producer.nombreCompleto);
+    setState(() {
+      _farmerFirstNameController.text = name.firstName;
+      _farmerLastNameController.text = name.lastName;
+      if (producer.identidad.isNotEmpty) {
+        _farmerNationalIDController.text = producer.identidad;
+      }
+      // Ort aus der gewählten Finca vorbelegen, sofern noch nichts eingetragen
+      // ist - vorhandene Eingaben werden nicht überschrieben.
+      if (finca != null) {
+        if (_farmMunicipalityController.text.trim().isEmpty &&
+            finca.municipio.isNotEmpty) {
+          _farmMunicipalityController.text = finca.municipio;
+        }
+        if (_farmStateController.text.trim().isEmpty &&
+            finca.departamento.isNotEmpty) {
+          _farmStateController.text = finca.departamento;
+        }
+        if (_farmCityController.text.trim().isEmpty &&
+            (finca.aldea ?? '').isNotEmpty) {
+          _farmCityController.text = finca.aldea!;
+        }
+      }
+      _selectedIhcafeProducer = producer;
+      _selectedIhcafeFinca = finca;
+    });
+  }
+
   Widget _buildFarmerForm() {
     final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ── Auswahl aus dem IHCafe-Verzeichnis statt Abtippen ──────────────
+        OutlinedButton.icon(
+          onPressed: () async {
+            final producer = await showIhcafeProducerPicker(context);
+            if (producer == null || !mounted) return;
+            // Bei mehreren Fincas fragt pickIhcafeFinca nach, sonst nimmt es
+            // ohne Rückfrage die einzige.
+            final finca = await pickIhcafeFinca(context, producer);
+            if (!mounted) return;
+            _applyIhcafeProducer(producer, finca);
+          },
+          icon: const Icon(Icons.person_search),
+          label: Text(l10n.ihcafeSelectProducerButton),
+        ),
+        if (_selectedIhcafeProducer != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              border: Border.all(color: Colors.green[200]!),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_outline,
+                    size: 16, color: Colors.green[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    [
+                      'IHCafé: ${_selectedIhcafeProducer!.nombreCompleto}',
+                      if (_selectedIhcafeProducer!.clave.isNotEmpty)
+                        l10n.ihcafeClaveLabel(_selectedIhcafeProducer!.clave),
+                      if (_selectedIhcafeFinca?.fincaId != null)
+                        l10n.ihcafeFincaLabel(
+                            '${_selectedIhcafeFinca!.fincaId}'),
+                      if (!_selectedIhcafeProducer!.esVigente)
+                        l10n.ihcafeNotVigente,
+                    ].join(' · '),
+                    style: TextStyle(fontSize: 12, color: Colors.green[900]),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 16),
+                  tooltip: l10n.ihcafeRemoveLink,
+                  onPressed: () => setState(() {
+                    _selectedIhcafeProducer = null;
+                    _selectedIhcafeFinca = null;
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
         TextField(
           controller: _farmerFirstNameController,
           style: const TextStyle(color: Colors.black),

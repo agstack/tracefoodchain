@@ -18,6 +18,8 @@ import 'package:trace_foodchain_app/helpers/sort_json_alphabetically.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
+import 'package:trace_foodchain_app/services/media_outbox_service.dart';
+import 'package:trace_foodchain_app/services/sync_settings_service.dart';
 import 'package:uuid/uuid.dart';
 
 var uuid = const Uuid();
@@ -257,13 +259,20 @@ Future<Map<String, dynamic>> setObjectMethod(
   await localStorage!.put(getObjectMethodUID(objectMethod), objectMethod);
 
   // sync with cloud if tagged for this and device is connected to the internet
+  // WP A2: while the user has paused uploads we stay purely local - the item
+  // keeps its needsSync flag and goes out on the next resumed run.
   var connectivityResult = await (Connectivity().checkConnectivity());
   if (objectMethod["needsSync"] != null) {
     if ((objectMethod["needsSync"] == true) &&
         (!connectivityResult.contains(ConnectivityResult.none))) {
-      await cloudSyncService.uploadPendingPhotos();
-      await cloudSyncService.syncMethods('tracefoodchain.org',
-          syncFromCloud: syncFromCloud);
+      if (syncSettings.isUploadPaused) {
+        debugPrint(
+            'setObjectMethod: sync suppressed (uploadPaused) for ${getObjectMethodUID(objectMethod)}');
+      } else {
+        await cloudSyncService.uploadPendingPhotos();
+        await cloudSyncService.syncMethods('tracefoodchain.org',
+            syncFromCloud: syncFromCloud);
+      }
     }
   }
   return objectMethod;
@@ -422,6 +431,12 @@ Future updateMethodHistories(Map<String, dynamic> jsonDoc) async {
     }
 
   for (final uid in ouidList) {
+    // WP A1: remember which method references a media item. Its local copy is
+    // only released once that method itself has reached the cloud (no orphans).
+    if (mediaOutbox.isOpen && mediaOutbox.get(uid) != null) {
+      await mediaOutbox.linkMethod(uid, methodUID);
+    }
+
     final oDoc = await getLocalObjectMethod(uid);
     if (oDoc.isNotEmpty) {
       try {
@@ -1138,6 +1153,16 @@ Future<Map<String, dynamic>> createImageObject({
     } else {
       debugPrint('Warning: No GPS position for image $imageName');
     }
+
+    // WP A1: register the media in the durable outbox right at capture time.
+    // From here on it is tracked through
+    // capturedLocal -> uploading -> uploadedUnverified -> confirmedRemote,
+    // survives app kills, and is retried until the remote copy is verified.
+    await mediaOutbox.enqueue(
+      mediaUID: imageUID,
+      localPath: localPath,
+      imageName: imageName,
+    );
 
     debugPrint('Created image object: $imageUID for $imageName');
     return imageObj;

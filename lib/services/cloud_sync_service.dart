@@ -1,4 +1,5 @@
 ﻿// This service syncs local hive database to/from the clouds
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -16,7 +17,10 @@ import 'package:trace_foodchain_app/helpers/sort_json_alphabetically.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/screens/home_screen.dart';
 import 'package:trace_foodchain_app/services/get_device_id.dart';
+import 'package:trace_foodchain_app/services/media_outbox_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
+import 'package:trace_foodchain_app/services/sync_outbox_service.dart';
+import 'package:trace_foodchain_app/services/sync_settings_service.dart';
 //import 'dart:html' as html;
 
 class CloudApiClient {
@@ -190,6 +194,9 @@ class CloudSyncService {
   final CloudApiClient apiClient;
   bool _isSyncing =
       false; // Neues Flag, um parallele Sync-Aufrufe zu verhindern
+  // WP A3: a trigger that arrives while a sync runs is coalesced into exactly
+  // one follow-up run instead of being dropped.
+  bool _rerunRequested = false;
   bool _isUploadingPhotos = false; // Flag to prevent parallel photo uploads
 
   CloudSyncService(String domain) : apiClient = CloudApiClient(domain: domain);
@@ -326,9 +333,21 @@ class CloudSyncService {
     }
   }
 
-  /// Upload local photos to Firebase Storage and replace local paths with cloud URLs
-  /// This must be called before syncMethods() to avoid internal loops
+  /// Uploads pending media to Firebase Storage and writes the cloud URL into the
+  /// image object once the remote copy has been *verified* (WP A1).
+  ///
+  /// The work list comes from the durable [MediaOutboxService], not from a scan
+  /// of localStorage: an item survives app kills, keeps its retry state, and is
+  /// only ever considered done after `confirmedRemote`.
+  /// This must be called before syncMethods() to avoid internal loops.
   Future<void> uploadPendingPhotos() async {
+    if (syncSettings.isUploadPaused) {
+      debugPrint('uploadPendingPhotos: skipped (uploadPaused)');
+      cloudLogService.info('uploadPendingPhotos: skipped', data: {
+        'reason': 'uploadPaused',
+      });
+      return;
+    }
     if (_isUploadingPhotos) {
       debugPrint(
           'Photo upload already in progress, skipping new upload request');
@@ -345,145 +364,32 @@ class CloudSyncService {
             .warn('uploadPendingPhotos: no authenticated user, aborting');
         return;
       }
-
-      // Iterate through all objects in localStorage
-      for (var doc in localStorage!.values) {
-        var doc2 = Map<String, dynamic>.from(doc);
-
-        // Only process objects (not methods)
-        if (doc2["methodHistoryRef"] != null) {
-          bool objectModified = false;
-
-          // Check if this is an image object with localDownloadURL that needs upload
-          final isImageObject = doc2["template"]?["RALType"] == "image";
-
-          if (isImageObject) {
-            // Find localDownloadURL and downloadURL properties
-            var localPath =
-                getSpecificPropertyfromJSON(doc2, "localDownloadURL");
-            var cloudPath = getSpecificPropertyfromJSON(doc2, "downloadURL");
-
-            // Check if we need to upload (local path exists but cloud URL is empty)
-            if ((localPath != "-no data found-" && localPath != "") &&
-                (cloudPath == "" || cloudPath == "-no data found-")) {
-              // Check if this is a local file path (not already a URL)
-              if (!localPath.startsWith('http://') &&
-                  !localPath.startsWith('https://')) {
-                debugPrint(
-                    'Found image object with local path: $localPath, UID: ${doc2["identity"]["UID"]}');
-                cloudLogService
-                    .info('uploadPendingPhotos: uploading photo', data: {
-                  'name': doc2['identity']['name']?.toString() ?? '',
-                  'uid': doc2['identity']['UID']?.toString() ?? '',
-                  'localPath': localPath,
-                });
-
-                // Zeige den Foto-Namen im Upload-Overlay
-                currentUploadPhotoName.value =
-                    doc2["identity"]["name"]?.toString() ?? '';
-                uploadProgress.value = 0.0;
-
-                try {
-                  final userId = user.uid;
-                  final objectUid = doc2["identity"]["UID"];
-                  final timestamp = DateTime.now().millisecondsSinceEpoch;
-                  final imageName = doc2["identity"]["name"] ?? "image";
-                  final fileName =
-                      'images/$userId/$imageName/${objectUid}_$timestamp.jpg';
-
-                  debugPrint('Uploading image to Firebase Storage: $fileName');
-
-                  // Determine file or bytes based on platform
-                  File? file;
-                  Uint8List? bytes;
-
-                  if (kIsWeb) {
-                    // Web: Read bytes from blob URL via HTTP
-                    // On web, localPath contains a blob URL from XFile
-                    try {
-                      final response = await http.get(Uri.parse(localPath));
-                      if (response.statusCode == 200) {
-                        bytes = response.bodyBytes;
-                        debugPrint(
-                            'Web: Read ${bytes.length} bytes from blob URL');
-                      } else {
-                        debugPrint(
-                            'Error reading blob URL: HTTP ${response.statusCode}');
-                        continue;
-                      }
-                    } catch (e) {
-                      debugPrint('Error reading bytes from web blob URL: $e');
-                      continue;
-                    }
-                  } else {
-                    // Native: use File
-                    file = File(localPath);
-                    if (!await file.exists()) {
-                      debugPrint('Local image file does not exist: $localPath');
-                      continue;
-                    }
-                  }
-
-                  // Use new professional upload function
-                  final uploadResult = await _uploadFileWithProgress(
-                    fileName: fileName,
-                    contentType: 'image/jpeg',
-                    file: file,
-                    bytes: bytes,
-                  );
-
-                  if (uploadResult != null &&
-                      uploadResult['downloadURL'] != null) {
-                    final cloudUrl = uploadResult['downloadURL']!;
-
-                    // Update downloadURL if upload was successful
-                    // CRITICAL: setSpecificPropertyJSON returns a new copy, must reassign!
-                    doc2 = setSpecificPropertyJSON(
-                        doc2, "downloadURL", cloudUrl, "URL");
-                    doc2 = setSpecificPropertyJSON(doc2, "storagePath",
-                        uploadResult['storagePath'], "URL");
-
-                    objectModified = true;
-                    debugPrint(
-                        'Updated downloadURL for image object ${doc2["identity"]["UID"]}');
-                    cloudLogService.info(
-                        'uploadPendingPhotos: photo uploaded successfully',
-                        data: {
-                          'name': doc2['identity']['name']?.toString() ?? '',
-                          'uid': doc2['identity']['UID']?.toString() ?? '',
-                        });
-                  } else {
-                    debugPrint('Upload failed or returned null result');
-                    cloudLogService.warn(
-                        'uploadPendingPhotos: upload returned null result',
-                        data: {
-                          'name': doc2['identity']['name']?.toString() ?? '',
-                        });
-                  }
-                } catch (e) {
-                  debugPrint('Error uploading image: $e');
-                  cloudLogService.error(
-                      'uploadPendingPhotos: photo upload exception',
-                      data: {
-                        'name': doc2['identity']['name']?.toString() ?? '',
-                        'error': e.toString(),
-                      });
-                } finally {
-                  currentUploadPhotoName.value = '';
-                }
-              }
-            }
-          }
-
-          // Save the modified object back to localStorage using changeObjectData
-          // to properly document the change with method history
-          if (objectModified) {
-            await changeObjectData(doc2, syncFromCloud: false);
-            debugPrint(
-                'Object updated with cloud photo URLs via changeObjectData');
-          }
-        }
+      if (!mediaOutbox.isOpen) {
+        debugPrint('media_outbox not open, skipping photo upload');
+        cloudLogService.warn('uploadPendingPhotos: media outbox not open');
+        return;
       }
+
+      // Pick up photos captured before the outbox existed (and before this
+      // device ever ran a version that enqueued them).
+      await _backfillMediaOutbox();
+
+      final dueEntries = mediaOutbox.dueForUpload;
+      debugPrint(
+          'uploadPendingPhotos: ${dueEntries.length} due of ${mediaOutbox.pendingCount} pending');
+
+      for (final entry in dueEntries) {
+        if (syncSettings.isUploadPaused) {
+          debugPrint('uploadPendingPhotos: aborting, upload paused mid-run');
+          break;
+        }
+        await _processMediaEntry(entry, user.uid);
+      }
+
+      // Confirmed media may release its local copy - but only once the
+      // documents referencing it are themselves in the cloud.
+      await mediaOutbox.releaseConfirmedLocalCopies(needsSync: _docNeedsSync);
+      _refreshPendingCount();
     } catch (e) {
       debugPrint('Error in photo upload process: $e');
       cloudLogService.error('uploadPendingPhotos: outer exception',
@@ -495,6 +401,170 @@ class CloudSyncService {
     }
   }
 
+  /// Runs one media item through upload -> verify -> confirm.
+  Future<void> _processMediaEntry(MediaOutboxEntry entry, String userId) async {
+    // Already uploaded but never verified (e.g. the app was killed right after
+    // Storage returned 200): verify first, do not upload again.
+    if (entry.status == MediaStatus.uploadedUnverified &&
+        (entry.remoteUrl?.isNotEmpty ?? false)) {
+      await _verifyAndConfirm(entry);
+      return;
+    }
+
+    currentUploadPhotoName.value = entry.imageName ?? '';
+    uploadProgress.value = 0.0;
+
+    try {
+      await mediaOutbox.markUploading(entry.mediaUID);
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final imageName = entry.imageName?.isNotEmpty == true
+          ? entry.imageName!
+          : 'image';
+      final fileName =
+          'images/$userId/$imageName/${entry.mediaUID}_$timestamp.jpg';
+
+      debugPrint('Uploading image to Firebase Storage: $fileName');
+      cloudLogService.info('uploadPendingPhotos: uploading photo', data: {
+        'name': imageName,
+        'uid': entry.mediaUID,
+        'attempt': '${entry.attemptCount + 1}',
+      });
+
+      File? file;
+      Uint8List? bytes;
+      if (kIsWeb) {
+        bytes = await mediaOutbox.readBytes(entry);
+        if (bytes == null) {
+          await mediaOutbox.markFailure(
+              entry.mediaUID, 'local bytes unavailable');
+          return;
+        }
+      } else {
+        file = File(entry.localPath);
+        if (!await file.exists()) {
+          await mediaOutbox.markFailure(
+              entry.mediaUID, 'local file missing: ${entry.localPath}');
+          cloudLogService.error('uploadPendingPhotos: local file missing',
+              data: {'uid': entry.mediaUID, 'path': entry.localPath});
+          return;
+        }
+      }
+
+      final uploadResult = await _uploadFileWithProgress(
+        fileName: fileName,
+        contentType: 'image/jpeg',
+        file: file,
+        bytes: bytes,
+      );
+
+      if (uploadResult == null || uploadResult['downloadURL'] == null) {
+        await mediaOutbox.markFailure(entry.mediaUID, 'upload returned null');
+        cloudLogService.warn('uploadPendingPhotos: upload returned null result',
+            data: {'name': imageName, 'uid': entry.mediaUID});
+        return;
+      }
+
+      // Storage reported success - durable, but not yet trusted.
+      await mediaOutbox.markUploadedUnverified(entry.mediaUID,
+          uploadResult['downloadURL']!, uploadResult['storagePath']);
+
+      final refreshed = mediaOutbox.get(entry.mediaUID);
+      if (refreshed != null) await _verifyAndConfirm(refreshed);
+    } catch (e) {
+      await mediaOutbox.markFailure(entry.mediaUID, e.toString());
+      debugPrint('Error uploading image: $e');
+      cloudLogService.error('uploadPendingPhotos: photo upload exception',
+          data: {'uid': entry.mediaUID, 'error': e.toString()});
+    } finally {
+      currentUploadPhotoName.value = '';
+    }
+  }
+
+  /// Verifies the remote copy and, only then, writes the cloud URL into the
+  /// image object. Nothing downstream ever sees a downloadURL we have not
+  /// confirmed to exist.
+  Future<void> _verifyAndConfirm(MediaOutboxEntry entry) async {
+    final verified = await mediaOutbox.verifyRemoteCopy(entry);
+    if (!verified) {
+      await mediaOutbox.markVerificationFailed(
+          entry.mediaUID, 'remote copy not verifiable');
+      cloudLogService.warn('uploadPendingPhotos: verification failed',
+          data: {'uid': entry.mediaUID});
+      return;
+    }
+
+    await mediaOutbox.markConfirmed(entry.mediaUID);
+    cloudLogService.info('uploadPendingPhotos: photo uploaded and verified',
+        data: {'name': entry.imageName ?? '', 'uid': entry.mediaUID});
+
+    await _writeCloudUrlIntoImageObject(entry);
+  }
+
+  /// Persists downloadURL/storagePath on the image object via changeObjectData
+  /// so the change is documented with its own method history.
+  Future<void> _writeCloudUrlIntoImageObject(MediaOutboxEntry entry) async {
+    try {
+      var doc = await getLocalObjectMethod(entry.mediaUID);
+      if (doc.isEmpty) {
+        debugPrint(
+            'media: image object ${entry.mediaUID} not found locally, skipping URL update');
+        return;
+      }
+      final existingUrl = getSpecificPropertyfromJSON(doc, "downloadURL");
+      if (existingUrl == entry.remoteUrl) return; // already up to date
+
+      // CRITICAL: setSpecificPropertyJSON returns a new copy, must reassign!
+      doc = setSpecificPropertyJSON(doc, "downloadURL", entry.remoteUrl, "URL");
+      doc = setSpecificPropertyJSON(doc, "storagePath", entry.remotePath, "URL");
+      await changeObjectData(doc, syncFromCloud: false);
+      debugPrint(
+          'Updated downloadURL for image object ${entry.mediaUID} after verification');
+    } catch (e) {
+      debugPrint('Error writing cloud URL into image object: $e');
+      cloudLogService.error('uploadPendingPhotos: could not persist cloud URL',
+          data: {'uid': entry.mediaUID, 'error': e.toString()});
+    }
+  }
+
+  /// Migration for image objects that predate the media outbox.
+  Future<void> _backfillMediaOutbox() async {
+    if (localStorage == null || !localStorage!.isOpen) return;
+    final imageObjects = <Map<String, dynamic>>[];
+    for (final doc in localStorage!.values) {
+      if (doc["template"]?["RALType"] != "image") continue;
+      imageObjects.add(Map<String, dynamic>.from(doc));
+    }
+    if (imageObjects.isEmpty) return;
+    await mediaOutbox.backfill(
+      imageObjects: imageObjects,
+      uidOf: getObjectMethodUID,
+      propertyOf: (doc, prop) {
+        final value = getSpecificPropertyfromJSON(doc, prop);
+        return value == '-no data found-' ? '' : value;
+      },
+    );
+  }
+
+  /// Does the document with this UID still have to reach the cloud?
+  bool _docNeedsSync(String uid) {
+    if (localStorage == null || !localStorage!.isOpen) return true;
+    final doc = localStorage!.get(uid);
+    if (doc == null) return false;
+    return doc["needsSync"] != null;
+  }
+
+  /// Publishes the number of items still waiting to reach the cloud (WP A2).
+  void _refreshPendingCount() {
+    int pending = mediaOutbox.isOpen ? mediaOutbox.pendingCount : 0;
+    if (localStorage != null && localStorage!.isOpen) {
+      for (final doc in localStorage!.values) {
+        if (doc["needsSync"] != null) pending++;
+      }
+    }
+    syncSettings.pendingItemCount.value = pending;
+  }
+
 //This function syncs all methods and objects to the cloud if tagged as being changed/generated locally only
 
   Future<bool> syncMethods(String domain,
@@ -502,12 +572,55 @@ class CloudSyncService {
       Function(int current, int total)? onDownloadProgress,
       VoidCallback? onFetchingFromCloud,
       bool syncFromCloud = true}) async {
-    List<String> failedSyncedOutputObjects = [];
+    // WP A2: the user can suspend all cloud traffic. Local capture and the
+    // needsSync flagging keep running - only the wire is silent.
+    if (syncSettings.isUploadPaused) {
+      debugPrint('[SYNC] skipped (uploadPaused)');
+      cloudLogService
+          .info('syncMethods: skipped', data: {'reason': 'uploadPaused'});
+      return false;
+    }
+
+    // WP A3: a trigger arriving during a run is no longer dropped - it is
+    // remembered and produces exactly one follow-up run.
     if (_isSyncing) {
-      debugPrint('Sync already in progress, skipping new sync request');
+      _rerunRequested = true;
+      debugPrint('Sync already in progress, scheduling exactly one follow-up');
       return false;
     }
     _isSyncing = true;
+    bool success = false;
+    try {
+      success = await _runSyncCycle(
+        domain,
+        onProgress: onProgress,
+        onDownloadProgress: onDownloadProgress,
+        onFetchingFromCloud: onFetchingFromCloud,
+        syncFromCloud: syncFromCloud,
+      );
+    } finally {
+      _isSyncing = false;
+    }
+
+    if (_rerunRequested) {
+      _rerunRequested = false;
+      debugPrint('[SYNC] running the coalesced follow-up sync');
+      unawaited(syncMethods(domain,
+          onProgress: onProgress,
+          onDownloadProgress: onDownloadProgress,
+          onFetchingFromCloud: onFetchingFromCloud,
+          syncFromCloud: syncFromCloud));
+    }
+    return success;
+  }
+
+  Future<bool> _runSyncCycle(String domain,
+      {Function(int current, int total)? onProgress,
+      Function(int current, int total)? onDownloadProgress,
+      VoidCallback? onFetchingFromCloud,
+      bool syncFromCloud = true}) async {
+    List<String> failedSyncedOutputObjects = [];
+    bool cycleSuccess = false;
     cloudLogService.info('syncMethods: start', data: {'domain': domain});
     final databaseHelper = DatabaseHelper();
     try {
@@ -556,6 +669,19 @@ class CloudSyncService {
             deviceHashes["methodHashTable"].add({"UID": uid, "hash": hash});
         }
       }
+      // WP A3: items that failed recently wait out their backoff window. They
+      // stay flagged `needsSync` and still contribute their hash, so nothing is
+      // lost - the push is merely deferred.
+      final int backedOffCount = methodsToSyncToCloud
+          .where((m) => syncOutbox.isBackedOff(getObjectMethodUID(m)))
+          .length;
+      if (backedOffCount > 0) {
+        methodsToSyncToCloud
+            .removeWhere((m) => syncOutbox.isBackedOff(getObjectMethodUID(m)));
+        debugPrint(
+            '[SYNC] $backedOffCount method(s) deferred by retry backoff, next due ${syncOutbox.nextDueAt}');
+      }
+
       bool syncSuccess = true;
       int currentMethodIndex = 0;
       final totalMethodsToSync = methodsToSyncToCloud.length;
@@ -574,9 +700,12 @@ class CloudSyncService {
               await apiClient.syncMethodToCloud(domain, doc2);
           if (syncresult["response"] == "success") {
             debugPrint('Method $methodUid synced successfully to cloud');
+            await syncOutbox.recordSuccess(methodUid); //clears any retry state
             await setObjectMethod(
                 doc2, false, false); //persists removal of sync flag from method
           } else {
+            await syncOutbox.recordFailure(
+                methodUid, syncresult["response"].toString());
             debugPrint(
                 'Error syncing method $methodUid to cloud: ${syncresult["response"].toString()}');
             if (doc2.containsKey("outputObjects") &&
@@ -684,6 +813,7 @@ class CloudSyncService {
           }
         } catch (e) {
           syncSuccess = false;
+          await syncOutbox.recordFailure(methodUid, e.toString());
           debugPrint(
               '[SYNC] Exception in inner try-catch for method $methodUid: $e');
           snackbarMessageNotifier.value = "unknown error syncing to cloud";
@@ -712,7 +842,9 @@ class CloudSyncService {
       //2. Get all objects and methods from the cloud that are not on the device or need to be updated
       if (!syncFromCloud) {
         debugPrint('[SYNC] syncFromCloud=false, returning early');
-        return syncSuccess;
+        cycleSuccess = syncSuccess;
+        if (cycleSuccess) await syncSettings.markSyncSuccessful();
+        return cycleSuccess;
       }
       debugPrint('[SYNC] Starting syncObjectsMethodsFromCloud...');
       if (onFetchingFromCloud != null) {
@@ -745,7 +877,12 @@ class CloudSyncService {
           }
         }
       }
-      // bool downloadedFirst = false;
+      //*** WP A4: atomic pull phase ***
+      // Incoming documents are written to a staging box first and only moved
+      // into localStorage in one batch once the whole payload has arrived. A
+      // crash mid-pull therefore leaves the local state fully "before" - the
+      // next run re-fetches cleanly via the hash comparison.
+      await syncOutbox.beginStaging();
       int currentDownloadIndex = 0;
       final totalDownloads = mergedList.length;
 
@@ -761,8 +898,18 @@ class CloudSyncService {
 
         //);
         docData.remove("needsSync");
-        await setObjectMethod(docData, false, false);
+        final String docUid = getObjectMethodUID(docData);
+        if (docUid.isEmpty) {
+          debugPrint('[SYNC] skipping pulled document without UID');
+          continue;
+        }
+        await syncOutbox.stage(docUid, _normalizeIncomingDocument(docData));
       }
+
+      // Marker + commit: everything before this point is discardable.
+      await syncOutbox.markStagingComplete();
+      final committed = await syncOutbox.commitStagingInto(localStorage!);
+      debugPrint('[SYNC] pull phase committed $committed documents atomically');
 
       // Traverse through all maps in deviceHashes.
       // For each entry, extract the "UID", load the corresponding object,
@@ -782,6 +929,9 @@ class CloudSyncService {
         }
       }
       //
+      cycleSuccess = syncSuccess;
+      if (cycleSuccess) await syncSettings.markSyncSuccessful();
+      return cycleSuccess;
     } catch (e) {
       debugPrint(
           '[SYNC] Exception in outer try-catch (skipping syncFromCloud!): $e');
@@ -789,11 +939,38 @@ class CloudSyncService {
           data: {'domain': domain, 'error': e.toString()});
       return false;
     } finally {
-      debugPrint('[SYNC] syncMethods finally block reached, _isSyncing reset');
-      _isSyncing = false;
-      cloudLogService.info('syncMethods: finished', data: {'domain': domain});
-      return true;
+      debugPrint('[SYNC] syncMethods finally block reached');
+      _refreshPendingCount();
+      cloudLogService.info('syncMethods: finished',
+          data: {'domain': domain, 'success': '$cycleSuccess'});
     }
+  }
+
+  /// Applies the side effects `setObjectMethod` would have applied to a pulled
+  /// document, so staging + batch commit behaves identically to the previous
+  /// per-item write - just atomically.
+  Map<String, dynamic> _normalizeIncomingDocument(Map<String, dynamic> doc) {
+    if (doc["role"] != null) {
+      doc.remove("role"); //Remove unwanted role declaration of objects
+    }
+    if (doc.containsKey("existenceStarts") && doc["existenceStarts"] == null) {
+      doc["existenceStarts"] = DateTime.now();
+    }
+    return doc;
+  }
+
+  /// Commits or discards whatever an interrupted pull left behind (WP A4).
+  /// Call once after the user boxes are open, before the first sync.
+  Future<void> recoverInterruptedPull() async {
+    if (!syncOutbox.isOpen) return;
+    if (localStorage == null || !localStorage!.isOpen) return;
+    if (!syncOutbox.hasStagedData) return;
+    final committed = await syncOutbox.commitStagingInto(localStorage!);
+    debugPrint(committed > 0
+        ? '[SYNC] recovered $committed staged documents from an interrupted pull'
+        : '[SYNC] discarded an incomplete staged pull');
+    cloudLogService.info('recoverInterruptedPull',
+        data: {'committed': '$committed'});
   }
 }
 
