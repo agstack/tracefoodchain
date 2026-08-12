@@ -2044,5 +2044,13 @@
   "qcSavingDecision": "Enregistrement de la décision et synchronisation...",
   "qcUpdatingPhotos": "Mise à jour des photos liées...",
   "itemsLostForUpload": "{count} élément(s) ne peuvent pas être envoyés",
-  "pendingItemLost": "Copie locale perdue"
+  "pendingItemLost": "Copie locale perdue",
+  "checkCloudButton": "Vérifier le cloud",
+  "checkingCloud": "Vérification du cloud... {done}/{total}",
+  "cloudCheckResult": "{ok} dans le cloud, {missing} manquant(s)",
+  "cloudCheckAllOk": "Les {count} entrées sont dans le cloud",
+  "resyncMissing": "Renvoyer {count} manquant(s)",
+  "inCloud": "Dans le cloud",
+  "notInCloud": "Absent du cloud",
+  "resyncQueued": "{count} méthode(s) en attente d'envoi"
 }

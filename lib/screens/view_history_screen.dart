@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +29,125 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
   List<Map<String, dynamic>> _registrations = [];
   bool _isLoading = true;
   String _filterType = 'all'; // 'all', 'farm', 'human', 'field'
+
+  /// Result of the last cloud check: object UID -> exists in the cloud.
+  /// A UID that is absent from the map has not been checked.
+  final Map<String, bool> _cloudStatus = {};
+  bool _isCheckingCloud = false;
+  String? _cloudCheckProgress;
+
+  /// Verifies for every listed registration whether the object really exists in
+  /// Firestore.
+  ///
+  /// The local database is not proof that a push arrived: a method push can
+  /// fail while the record stays here, which is exactly how a registration ends
+  /// up visible in the app but absent from the cloud.
+  Future<void> _checkCloud() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _isCheckingCloud = true;
+      _cloudCheckProgress = null;
+    });
+
+    final entries = _filteredRegistrations;
+    int done = 0;
+
+    try {
+      for (final registration in entries) {
+        final uid = registration['uid'] as String;
+        bool exists = false;
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('TFC_objects')
+              .doc(uid)
+              .get();
+          exists = doc.exists;
+        } catch (e) {
+          debugPrint('Cloud check failed for $uid: $e');
+          // Leave it unchecked rather than reporting a false "missing".
+          done++;
+          continue;
+        }
+        _cloudStatus[uid] = exists;
+        done++;
+        if (mounted && (done % 3 == 0 || done == entries.length)) {
+          setState(() =>
+              _cloudCheckProgress = l10n.checkingCloud(done, entries.length));
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingCloud = false;
+          _cloudCheckProgress = null;
+        });
+        final missing = _missingUids.length;
+        final ok = _cloudStatus.values.where((v) => v).length;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(missing == 0
+                ? l10n.cloudCheckAllOk(ok)
+                : l10n.cloudCheckResult(ok, missing)),
+            backgroundColor: missing == 0 ? Colors.green : Colors.orange[800],
+          ),
+        );
+      }
+    }
+  }
+
+  List<String> get _missingUids => _cloudStatus.entries
+      .where((e) => e.value == false)
+      .map((e) => e.key)
+      .toList();
+
+  /// Queues the methods behind the missing objects for another push and runs a
+  /// sync. Objects never travel on their own - they are carried by their
+  /// methods - so re-flagging those is what actually repairs the gap.
+  Future<void> _resyncMissing() async {
+    final l10n = AppLocalizations.of(context)!;
+    final missing = _missingUids;
+    if (missing.isEmpty) return;
+
+    setState(() {
+      _isCheckingCloud = true;
+      _cloudCheckProgress = l10n.qcSavingDecision;
+    });
+
+    try {
+      final flagged = await cloudSyncService.reflagForPush(missing);
+      // Push only - the history screen does not need the cloud's state back.
+      await cloudSyncService.syncMethods('tracefoodchain.org',
+          syncFromCloud: false, force: true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.resyncQueued(flagged)),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Resync failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${l10n.syncError}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingCloud = false;
+          _cloudCheckProgress = null;
+        });
+        // Verify the repair instead of assuming it worked.
+        await _checkCloud();
+      }
+    }
+  }
 
   String _formatEditableNumber(dynamic value) {
     if (value == null) return '';
@@ -441,15 +561,48 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
         title: Text(l10n.registrationHistory,
             style: const TextStyle(color: Colors.black)),
         actions: [
+          // Cloud check: the local list is not proof that anything arrived.
+          IconButton(
+            icon: _isCheckingCloud
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.cloud_sync),
+            onPressed: _isCheckingCloud ? null : _checkCloud,
+            tooltip: l10n.checkCloudButton,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadRegistrations,
+            onPressed: _isCheckingCloud ? null : _loadRegistrations,
             tooltip: l10n.retry,
           ),
         ],
       ),
       body: Column(
         children: [
+          if (_cloudCheckProgress != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _cloudCheckProgress!,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          _buildMissingBanner(l10n),
           // Filter Chips
           Container(
             padding: const EdgeInsets.all(16),
@@ -530,6 +683,79 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       backgroundColor: Colors.grey[200],
       selectedColor: Theme.of(context).primaryColor,
       checkmarkColor: Colors.white,
+    );
+  }
+
+  /// Banner offering the repair once the check found gaps.
+  Widget _buildMissingBanner(AppLocalizations l10n) {
+    final missing = _missingUids.length;
+    if (missing == 0) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        border: Border.all(color: Colors.orange[300]!),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off, color: Colors.orange[800], size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              l10n.cloudCheckResult(
+                  _cloudStatus.values.where((v) => v).length, missing),
+              style: TextStyle(color: Colors.orange[900], fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: _isCheckingCloud ? null : _resyncMissing,
+            icon: const Icon(Icons.upload, size: 16),
+            label: Text(l10n.resyncMissing(missing)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[800],
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.grey[300],
+              disabledForegroundColor: Colors.grey[600],
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Per-entry cloud state. Absent from the map = not checked yet, so nothing
+  /// is claimed either way.
+  Widget _buildCloudBadge(String uid, AppLocalizations l10n) {
+    final state = _cloudStatus[uid];
+    if (state == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            state ? Icons.cloud_done : Icons.cloud_off,
+            size: 14,
+            color: state ? Colors.green[700] : Colors.orange[800],
+          ),
+          const SizedBox(width: 4),
+          Text(
+            state ? l10n.inCloud : l10n.notInCloud,
+            style: TextStyle(
+              fontSize: 11,
+              color: state ? Colors.green[700] : Colors.orange[800],
+              fontWeight: state ? FontWeight.normal : FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -624,6 +850,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                             ),
                           ),
                         ],
+                        _buildCloudBadge(
+                            registration['uid'] as String, l10n),
                       ],
                     ),
                   ),

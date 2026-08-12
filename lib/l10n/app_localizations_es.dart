@@ -3281,4 +3281,38 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pendingItemLost => 'Copia local perdida';
+
+  @override
+  String get checkCloudButton => 'Verificar nube';
+
+  @override
+  String checkingCloud(int done, int total) {
+    return 'Verificando la nube... $done/$total';
+  }
+
+  @override
+  String cloudCheckResult(int ok, int missing) {
+    return '$ok en la nube, $missing faltan';
+  }
+
+  @override
+  String cloudCheckAllOk(int count) {
+    return 'Las $count entradas están en la nube';
+  }
+
+  @override
+  String resyncMissing(int count) {
+    return 'Reenviar $count faltantes';
+  }
+
+  @override
+  String get inCloud => 'En la nube';
+
+  @override
+  String get notInCloud => 'No está en la nube';
+
+  @override
+  String resyncQueued(int count) {
+    return '$count método(s) en cola para subir';
+  }
 }

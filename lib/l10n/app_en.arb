@@ -2127,5 +2127,54 @@
       }
     }
   },
-  "pendingItemLost": "Local copy lost"
+  "pendingItemLost": "Local copy lost",
+  "checkCloudButton": "Check cloud",
+  "checkingCloud": "Checking cloud... {done}/{total}",
+  "@checkingCloud": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cloudCheckResult": "{ok} in cloud, {missing} missing",
+  "@cloudCheckResult": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "missing": {
+        "type": "int"
+      }
+    }
+  },
+  "cloudCheckAllOk": "All {count} entries are in the cloud",
+  "@cloudCheckAllOk": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resyncMissing": "Re-sync {count} missing",
+  "@resyncMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "inCloud": "In cloud",
+  "notInCloud": "Not in cloud",
+  "resyncQueued": "{count} method(s) queued for upload",
+  "@resyncQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

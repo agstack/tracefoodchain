@@ -47,6 +47,7 @@ class _QcEntry {
     this.registeredAt,
     this.registrarName = '-',
     this.registrarUid = '',
+    this.registrarEmail = '',
     this.alternateIds = const [],
   });
 
@@ -56,15 +57,28 @@ class _QcEntry {
   final DateTime? registeredAt;
   final String registrarName;
   final String registrarUid;
+  final String registrarEmail;
   final List<String> alternateIds;
 
   String get uid => object['identity']?['UID']?.toString() ?? '';
+
+  /// Label for the registrar filter. Not everyone fills in a name, so the mail
+  /// address is what actually identifies the person in that case.
+  String get registrarLabel {
+    final hasName = registrarName.isNotEmpty && registrarName != '-';
+    if (hasName && registrarEmail.isNotEmpty) {
+      return '$registrarName ($registrarEmail)';
+    }
+    if (registrarEmail.isNotEmpty) return registrarEmail;
+    return registrarName;
+  }
 
   /// Everything the search box may match against, lowercased once.
   late final String searchIndex = [
     name,
     uid,
     registrarName,
+    registrarEmail,
     ...alternateIds,
   ].join(' ').toLowerCase();
 }
@@ -222,6 +236,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     DateTime? registeredAt;
     String registrarName = '-';
     String registrarUid = '';
+    String registrarEmail = '';
 
     try {
       final methodHistoryRef = obj['methodHistoryRef'];
@@ -240,13 +255,17 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         if (methodData != null) {
           registeredAt =
               DateTime.tryParse(methodData['existenceStarts']?.toString() ?? '');
-          final executorIdentity = methodData['executor']?['identity'];
-          if (executorIdentity is Map) {
-            registrarName =
-                executorIdentity['name']?.toString().trim().isNotEmpty == true
-                    ? executorIdentity['name'].toString()
-                    : '-';
-            registrarUid = executorIdentity['UID']?.toString() ?? '';
+          final executor = methodData['executor'];
+          if (executor is Map) {
+            final executorIdentity = executor['identity'];
+            if (executorIdentity is Map) {
+              registrarName =
+                  executorIdentity['name']?.toString().trim().isNotEmpty == true
+                      ? executorIdentity['name'].toString()
+                      : '-';
+              registrarUid = executorIdentity['UID']?.toString() ?? '';
+            }
+            registrarEmail = _extractEmail(executor);
           }
         }
       }
@@ -268,16 +287,37 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       registeredAt: registeredAt,
       registrarName: registrarName,
       registrarUid: registrarUid,
+      registrarEmail: registrarEmail,
       alternateIds: alternateIds,
     );
   }
 
+  /// Mail address of an app user object - stored top level for accounts created
+  /// by the app, as a specific property for imported ones.
+  String _extractEmail(Map userDoc) {
+    final topLevel = userDoc['email']?.toString().trim() ?? '';
+    if (topLevel.isNotEmpty) return topLevel;
+
+    final specific =
+        getSpecificPropertyfromJSON(Map<String, dynamic>.from(userDoc), 'email')
+                ?.toString()
+                .trim() ??
+            '';
+    if (specific.isEmpty || specific == '-no data found-') return '';
+    return specific;
+  }
+
   /// All registrars present in the current result set, for the dropdown.
-  Map<String, String> get _availableRegistrars {
-    final map = <String, String>{};
+  Map<String, ({String name, String email, String label})>
+      get _availableRegistrars {
+    final map = <String, ({String name, String email, String label})>{};
     for (final entry in _pendingRegistrations) {
       if (entry.registrarUid.isEmpty) continue;
-      map[entry.registrarUid] = entry.registrarName;
+      map[entry.registrarUid] = (
+        name: entry.registrarName,
+        email: entry.registrarEmail,
+        label: entry.registrarLabel,
+      );
     }
     return map;
   }
@@ -314,9 +354,11 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         break;
       case _QcSort.registrar:
         result.sort((a, b) {
-          final cmp = a.registrarName
+          // By label, not by name: nameless registrars would all collapse into
+          // one "-" block and mix different people together.
+          final cmp = a.registrarLabel
               .toLowerCase()
-              .compareTo(b.registrarName.toLowerCase());
+              .compareTo(b.registrarLabel.toLowerCase());
           // Within one registrar the newest registration first.
           return cmp != 0 ? cmp : byDate(a, b, descending: true);
         });
@@ -912,6 +954,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                     : 'all',
                 isDense: true,
                 isExpanded: true,
+                // Two lines per entry (name + mail address) need more room than
+                // the default item height.
+                itemHeight: 58,
                 decoration: InputDecoration(
                   labelText: l10n.registeredBy,
                   isDense: true,
@@ -919,6 +964,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
+                // The closed field is narrow - show the one line that
+                // identifies the registrar rather than a truncated pair.
+                selectedItemBuilder: (context) => [
+                  _registrarFieldLabel(l10n.qcAllRegistrars),
+                  ...registrars.values.map((r) => _registrarFieldLabel(
+                        r.name.isNotEmpty && r.name != '-' ? r.name : r.email,
+                      )),
+                ],
                 items: [
                   DropdownMenuItem(
                     value: 'all',
@@ -927,7 +980,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                   ...registrars.entries.map(
                     (e) => DropdownMenuItem(
                       value: e.key,
-                      child: Text(e.value, overflow: TextOverflow.ellipsis),
+                      child: _registrarMenuLabel(e.value.name, e.value.email),
                     ),
                   ),
                 ],
@@ -939,6 +992,49 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Single line shown inside the closed registrar filter field.
+  Widget _registrarFieldLabel(String text) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text.isEmpty ? '-' : text,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  /// Menu entry for one registrar: name on top, mail address below - many
+  /// registrars never entered a name, the mail address is what identifies them.
+  Widget _registrarMenuLabel(String name, String email) {
+    final hasName = name.isNotEmpty && name != '-';
+    if (!hasName) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          email.isNotEmpty ? email : '-',
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(name, overflow: TextOverflow.ellipsis),
+        if (email.isNotEmpty)
+          Text(
+            email,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).hintColor,
+            ),
+          ),
+      ],
     );
   }
 

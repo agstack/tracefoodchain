@@ -1005,6 +1005,12 @@ class CloudSyncService {
       bool force = false,
       bool ignorePause = false}) async {
     List<String> failedSyncedOutputObjects = [];
+    // UIDs the cloud actually accepted in this cycle - the only ones allowed to
+    // lose their needsSync flag.
+    final Set<String> confirmedUids = <String>{};
+    // UIDs the cloud reported as unknown during the pull - present locally,
+    // absent in the cloud, i.e. a push that never arrived.
+    final Set<String> notFoundInCloud = <String>{};
     bool cycleSuccess = false;
     int pushedCount = 0;
     int failedCount = 0;
@@ -1104,6 +1110,20 @@ class CloudSyncService {
           if (syncresult["response"] == "success") {
             debugPrint('Method $methodUid synced successfully to cloud');
             pushedCount++;
+            // Only what the cloud accepted may lose its needsSync flag. The
+            // method itself plus the objects it carried as outputObjects.
+            confirmedUids.add(methodUid);
+            if (doc2["outputObjects"] is List) {
+              for (final output in doc2["outputObjects"]) {
+                if (output is! Map) continue;
+                final identity = output["identity"];
+                if (identity is! Map) continue;
+                final outUid = identity["UID"];
+                if (outUid is String && outUid.isNotEmpty) {
+                  confirmedUids.add(outUid);
+                }
+              }
+            }
             await syncOutbox.recordSuccess(methodUid); //clears any retry state
             await setObjectMethod(
                 doc2, false, false); //persists removal of sync flag from method
@@ -1252,7 +1272,7 @@ class CloudSyncService {
       // keeps the flags from piling up on clients that never pull
       // (syncFromCloud: false, e.g. the landscape web app), where they used to
       // stay set forever and inflate the "waiting items" counter.
-      await _clearSyncFlagsFor(deviceHashes, failedSyncedOutputObjects);
+      await _clearSyncFlagsForConfirmed(confirmedUids);
 
       //2. Get all objects and methods from the cloud that are not on the device or need to be updated
       if (!syncFromCloud) {
@@ -1309,6 +1329,18 @@ class CloudSyncService {
           debugPrint('[SYNC] cloudData is empty, discarding staged pull');
           await syncOutbox.clearStaging();
           return false;
+        }
+
+        // UIDs the client sent but the cloud does not have. These are exactly
+        // the documents that only exist locally - a push that silently never
+        // arrived. Collected here and re-flagged after the pull.
+        for (final key in const ["notFoundObjects", "notFoundMethods"]) {
+          final list = cloudData[key];
+          if (list is List) {
+            for (final uid in list) {
+              if (uid is String && uid.isNotEmpty) notFoundInCloud.add(uid);
+            }
+          }
         }
 
         // Fusioniere die beiden Listen "ralMethods" und "ralObjects" zu einer final mergedList
@@ -1375,6 +1407,11 @@ class CloudSyncService {
       await syncOutbox.markStagingComplete();
       final committed = await syncOutbox.commitStagingInto(localStorage!);
       pulledCount = committed;
+
+      // Self-repair: anything the cloud does not know about gets queued for
+      // another push. This is the automatic counterpart to the manual
+      // "check & resync" in the history screen.
+      await _reflagMissingInCloud(notFoundInCloud);
       debugPrint('[SYNC] pull phase committed $committed documents atomically'
           ' (${paginate ? "${page + 1} page(s)" : "single response"})');
 
@@ -1413,29 +1450,110 @@ class CloudSyncService {
     }
   }
 
-  /// Clears `needsSync` on everything that reached the cloud in this cycle.
+  /// Queues documents for another push that exist locally but not in the cloud.
   ///
-  /// Objects are never pushed on their own - they travel as outputObjects of
-  /// their methods - so this is the only place their flag is cleared. Items
-  /// whose method failed are listed in [failedSyncedOutputObjects] and keep
-  /// their flag so the next run retries them.
-  Future<void> _clearSyncFlagsFor(Map<String, dynamic> deviceHashes,
-      List<String> failedSyncedOutputObjects) async {
-    for (final hashList in deviceHashes.values) {
-      for (final entry in hashList) {
-        if (entry is Map<String, dynamic> && entry.containsKey("UID")) {
-          final uid = entry["UID"];
-          final localDoc = await getLocalObjectMethod(uid);
-          if (localDoc.containsKey("needsSync")) {
-            if (!failedSyncedOutputObjects.contains(uid)) {
-              localDoc.remove("needsSync");
-              await setObjectMethod(localDoc, false, false);
-            }
+  /// Objects are never pushed on their own, so for a missing object the METHODS
+  /// in its methodHistoryRef are flagged - pushing those carries the object
+  /// along as an outputObject.
+  ///
+  /// Returns the number of methods that were (re-)flagged.
+  Future<int> reflagForPush(Iterable<String> missingUids) async =>
+      _reflagMissingInCloud(missingUids.toSet());
+
+  Future<int> _reflagMissingInCloud(Set<String> missingUids) async {
+    if (missingUids.isEmpty) return 0;
+    if (localStorage == null || !localStorage!.isOpen) return 0;
+
+    final Set<String> methodsToFlag = <String>{};
+
+    for (final uid in missingUids) {
+      final raw = localStorage!.get(uid);
+      if (raw == null) continue; // not local either - nothing to push
+      final doc = Map<String, dynamic>.from(raw);
+
+      // Objects carry methodHistoryRef, methods do not.
+      final history = doc["methodHistoryRef"];
+      if (history == null) {
+        methodsToFlag.add(uid); // this IS a method
+        continue;
+      }
+      if (history is List) {
+        for (final ref in history) {
+          if (ref is! Map) continue;
+          final methodUid = ref["UID"];
+          if (methodUid is String && methodUid.isNotEmpty) {
+            methodsToFlag.add(methodUid);
           }
         }
       }
     }
+
+    int flagged = 0;
+    int resigned = 0;
+    for (final methodUid in methodsToFlag) {
+      var method = await getLocalObjectMethod(methodUid);
+      if (method.isEmpty) continue;
+
+      // Re-queueing alone is not enough when the signature itself is the
+      // reason the push failed. A method signed with a key this user no longer
+      // holds - the per-device key era - would just fail again with
+      // invalidSignature. Re-signing is safe here precisely BECAUSE the cloud
+      // does not have this method: changing the content cannot conflict with
+      // anything.
+      if (!await hasValidOwnSignature(method)) {
+        method = await resignAsCurrentUser(method);
+        resigned++;
+        cloudLogService.warn('syncMethods: re-signed method with current key',
+            data: {'uid': methodUid});
+      } else if (method["needsSync"] == true) {
+        continue; // already queued and properly signed
+      }
+
+      method["needsSync"] = true;
+      await setObjectMethod(method, false, false);
+      // A fresh attempt must not be blocked by an old backoff window.
+      await syncOutbox.recordSuccess(methodUid);
+      flagged++;
+    }
+
+    if (flagged > 0) {
+      debugPrint('[SYNC] re-flagged $flagged method(s) missing in the cloud'
+          ' ($resigned re-signed)');
+      cloudLogService.warn('syncMethods: re-queued documents missing in cloud',
+          data: {
+            'methods': '$flagged',
+            'resigned': '$resigned',
+            'uids': missingUids.join(','),
+          });
+    }
+    return flagged;
   }
+
+  /// Clears `needsSync` for exactly those items the cloud confirmed.
+  ///
+  /// Objects are never pushed on their own - they travel as outputObjects of
+  /// their methods - so this is the only place their flag is cleared.
+  ///
+  /// CRITICAL: only confirmed UIDs may be cleared. The previous version walked
+  /// the whole device hash table and cleared everything that was not listed in
+  /// `failedSyncedOutputObjects` - a list that holds the OUTPUT OBJECTS of
+  /// failed methods but never the failed method itself. A method whose push
+  /// failed therefore lost its flag, was never retried, and vanished silently:
+  /// the app reported "everything synced" while the cloud had nothing.
+  Future<void> _clearSyncFlagsForConfirmed(Set<String> confirmedUids) async {
+    for (final uid in confirmedUids) {
+      final localDoc = await getLocalObjectMethod(uid);
+      if (localDoc.containsKey("needsSync")) {
+        localDoc.remove("needsSync");
+        await setObjectMethod(localDoc, false, false);
+      }
+    }
+    if (confirmedUids.isNotEmpty) {
+      debugPrint('[SYNC] cleared needsSync for ${confirmedUids.length}'
+          ' confirmed item(s)');
+    }
+  }
+
 
   /// Applies the side effects `setObjectMethod` would have applied to a pulled
   /// document, so staging + batch commit behaves identically to the previous

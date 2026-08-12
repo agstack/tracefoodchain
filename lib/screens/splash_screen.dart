@@ -428,28 +428,32 @@ class _SplashScreenState extends State<SplashScreen>
         print('❌ [SplashScreen] DEBUG: Fehler beim Laden des Debug-Users: $e');
       }
     }
-    // Check if private key exists, if not generate new keypair
+    // Prepare the signing keypair FOR THIS USER and make sure its public key is
+    // registered in the cloud. A key that exists locally but is unknown to the
+    // cloud makes every method push fail on the signature check - which is what
+    // happened when a second user signed in on a device that still held the
+    // first user's key.
     await cloudLogService.info('SplashScreen: Checking private key / keypair');
-    final privateKey = await keyManager.getPrivateKey();
-    if (privateKey == null) {
-      await cloudLogService
-          .warn('SplashScreen: No private key found – generating new keypair');
+    final hadKeyBefore = await keyManager.getPrivateKey() != null;
+    if (!hadKeyBefore) {
       snackbarMessageNotifier.value = l10n.newKeypairNeeded;
-      "No private key found - generating new keypair...";
-      final success = await keyManager.generateAndStoreKeys();
-      if (!success) {
-        snackbarMessageNotifier.value = l10n.failedToInitializeKeyManagement;
-        secureCommunicationEnabled = false;
-        await cloudLogService.error(
-            'SplashScreen: Failed to generate keypair – secure communication disabled');
-      } else {
-        secureCommunicationEnabled = true;
-        await cloudLogService
-            .info('SplashScreen: New keypair generated successfully');
-      }
+    }
+
+    final keysReady = await keyManager.ensureKeysForCurrentUser();
+    secureCommunicationEnabled = keysReady;
+
+    if (!keysReady) {
+      snackbarMessageNotifier.value = l10n.failedToInitializeKeyManagement;
+      await cloudLogService.error(
+          'SplashScreen: Keypair not usable – secure communication disabled',
+          data: {
+            'hadLocalKey': '$hadKeyBefore',
+            'uid': FirebaseAuth.instance.currentUser?.uid ?? '',
+          });
     } else {
-      secureCommunicationEnabled = true;
-      await cloudLogService.info('SplashScreen: Existing private key found');
+      await cloudLogService.info(
+          'SplashScreen: Keypair ready and public key registered',
+          data: {'hadLocalKey': '$hadKeyBefore'});
     }
 
     // if (1 == 1) {//! DEBUG ONLY, REMOVE!!!

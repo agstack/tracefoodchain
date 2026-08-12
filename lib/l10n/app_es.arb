@@ -2055,5 +2055,13 @@
   "qcSavingDecision": "Guardando la decisión y sincronizando...",
   "qcUpdatingPhotos": "Actualizando fotos vinculadas...",
   "itemsLostForUpload": "{count} elemento(s) no se pueden subir",
-  "pendingItemLost": "Copia local perdida"
+  "pendingItemLost": "Copia local perdida",
+  "checkCloudButton": "Verificar nube",
+  "checkingCloud": "Verificando la nube... {done}/{total}",
+  "cloudCheckResult": "{ok} en la nube, {missing} faltan",
+  "cloudCheckAllOk": "Las {count} entradas están en la nube",
+  "resyncMissing": "Reenviar {count} faltantes",
+  "inCloud": "En la nube",
+  "notInCloud": "No está en la nube",
+  "resyncQueued": "{count} método(s) en cola para subir"
 }

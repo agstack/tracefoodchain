@@ -566,6 +566,84 @@ Future<Map<String, dynamic>> getContainerByAlternateUID(String uid) async {
   return rDoc;
 }
 
+/// True when every signature this user contributed to [method] verifies against
+/// their CURRENT key.
+///
+/// Returns false when a signature carries this user's UID but was produced with
+/// a different key - which is what happened while the private key was stored per
+/// device instead of per user: a second user on the same device signed with the
+/// first user's key. The cloud rejects those with `invalidSignature`.
+Future<bool> hasValidOwnSignature(Map<String, dynamic> method) async {
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
+  if (myUid == null) return false;
+
+  final signatures = method["digitalSignatures"];
+  if (signatures is! List || signatures.isEmpty) return false;
+
+  bool foundOwn = false;
+  for (final entry in signatures) {
+    if (entry is! Map) continue;
+    if (entry["signerUID"] != myUid) continue;
+    foundOwn = true;
+
+    final signedContent = entry["signedContent"];
+    final paths = signedContent is List
+        ? signedContent.map((p) => p.toString()).toList()
+        : <String>["\$"];
+
+    final payload = createSigningObject(paths, method);
+    final signature = entry["signature"]?.toString();
+    if (signature == null) return false;
+    if (!await digitalSignature.isSignedByCurrentKey(payload, signature)) {
+      return false;
+    }
+  }
+  return foundOwn;
+}
+
+/// Replaces this user's signatures on [method] with fresh ones from the current
+/// key, keeping signatures made by OTHER users untouched - those are the proof
+/// the cloud's conflict resolution relies on.
+///
+/// Only safe for methods the cloud does not have yet: re-signing changes the
+/// method content and therefore its hash.
+Future<Map<String, dynamic>> resignAsCurrentUser(
+    Map<String, dynamic> method) async {
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
+  if (myUid == null) return method;
+
+  final existing = method["digitalSignatures"];
+  final List<dynamic> others = [];
+  List<String> pathsToSign = ["\$"];
+
+  if (existing is List) {
+    for (final entry in existing) {
+      if (entry is Map && entry["signerUID"] == myUid) {
+        // Re-use the exact scope the original signature covered.
+        final signedContent = entry["signedContent"];
+        if (signedContent is List && signedContent.isNotEmpty) {
+          pathsToSign = signedContent.map((p) => p.toString()).toList();
+        }
+        continue; // drop - it cannot be verified any more
+      }
+      others.add(entry);
+    }
+  }
+
+  method["digitalSignatures"] = others;
+  final payload = createSigningObject(pathsToSign, method);
+  final signature = await digitalSignature.generateSignature(payload);
+  method["digitalSignatures"].add({
+    "signature": signature,
+    "signerUID": myUid,
+    "signedContent": pathsToSign,
+  });
+
+  debugPrint('Re-signed method ${getObjectMethodUID(method)} with the'
+      ' current key (scope: ${pathsToSign.join(",")})');
+  return method;
+}
+
 String createSigningObject(
     List<String> pathsToSign, Map<String, dynamic> objectMethod) {
   final copy = deepCopyMap(objectMethod);

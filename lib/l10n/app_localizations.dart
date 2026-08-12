@@ -5753,6 +5753,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Local copy lost'**
   String get pendingItemLost;
+
+  /// No description provided for @checkCloudButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Check cloud'**
+  String get checkCloudButton;
+
+  /// No description provided for @checkingCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking cloud... {done}/{total}'**
+  String checkingCloud(int done, int total);
+
+  /// No description provided for @cloudCheckResult.
+  ///
+  /// In en, this message translates to:
+  /// **'{ok} in cloud, {missing} missing'**
+  String cloudCheckResult(int ok, int missing);
+
+  /// No description provided for @cloudCheckAllOk.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count} entries are in the cloud'**
+  String cloudCheckAllOk(int count);
+
+  /// No description provided for @resyncMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-sync {count} missing'**
+  String resyncMissing(int count);
+
+  /// No description provided for @inCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'In cloud'**
+  String get inCloud;
+
+  /// No description provided for @notInCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in cloud'**
+  String get notInCloud;
+
+  /// No description provided for @resyncQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} method(s) queued for upload'**
+  String resyncQueued(int count);
 }
 
 class _AppLocalizationsDelegate

@@ -2044,5 +2044,13 @@
   "qcSavingDecision": "Speichere Entscheidung und synchronisiere...",
   "qcUpdatingPhotos": "Aktualisiere verknüpfte Fotos...",
   "itemsLostForUpload": "{count} Element(e) können nicht hochgeladen werden",
-  "pendingItemLost": "Lokale Kopie verloren"
+  "pendingItemLost": "Lokale Kopie verloren",
+  "checkCloudButton": "Cloud prüfen",
+  "checkingCloud": "Prüfe Cloud... {done}/{total}",
+  "cloudCheckResult": "{ok} in der Cloud, {missing} fehlen",
+  "cloudCheckAllOk": "Alle {count} Einträge sind in der Cloud",
+  "resyncMissing": "{count} fehlende erneut senden",
+  "inCloud": "In der Cloud",
+  "notInCloud": "Nicht in der Cloud",
+  "resyncQueued": "{count} Methode(n) zum Upload vorgemerkt"
 }
