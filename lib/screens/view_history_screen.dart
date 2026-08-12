@@ -1209,10 +1209,13 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
     required String imageName,
     required XFile file,
   }) async {
+    // On web the path is a blob URL that cannot be fetched back later, so the
+    // bytes are read here while the file is still accessible.
     final imageObj = await createImageObject(
       localPath: file.path,
       position: null,
       imageName: imageName,
+      bytes: kIsWeb ? await file.readAsBytes() : null,
     );
 
     final processedImage = jsonFullDoubleToInt(sortJsonAlphabetically(imageObj))

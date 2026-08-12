@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
+import '../services/gps_helper.dart';
 import '../services/open_ral_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
@@ -41,6 +42,9 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
   XFile? _fieldPhoto;
   String? _fieldPhotoLocalPath;
   Position? _fieldPhotoPosition;
+  // Web only: the blob URL in _fieldPhotoLocalPath cannot be read back later,
+  // so the bytes are kept from the moment of capture.
+  Uint8List? _fieldPhotoBytes;
   bool _isFieldPhotoValid = true;
   final ImagePicker _imagePicker = ImagePicker();
   camera_plugin.CameraController? _cameraController;
@@ -397,19 +401,12 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
     try {
       debugPrint('Field Photo taken: ${photo.path}');
 
-      // Get current GPS position when photo is taken
-      Position? photoPosition;
-      try {
-        photoPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.best,
-            timeLimit: Duration(seconds: 10),
-          ),
-        );
+      // Get current GPS position when photo is taken. Bounded - a missing
+      // geotag must not cost the photo.
+      final Position? photoPosition = await getPositionWithTimeout();
+      if (photoPosition != null) {
         debugPrint(
             'Photo GPS: ${photoPosition.latitude}, ${photoPosition.longitude}');
-      } catch (e) {
-        debugPrint('Warning: Could not get GPS position for photo: $e');
       }
 
       await _saveFieldPhotoWithPosition(photo, photoPosition);
@@ -463,11 +460,16 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
               'Photo GPS stored: ${photoPosition.latitude}, ${photoPosition.longitude}');
         }
       } else {
-        // Web: Just store the XFile (use path which contains the blob URL)
+        // Web: keep the bytes. The blob URL dies with the page and cannot be
+        // fetched back - package:http sends a credentials option that browsers
+        // reject for blob: URLs.
+        final Uint8List photoBytes = await photo.readAsBytes();
+        debugPrint('Web: kept ${photoBytes.length} bytes for the field photo');
         setState(() {
           _fieldPhoto = photo;
           _fieldPhotoLocalPath = photo.path;
           _fieldPhotoPosition = photoPosition;
+          _fieldPhotoBytes = photoBytes;
           _isFieldPhotoValid = true; // Reset validation state
         });
       }
@@ -571,25 +573,9 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                                 await _cameraController!.takePicture();
                             debugPrint('Image captured: ${image.path}');
 
-                            // Capture GPS position BEFORE closing dialog
-                            Position? photoPosition;
-                            try {
-                              debugPrint('Fetching GPS position...');
-                              photoPosition =
-                                  await Geolocator.getCurrentPosition(
-                                locationSettings: const LocationSettings(
-                                  accuracy: LocationAccuracy.best,
-                                  timeLimit: Duration(seconds: 10),
-                                ),
-                              );
-                              debugPrint(
-                                  'Photo GPS captured: ${photoPosition.latitude}, ${photoPosition.longitude}');
-                            } catch (e) {
-                              debugPrint(
-                                  'Warning: Could not get GPS position for photo: $e');
-                            }
-
-                            // Dispose camera and close dialog
+                            // Close the camera FIRST. The GPS lookup below can
+                            // take seconds; waiting for it with the dialog
+                            // still open makes the capture button look dead.
                             debugPrint('Disposing camera...');
                             await _cameraController?.dispose();
                             _cameraController = null;
@@ -599,6 +585,15 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                               debugPrint('Closing dialog...');
                               Navigator.of(dialogContext).pop();
                             }
+
+                            // Geotag the photo - bounded, and falling back to
+                            // the position the recorder already knows.
+                            debugPrint('Fetching GPS position...');
+                            final Position? photoPosition =
+                                await getPositionWithTimeout();
+                            debugPrint(photoPosition != null
+                                ? 'Photo GPS captured: ${photoPosition.latitude}, ${photoPosition.longitude}'
+                                : 'Warning: no GPS position for photo');
 
                             // Save photo with GPS position AFTER dialog is closed
                             debugPrint('Saving photo... mounted=$mounted');
@@ -824,6 +819,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
           localPath: _fieldPhotoLocalPath!,
           position: _fieldPhotoPosition,
           imageName: 'Field Photo - $fieldName',
+          bytes: _fieldPhotoBytes,
         );
 
         // Link image to field

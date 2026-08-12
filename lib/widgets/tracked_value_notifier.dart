@@ -1,7 +1,13 @@
 ﻿import 'package:flutter/foundation.dart';
+import 'package:trace_foodchain_app/helpers/frame_safe_value_notifier.dart';
 
 /// Wrapper für ValueNotifier der alle Listener trackt
-class TrackedValueNotifier<T> extends ValueNotifier<T> {
+///
+/// Erbt von [FrameSafeValueNotifier], damit eine Wertänderung mitten im
+/// Frame-Aufbau keine Listener innerhalb desselben Frames neu bauen lässt -
+/// das erzeugt bei verschachtelten LayoutBuildern den Fehler
+/// "_RenderLayoutBuilder was mutated in performLayout".
+class TrackedValueNotifier<T> extends FrameSafeValueNotifier<T> {
   final String name;
   final Set<VoidCallback> _trackedListeners = {};
 

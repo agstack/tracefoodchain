@@ -21,6 +21,19 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 
+/// Outcome of checking the remote copy.
+enum MediaVerification {
+  /// The object is there and matches - safe to reference.
+  confirmed,
+
+  /// The object is provably not there (404/403) or has the wrong size.
+  missing,
+
+  /// We could not find out - network error, CORS, unexpected status. The
+  /// upload must be kept and the check retried, never discarded.
+  unverifiable,
+}
+
 /// State chain of a media item on its way to the cloud.
 class MediaStatus {
   /// File is durably stored on the device, nothing uploaded yet.
@@ -37,6 +50,11 @@ class MediaStatus {
 
   /// Local copy has been released after confirmation.
   static const String deletedLocal = 'deletedLocal';
+
+  /// The local source is gone and the upload can never succeed - e.g. a web
+  /// blob URL whose page is gone. Kept (not deleted) so the loss stays visible
+  /// instead of the item silently disappearing from the queue.
+  static const String unrecoverable = 'unrecoverable';
 }
 
 /// A single tracked media item. Backed by a plain Map so no Hive adapter and no
@@ -84,6 +102,11 @@ class MediaOutboxEntry {
   bool get isConfirmed =>
       status == MediaStatus.confirmedRemote || status == MediaStatus.deletedLocal;
 
+  /// No upload attempt can ever succeed for this item any more.
+  bool get isUnrecoverable => status == MediaStatus.unrecoverable;
+
+  /// Still counted as pending - a lost photo is an open issue, not a
+  /// non-event - but excluded from the retry work list below.
   bool get isPending => !isConfirmed;
 
   /// True once the retry backoff has elapsed (or no backoff is set).
@@ -182,14 +205,26 @@ class MediaOutboxService {
   }
 
   /// Media that still has to reach the cloud (anything before confirmedRemote).
-  List<MediaOutboxEntry> get pending =>
-      all.where((e) => e.isPending).toList(growable: false);
+  ///
+  /// Excludes unrecoverable items: they will never be uploaded, so counting
+  /// them as "waiting for upload" would promise something that cannot happen.
+  /// They are reported separately via [unrecoverable].
+  List<MediaOutboxEntry> get pending => all
+      .where((e) => e.isPending && !e.isUnrecoverable)
+      .toList(growable: false);
 
   int get pendingCount => pending.length;
 
+  int get unrecoverableCount => unrecoverable.length;
+
   /// Pending media whose retry backoff has elapsed - the actual upload work list.
-  List<MediaOutboxEntry> get dueForUpload =>
-      pending.where((e) => e.isDue).toList(growable: false);
+  List<MediaOutboxEntry> get dueForUpload => pending
+      .where((e) => e.isDue && !e.isUnrecoverable)
+      .toList(growable: false);
+
+  /// Media that can never be uploaded any more, for reporting.
+  List<MediaOutboxEntry> get unrecoverable =>
+      all.where((e) => e.isUnrecoverable).toList(growable: false);
 
   Future<void> _put(MediaOutboxEntry entry) async {
     if (!isOpen) return;
@@ -249,6 +284,15 @@ class MediaOutboxService {
       }
     } catch (e) {
       debugPrint('media_outbox: could not fingerprint $mediaUID: $e');
+    }
+
+    // On web the bytes ARE the durable copy. Without them the entry is a
+    // placeholder for a photo that is already lost - say so at capture time
+    // rather than letting it fail silently on the next sync.
+    if (kIsWeb && durableBytes == null) {
+      debugPrint('media_outbox: WARNING - no bytes for $mediaUID.'
+          ' On web the caller must pass `bytes`, the blob URL cannot be read'
+          ' back later. The photo will not be recoverable.');
     }
 
     final entry = MediaOutboxEntry(
@@ -332,9 +376,28 @@ class MediaOutboxService {
     debugPrint('media_outbox: $mediaUID verification failed ($reason) - will re-upload');
   }
 
+  /// The check itself could not be carried out. The upload stays as it is and
+  /// only the verification is retried - re-uploading would waste the bandwidth
+  /// this whole mechanism exists to save.
+  Future<void> markVerificationDeferred(String mediaUID, String reason) async {
+    final entry = get(mediaUID);
+    if (entry == null) return;
+    entry.status = MediaStatus.uploadedUnverified;
+    entry.lastError = reason;
+    entry.nextRetryAt =
+        DateTime.now().toUtc().add(backoffFor(entry.attemptCount));
+    await _put(entry);
+    debugPrint('media_outbox: $mediaUID verification deferred ($reason),'
+        ' retry at ${entry.nextRetryAt}');
+  }
+
   /// Records a failure and schedules the next attempt with exponential backoff
   /// plus jitter, so a fleet of devices returning online does not stampede.
-  Future<void> markFailure(String mediaUID, String error) async {
+  /// Maximum attempts before a missing local source is declared permanent.
+  static const int _maxLocalSourceAttempts = 3;
+
+  Future<void> markFailure(String mediaUID, String error,
+      {bool localSourceMissing = false}) async {
     final entry = get(mediaUID);
     if (entry == null) return;
     // A failed attempt falls back to the last durable state.
@@ -344,6 +407,20 @@ class MediaOutboxService {
           : MediaStatus.capturedLocal;
     }
     entry.lastError = error;
+
+    // Without a local source there is nothing left to upload - retrying just
+    // produces noise on every sync forever.
+    if (localSourceMissing &&
+        entry.remoteUrl == null &&
+        entry.attemptCount >= _maxLocalSourceAttempts) {
+      entry.status = MediaStatus.unrecoverable;
+      entry.nextRetryAt = null;
+      await _put(entry);
+      debugPrint('media_outbox: $mediaUID is UNRECOVERABLE after'
+          ' ${entry.attemptCount} attempts - local source gone ($error)');
+      return;
+    }
+
     entry.nextRetryAt = DateTime.now().toUtc().add(backoffFor(entry.attemptCount));
     await _put(entry);
     debugPrint(
@@ -363,38 +440,69 @@ class MediaOutboxService {
   /// Verifies that the remote copy really exists and has the expected size
   /// before the item is considered safe. This is the gate between
   /// `uploadedUnverified` and `confirmedRemote`.
-  Future<bool> verifyRemoteCopy(MediaOutboxEntry entry) async {
+  ///
+  /// Distinguishes "the file is not there" from "I could not check" - a browser
+  /// that blocks the check (CORS, offline) must not make us discard a perfectly
+  /// good upload and start over.
+  Future<MediaVerification> verifyRemoteCopy(MediaOutboxEntry entry) async {
     final url = entry.remoteUrl;
-    if (url == null || url.isEmpty) return false;
+    if (url == null || url.isEmpty) {
+      debugPrint('media_outbox: verify ${entry.mediaUID} - no remote URL');
+      return MediaVerification.missing;
+    }
+
+    http.Response? response;
     try {
-      var response = await http.head(Uri.parse(url));
-      // Firebase Storage download URLs do not always answer HEAD - fall back to
-      // a ranged GET that transfers a single byte.
-      if (response.statusCode != 200) {
+      response = await http.head(Uri.parse(url));
+      debugPrint('media_outbox: verify ${entry.mediaUID} HEAD -> '
+          'HTTP ${response.statusCode}, headers=${response.headers}');
+    } catch (e) {
+      debugPrint('media_outbox: verify ${entry.mediaUID} HEAD threw: $e');
+      response = null;
+    }
+
+    // Firebase Storage download URLs do not always answer HEAD - fall back to
+    // a ranged GET that transfers a single byte.
+    if (response == null || (response.statusCode != 200)) {
+      try {
         response = await http.get(
           Uri.parse(url),
           headers: {'Range': 'bytes=0-0'},
         );
-        if (response.statusCode != 200 && response.statusCode != 206) {
-          debugPrint(
-              'media_outbox: verification failed for ${entry.mediaUID} (HTTP ${response.statusCode})');
-          return false;
-        }
+        debugPrint('media_outbox: verify ${entry.mediaUID} ranged GET -> '
+            'HTTP ${response.statusCode}, headers=${response.headers}');
+      } catch (e) {
+        // Network error or a browser-blocked request (CORS): we simply do not
+        // know whether the object is there.
+        debugPrint('media_outbox: verify ${entry.mediaUID} GET threw: $e'
+            ' -> treating as UNVERIFIABLE, keeping the upload');
+        return MediaVerification.unverifiable;
       }
-
-      final remoteSize = _remoteSizeOf(response);
-      if (entry.sizeBytes > 0 && remoteSize != null && remoteSize > 0) {
-        if (remoteSize != entry.sizeBytes) {
-          debugPrint(
-              'media_outbox: size mismatch for ${entry.mediaUID}: local ${entry.sizeBytes} vs remote $remoteSize');
-          return false;
-        }
-      }
-      return true;
-    } catch (e) {
-      debugPrint('media_outbox: verification error for ${entry.mediaUID}: $e');
-      return false;
     }
+
+    final status = response.statusCode;
+    if (status == 404 || status == 403) {
+      debugPrint('media_outbox: verify ${entry.mediaUID} -> MISSING (HTTP $status)');
+      return MediaVerification.missing;
+    }
+    if (status != 200 && status != 206) {
+      debugPrint('media_outbox: verify ${entry.mediaUID} -> UNVERIFIABLE '
+          '(unexpected HTTP $status)');
+      return MediaVerification.unverifiable;
+    }
+
+    final remoteSize = _remoteSizeOf(response);
+    debugPrint('media_outbox: verify ${entry.mediaUID} sizes: '
+        'local=${entry.sizeBytes} remote=${remoteSize ?? "unknown"}');
+    if (entry.sizeBytes > 0 && remoteSize != null && remoteSize > 0) {
+      if (remoteSize != entry.sizeBytes) {
+        debugPrint('media_outbox: verify ${entry.mediaUID} -> MISSING '
+            '(size mismatch ${entry.sizeBytes} vs $remoteSize)');
+        return MediaVerification.missing;
+      }
+    }
+    debugPrint('media_outbox: verify ${entry.mediaUID} -> CONFIRMED');
+    return MediaVerification.confirmed;
   }
 
   /// Total size of the remote object, from either `content-length` (HEAD) or the

@@ -2024,5 +2024,108 @@
       }
     }
   },
-  "lastSyncNever": "never"
+  "lastSyncNever": "never",
+  "toolsAndSettings": "Tools & settings",
+  "statusOnline": "Online",
+  "statusOffline": "Offline",
+  "gpsNoFix": "No GPS",
+  "gpsSearching": "Searching",
+  "pendingUploadsShort": "{count} open",
+  "@pendingUploadsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncedShort": "Synced",
+  "uploadPausedShort": "Paused",
+  "syncResultPushed": "{count} uploaded",
+  "@syncResultPushed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncResultNothingToDo": "Nothing to upload",
+  "syncResultFailed": "{count} failed - will be retried",
+  "@syncResultFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncResultConflicts": "{count} with merge conflict",
+  "@syncResultConflicts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncAlreadyRunning": "A synchronization is already running",
+  "syncNextRetry": "Next attempt: {time}",
+  "@syncNextRetry": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "syncLastError": "Last error: {error}",
+  "@syncLastError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingItemsTitle": "Waiting items",
+  "pendingItemConflict": "Merge conflict",
+  "syncPhaseMedia": "Uploading photos",
+  "syncPhasePush": "Uploading data",
+  "syncPhasePull": "Downloading data",
+  "photoNotUploadedYet": "Photo not uploaded yet\n(still on the registrar's device)",
+  "qcSearchHint": "Search name, ID or registrar...",
+  "qcAllRegistrars": "All registrars",
+  "qcNoMatches": "No registrations match the filter",
+  "sortByRegistrar": "Registrar (A-Z)",
+  "sortByType": "Type",
+  "qcResultCount": "{count} of {total} shown",
+  "@qcResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "qcLoadingRegistrations": "Loading pending registrations...",
+  "qcLoadingDetails": "Loading date and registrar... {done}/{total}",
+  "@qcLoadingDetails": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "qcRegisteringInAssetRegistry": "Registering field in the Asset Registry...",
+  "qcSavingDecision": "Saving decision and syncing with the cloud...",
+  "qcUpdatingPhotos": "Updating linked photos...",
+  "itemsLostForUpload": "{count} item(s) cannot be uploaded",
+  "@itemsLostForUpload": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingItemLost": "Local copy lost"
 }

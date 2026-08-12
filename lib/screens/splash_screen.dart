@@ -144,6 +144,7 @@ class _SplashScreenState extends State<SplashScreen>
             //ToDo You might want to add a retry mechanism here
             return;
           }
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const AuthScreen()));
         }
@@ -232,6 +233,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Diese schließt automatisch die Hive-Datenbank
     final appState = Provider.of<AppState>(context, listen: false);
     await appState.signOut();
+    if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const AuthScreen()),
@@ -243,6 +245,8 @@ class _SplashScreenState extends State<SplashScreen>
     if (_disposed) return;
 
     await FirebaseAuth.instance.currentUser?.reload();
+    // The reload is a network round trip - the screen can be gone afterwards.
+    if (_disposed || !mounted) return;
     if (FirebaseAuth.instance.currentUser?.emailVerified ?? false) {
       _verificationTimer?.cancel();
       Navigator.of(context).pop(); // Close the dialog
@@ -478,6 +482,38 @@ class _SplashScreenState extends State<SplashScreen>
             data: {'found': appUserDoc != null});
       }
 
+      // Last line of defence before creating anything: ask the cloud directly
+      // for this UID. A new profile would carry the SAME UID but a fresh
+      // methodHistoryRef, which the cloud rejects as a merge conflict (409) -
+      // and the phantom object then shows up in the dashboard statistics.
+      // The local lookup can come up empty even though a profile exists, e.g.
+      // after a hot restart in debug.
+      if (appUserDoc == null && appState.isConnected) {
+        final String uid = FirebaseAuth.instance.currentUser!.uid;
+        await cloudLogService.info(
+            'SplashScreen: Local profile missing – querying cloud directly',
+            data: {'uid': uid});
+        try {
+          final cloudDoc = await cloudSyncService.apiClient
+              .getDocumentFromCloud('tracefoodchain.org', uid,
+                  searchScope: "objects");
+          if (cloudDoc.isNotEmpty && getObjectMethodUID(cloudDoc) == uid) {
+            // Adopt the cloud version verbatim - never regenerate it.
+            await setObjectMethod(
+                Map<String, dynamic>.from(cloudDoc), false, false,
+                syncFromCloud: false);
+            appUserDoc = await getLocalObjectMethod(uid);
+            await cloudLogService.info(
+                'SplashScreen: User profile adopted from cloud – creation skipped',
+                data: {'uid': uid});
+          }
+        } catch (e) {
+          await cloudLogService.warn(
+              'SplashScreen: Direct cloud lookup for user profile failed',
+              data: {'error': e.toString()});
+        }
+      }
+
       if (appUserDoc == null) {
         // User doc was not found even after cloud sync – create a new profile
         await cloudLogService.info(
@@ -708,10 +744,12 @@ class _SplashScreenState extends State<SplashScreen>
         await cloudLogService.closeSession('registrar_screen');
         await cloudLogService
             .info('SplashScreen: Navigating to RegistrarScreen');
+        if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/registrar');
       } else {
         await cloudLogService.closeSession('home_screen');
         await cloudLogService.info('SplashScreen: Navigating to HomeScreen');
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           FadeRoute(builder: (_) => const HomeScreen()),
         );

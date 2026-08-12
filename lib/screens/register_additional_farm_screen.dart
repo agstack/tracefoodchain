@@ -6,6 +6,7 @@ import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../repositories/honduras_specifics.dart';
+import '../services/gps_helper.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
 
@@ -70,11 +71,7 @@ class _RegisterAdditionalFarmScreenState
             permission == LocationPermission.deniedForever) {
           await Geolocator.requestPermission();
         }
-        currentPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.best,
-          ),
-        );
+        currentPosition = await getPositionWithTimeout();
       } catch (_) {
         currentPosition = null;
       }

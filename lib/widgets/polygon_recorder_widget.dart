@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/main.dart' show country;
 import 'package:trace_foodchain_app/providers/app_state.dart';
+import 'package:trace_foodchain_app/services/gps_helper.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
 import '../l10n/app_localizations.dart';
 
@@ -439,19 +440,14 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
 
     // If stream hasn't provided position yet, try to get current position immediately
     if (positionToAdd == null && !kDebugMode) {
-      try {
-        positionToAdd = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.best,
-            timeLimit: Duration(seconds: 5),
-          ),
-        );
+      positionToAdd = await getPositionWithTimeout(
+        timeLimit: const Duration(seconds: 5),
+      );
+      if (positionToAdd != null) {
         debugPrint(
             'Fetched current position directly: ${positionToAdd.latitude}, ${positionToAdd.longitude}');
         // Update _currentPosition for UI
-        setState(() => _currentPosition = positionToAdd);
-      } catch (e) {
-        debugPrint('Error getting current position: $e');
+        if (mounted) setState(() => _currentPosition = positionToAdd);
       }
     }
 

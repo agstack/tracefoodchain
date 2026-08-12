@@ -7,6 +7,7 @@
 // can still rebuild on change.
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trace_foodchain_app/helpers/frame_safe_value_notifier.dart';
 
 const String _kUploadPausedKey = 'uploadPaused';
 const String _kLastSuccessfulSyncKey = 'lastSuccessfulSync';
@@ -16,15 +17,20 @@ class SyncSettingsService {
   static final SyncSettingsService instance = SyncSettingsService._();
 
   /// True while the user has deliberately suspended all cloud traffic.
-  final ValueNotifier<bool> uploadPaused = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> uploadPaused = FrameSafeValueNotifier<bool>(false);
 
   /// Timestamp (UTC) of the last sync run that finished without errors.
   final ValueNotifier<DateTime?> lastSuccessfulSync =
-      ValueNotifier<DateTime?>(null);
+      FrameSafeValueNotifier<DateTime?>(null);
 
   /// Number of local items still waiting to reach the cloud
   /// (methods flagged `needsSync` + media that is not `confirmedRemote`).
-  final ValueNotifier<int> pendingItemCount = ValueNotifier<int>(0);
+  final ValueNotifier<int> pendingItemCount = FrameSafeValueNotifier<int>(0);
+
+  /// Items that can never be uploaded any more - e.g. a photo whose local copy
+  /// is gone. Kept apart from [pendingItemCount] so "waiting for upload" never
+  /// contradicts a sync that correctly reports nothing to do.
+  final ValueNotifier<int> failedItemCount = FrameSafeValueNotifier<int>(0);
 
   bool _loaded = false;
 

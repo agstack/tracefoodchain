@@ -119,8 +119,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _checkAndNavigateToProfileSetup(User user) async {
     try {
-      // Check if user profile is already complete
+      // Check if user profile is already complete.
+      // This can hit the network (Firestore), so the screen may well be gone by
+      // the time it returns - another navigation may already have taken over.
       final userProfile = await OpenRALService.getUserProfile();
+      if (!mounted) return;
 
       final bool hasFirstName = userProfile.containsKey('firstName') &&
           userProfile['firstName']!.isNotEmpty;
@@ -133,26 +136,32 @@ class _AuthScreenState extends State<AuthScreen> {
       // userRole is optional and will default to "Trader" if not set
       if (!hasFirstName || !hasLastName || !hasCountry) {
         // Navigate to profile setup screen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const UserProfileSetupScreen(),
-          ),
-        );
+        _openProfileSetup();
       } else {
         // Profile is complete, navigate based on user role
         _navigateBasedOnRole(userProfile);
       }
     } catch (e) {
+      // Do not swallow this silently: without the log, a failing profile lookup
+      // is indistinguishable from "profile is incomplete".
+      await cloudLogService.error('AuthScreen: profile check failed',
+          data: {'error': e.toString()});
       // On error, navigate to profile setup to be safe
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const UserProfileSetupScreen(),
-        ),
-      );
+      _openProfileSetup();
     }
   }
 
+  void _openProfileSetup() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const UserProfileSetupScreen(),
+      ),
+    );
+  }
+
   void _navigateBasedOnRole(Map<String, String> userProfile) {
+    if (!mounted) return;
     // Nach Login IMMER zum SplashScreen navigieren
     // Der SplashScreen führt die vollständige Initialisierung durch
     // und navigiert dann basierend auf der Rolle zum richtigen Screen

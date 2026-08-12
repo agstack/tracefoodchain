@@ -10,6 +10,7 @@ import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/excel_farmer_import_objects.dart' show splitSpanishName;
+import '../services/gps_helper.dart';
 import '../services/ihcafe_producer_service.dart';
 import '../services/open_ral_service.dart';
 import '../services/firebase_storage_service.dart';
@@ -73,6 +74,9 @@ class _StepperRegistrarRegistrationState
   XFile? _nationalIDPhoto;
   String? _nationalIDPhotoLocalPath;
   Position? _nationalIDPhotoPosition;
+  // Web only: the bytes have to be kept, because localPath is a blob URL that
+  // cannot be read back once the camera is disposed.
+  Uint8List? _nationalIDPhotoBytes;
   final ImagePicker _imagePicker = ImagePicker();
   camera_plugin.CameraController? _cameraController;
   List<camera_plugin.CameraDescription>? _cameras;
@@ -82,11 +86,13 @@ class _StepperRegistrarRegistrationState
   XFile? _consentFormPhoto;
   String? _consentFormPhotoLocalPath;
   Position? _consentFormPhotoPosition;
+  Uint8List? _consentFormPhotoBytes;
 
   // Consent Form Photo 2 (optional)
   XFile? _consentFormPhoto2;
   String? _consentFormPhotoLocalPath2;
   Position? _consentFormPhotoPosition2;
+  Uint8List? _consentFormPhotoBytes2;
 
   @override
   void initState() {
@@ -129,12 +135,12 @@ class _StepperRegistrarRegistrationState
         await Geolocator.requestPermission();
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-        ),
-      );
-      setState(() => _currentPosition = position);
+      // Bounded: without a limit this call can hang for the plugin's default
+      // of 24 hours on web, leaving the form without a position and no hint why.
+      final position = await getPositionWithTimeout();
+      if (position != null && mounted) {
+        setState(() => _currentPosition = position);
+      }
     } catch (e) {
       debugPrint('Error getting position: $e');
     }
@@ -325,6 +331,7 @@ class _StepperRegistrarRegistrationState
           localPath: _nationalIDPhotoLocalPath!,
           position: _nationalIDPhotoPosition,
           imageName: 'National ID - ${farmer['identity']['name']}',
+          bytes: _nationalIDPhotoBytes,
         );
 
         // Link image to farmer
@@ -484,6 +491,7 @@ class _StepperRegistrarRegistrationState
           localPath: _consentFormPhotoLocalPath!,
           position: _consentFormPhotoPosition,
           imageName: 'Consent Form - ${farm['identity']['name']}',
+          bytes: _consentFormPhotoBytes,
         );
 
         // Link image to farm
@@ -506,6 +514,7 @@ class _StepperRegistrarRegistrationState
           localPath: _consentFormPhotoLocalPath2!,
           position: _consentFormPhotoPosition2,
           imageName: 'Consent Form 2 - ${farm['identity']['name']}',
+          bytes: _consentFormPhotoBytes2,
         );
 
         // Link image to farm
@@ -899,19 +908,15 @@ class _StepperRegistrarRegistrationState
       debugPrint(
           '${isConsentForm ? "Consent Form" : "National ID"} Photo taken: ${photo.path}');
 
-      // Get current GPS position when photo is taken
-      Position? photoPosition;
-      try {
-        photoPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.best,
-            timeLimit: Duration(seconds: 10),
-          ),
-        );
+      // Get current GPS position when photo is taken. Bounded via the shared
+      // helper - LocationSettings.timeLimit alone is not honoured on web.
+      final Position? photoPosition =
+          await getPositionWithTimeout(fallback: _currentPosition);
+      if (photoPosition != null) {
         debugPrint(
             'Photo GPS: ${photoPosition.latitude}, ${photoPosition.longitude}');
-      } catch (e) {
-        debugPrint('Warning: Could not get GPS position for photo: $e');
+      } else {
+        debugPrint('Warning: no GPS position for photo');
       }
 
       // Save photo locally for offline access
@@ -958,20 +963,29 @@ class _StepperRegistrarRegistrationState
               'Photo GPS stored: ${photoPosition.latitude}, ${photoPosition.longitude}');
         }
       } else {
-        // Web: Just store the XFile (use path which contains the blob URL)
+        // Web: keep the bytes, not just the blob URL. The URL dies with the
+        // page and cannot be fetched back (package:http sends a credentials
+        // option, which browsers reject for blob: URLs). XFile.readAsBytes
+        // works here because the blob is still alive right after capture.
+        final Uint8List photoBytes = await photo.readAsBytes();
+        debugPrint('Web: kept ${photoBytes.length} bytes for the captured photo');
+
         setState(() {
           if (isConsentForm2) {
             _consentFormPhoto2 = photo;
             _consentFormPhotoLocalPath2 = photo.path;
             _consentFormPhotoPosition2 = photoPosition;
+            _consentFormPhotoBytes2 = photoBytes;
           } else if (isConsentForm) {
             _consentFormPhoto = photo;
             _consentFormPhotoLocalPath = photo.path;
             _consentFormPhotoPosition = photoPosition;
+            _consentFormPhotoBytes = photoBytes;
           } else {
             _nationalIDPhoto = photo;
             _nationalIDPhotoLocalPath = photo.path;
             _nationalIDPhotoPosition = photoPosition;
+            _nationalIDPhotoBytes = photoBytes;
           }
         });
       }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/helpers/fade_route.dart';
@@ -34,19 +35,25 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: [
-          // Synchronisierung: Upload pausieren / jetzt synchronisieren (WP A2)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Text(
-              l10n.syncSectionTitle,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.bold,
-                  ),
+          // Synchronisierung: Upload pausieren / jetzt synchronisieren (WP A2).
+          // Nur auf mobilen Geräten - der Schalter existiert für Feldarbeit bei
+          // schwachem Netz. Die Webapp läuft ohnehin permanent online und zieht
+          // wegen isWebLandscape auch nichts herunter; dort wäre die Sektion
+          // nur Ballast.
+          if (!kIsWeb) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Text(
+                l10n.syncSectionTitle,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
             ),
-          ),
-          const SyncControlCard(showAsCard: false),
-          const Divider(),
+            const SyncControlCard(showAsCard: false),
+            const Divider(),
+          ],
           // Neuer Switch zur Auswahl des Datenmodus (Test-/Echt-Modus)
           StatefulBuilder(
             builder: (context, setState) {

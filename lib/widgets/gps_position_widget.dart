@@ -2,12 +2,43 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../l10n/app_localizations.dart';
+import '../services/gps_helper.dart';
+import 'status_chip.dart';
 
 class GpsPositionWidget extends StatefulWidget {
-  const GpsPositionWidget({super.key});
+  const GpsPositionWidget({super.key, this.compact = false});
+
+  /// Compact mode renders a single status chip instead of the full card. The
+  /// dashboard only needs "do I have a usable fix?" - the eight diagnostic rows
+  /// are one tap away in a bottom sheet.
+  final bool compact;
 
   @override
   State<GpsPositionWidget> createState() => _GpsPositionWidgetState();
+}
+
+/// Opens the full GPS detail card as a modal sheet.
+Future<void> showGpsDetailsSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) => Material(
+        color: Colors.white,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        child: ListView(
+          controller: scrollController,
+          children: const [GpsPositionWidget()],
+        ),
+      ),
+    ),
+  );
 }
 
 class _GpsPositionWidgetState extends State<GpsPositionWidget> {
@@ -104,13 +135,17 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
     });
 
     try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+      // Bounded, and tolerant of a slightly stale browser fix - the status
+      // chip must not sit in "searching" forever on a device without GPS.
+      final position = await getPositionWithTimeout(
+        accuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 15),
       );
+      if (!mounted) return;
       setState(() {
         _currentPosition = position;
         _isLoading = false;
-        _errorMessage = null;
+        _errorMessage = position == null ? 'gps_timeout' : null;
       });
     } catch (e) {
       setState(() {
@@ -134,9 +169,38 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
     return 'Poor';
   }
 
+  /// One-line status chip for the dashboard status strip.
+  Widget _buildCompact(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    IconData icon = Icons.gps_not_fixed;
+    Color color = Colors.grey;
+    String label = l10n.gpsSearching;
+
+    if (_errorMessage != null) {
+      icon = Icons.gps_off;
+      color = Colors.red;
+      label = l10n.gpsNoFix;
+    } else if (_currentPosition != null) {
+      icon = Icons.gps_fixed;
+      color = _getAccuracyColor(_currentPosition!.accuracy);
+      label = '±${_currentPosition!.accuracy.toStringAsFixed(0)} m';
+    }
+
+    return StatusChip(
+      icon: icon,
+      color: color,
+      label: label,
+      busy: _isLoading && _currentPosition == null && _errorMessage == null,
+      onTap: () => showGpsDetailsSheet(context),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
+    if (widget.compact) return _buildCompact(context);
 
     return Card(
       elevation: 4,
@@ -430,6 +494,10 @@ class _GpsPositionWidgetState extends State<GpsPositionWidget> {
     switch (_errorMessage) {
       case 'no_gps_hardware':
         return l10n.deviceHasNoGps;
+      case 'gps_timeout':
+        // No fix within the time limit - not an error the user can fix in
+        // settings, so keep it separate from the permission cases.
+        return l10n.waitingForGps;
       case 'gps_disabled':
       case 'permission_denied':
       case 'permission_denied_forever':

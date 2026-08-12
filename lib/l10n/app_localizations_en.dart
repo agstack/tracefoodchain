@@ -3104,4 +3104,127 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lastSyncNever => 'never';
+
+  @override
+  String get toolsAndSettings => 'Tools & settings';
+
+  @override
+  String get statusOnline => 'Online';
+
+  @override
+  String get statusOffline => 'Offline';
+
+  @override
+  String get gpsNoFix => 'No GPS';
+
+  @override
+  String get gpsSearching => 'Searching';
+
+  @override
+  String pendingUploadsShort(int count) {
+    return '$count open';
+  }
+
+  @override
+  String get syncedShort => 'Synced';
+
+  @override
+  String get uploadPausedShort => 'Paused';
+
+  @override
+  String syncResultPushed(int count) {
+    return '$count uploaded';
+  }
+
+  @override
+  String get syncResultNothingToDo => 'Nothing to upload';
+
+  @override
+  String syncResultFailed(int count) {
+    return '$count failed - will be retried';
+  }
+
+  @override
+  String syncResultConflicts(int count) {
+    return '$count with merge conflict';
+  }
+
+  @override
+  String get syncAlreadyRunning => 'A synchronization is already running';
+
+  @override
+  String syncNextRetry(String time) {
+    return 'Next attempt: $time';
+  }
+
+  @override
+  String syncLastError(String error) {
+    return 'Last error: $error';
+  }
+
+  @override
+  String get pendingItemsTitle => 'Waiting items';
+
+  @override
+  String get pendingItemConflict => 'Merge conflict';
+
+  @override
+  String get syncPhaseMedia => 'Uploading photos';
+
+  @override
+  String get syncPhasePush => 'Uploading data';
+
+  @override
+  String get syncPhasePull => 'Downloading data';
+
+  @override
+  String get photoNotUploadedYet =>
+      'Photo not uploaded yet\n(still on the registrar\'s device)';
+
+  @override
+  String get qcSearchHint => 'Search name, ID or registrar...';
+
+  @override
+  String get qcAllRegistrars => 'All registrars';
+
+  @override
+  String get qcNoMatches => 'No registrations match the filter';
+
+  @override
+  String get sortByRegistrar => 'Registrar (A-Z)';
+
+  @override
+  String get sortByType => 'Type';
+
+  @override
+  String qcResultCount(int count, int total) {
+    return '$count of $total shown';
+  }
+
+  @override
+  String get qcLoadingRegistrations => 'Loading pending registrations...';
+
+  @override
+  String qcLoadingDetails(int done, int total) {
+    return 'Loading date and registrar... $done/$total';
+  }
+
+  @override
+  String get qcRegisteringInAssetRegistry =>
+      'Registering field in the Asset Registry...';
+
+  @override
+  String get qcSavingDecision =>
+      'Saving decision and syncing with the cloud...';
+
+  @override
+  String get qcUpdatingPhotos => 'Updating linked photos...';
+
+  @override
+  String itemsLostForUpload(int count) {
+    return '$count item(s) cannot be uploaded';
+  }
+
+  @override
+  String get pendingItemLost => 'Local copy lost';
 }

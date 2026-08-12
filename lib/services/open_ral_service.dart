@@ -1114,10 +1114,16 @@ class OpenRALService {
 /// [imageName] - Name/description of the image
 /// Returns a Map representing the image object
 /// Note: downloadURL will be set to cloud URL after successful upload via CloudSyncService
+/// [bytes] must be supplied on web. There, [localPath] is a `blob:` URL whose
+/// lifetime is tied to the page, and it cannot be read back later: package:http
+/// fetches with a `credentials` option, which browsers reject for blob URLs
+/// ("Failed to fetch"). The bytes therefore have to be handed over at capture
+/// time, where the XFile is still available.
 Future<Map<String, dynamic>> createImageObject({
   required String localPath,
   required Position? position,
   required String imageName,
+  Uint8List? bytes,
 }) async {
   try {
     // Get image template
@@ -1162,6 +1168,7 @@ Future<Map<String, dynamic>> createImageObject({
       mediaUID: imageUID,
       localPath: localPath,
       imageName: imageName,
+      bytes: bytes,
     );
 
     debugPrint('Created image object: $imageUID for $imageName');

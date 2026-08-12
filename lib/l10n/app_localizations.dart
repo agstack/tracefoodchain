@@ -5549,6 +5549,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'never'**
   String get lastSyncNever;
+
+  /// No description provided for @toolsAndSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools & settings'**
+  String get toolsAndSettings;
+
+  /// No description provided for @statusOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get statusOnline;
+
+  /// No description provided for @statusOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get statusOffline;
+
+  /// No description provided for @gpsNoFix.
+  ///
+  /// In en, this message translates to:
+  /// **'No GPS'**
+  String get gpsNoFix;
+
+  /// No description provided for @gpsSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching'**
+  String get gpsSearching;
+
+  /// No description provided for @pendingUploadsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} open'**
+  String pendingUploadsShort(int count);
+
+  /// No description provided for @syncedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get syncedShort;
+
+  /// No description provided for @uploadPausedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get uploadPausedShort;
+
+  /// No description provided for @syncResultPushed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} uploaded'**
+  String syncResultPushed(int count);
+
+  /// No description provided for @syncResultNothingToDo.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to upload'**
+  String get syncResultNothingToDo;
+
+  /// No description provided for @syncResultFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} failed - will be retried'**
+  String syncResultFailed(int count);
+
+  /// No description provided for @syncResultConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} with merge conflict'**
+  String syncResultConflicts(int count);
+
+  /// No description provided for @syncAlreadyRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'A synchronization is already running'**
+  String get syncAlreadyRunning;
+
+  /// No description provided for @syncNextRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Next attempt: {time}'**
+  String syncNextRetry(String time);
+
+  /// No description provided for @syncLastError.
+  ///
+  /// In en, this message translates to:
+  /// **'Last error: {error}'**
+  String syncLastError(String error);
+
+  /// No description provided for @pendingItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting items'**
+  String get pendingItemsTitle;
+
+  /// No description provided for @pendingItemConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge conflict'**
+  String get pendingItemConflict;
+
+  /// No description provided for @syncPhaseMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading photos'**
+  String get syncPhaseMedia;
+
+  /// No description provided for @syncPhasePush.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading data'**
+  String get syncPhasePush;
+
+  /// No description provided for @syncPhasePull.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading data'**
+  String get syncPhasePull;
+
+  /// No description provided for @photoNotUploadedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo not uploaded yet\n(still on the registrar\'s device)'**
+  String get photoNotUploadedYet;
+
+  /// No description provided for @qcSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search name, ID or registrar...'**
+  String get qcSearchHint;
+
+  /// No description provided for @qcAllRegistrars.
+  ///
+  /// In en, this message translates to:
+  /// **'All registrars'**
+  String get qcAllRegistrars;
+
+  /// No description provided for @qcNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No registrations match the filter'**
+  String get qcNoMatches;
+
+  /// No description provided for @sortByRegistrar.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrar (A-Z)'**
+  String get sortByRegistrar;
+
+  /// No description provided for @sortByType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get sortByType;
+
+  /// No description provided for @qcResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} shown'**
+  String qcResultCount(int count, int total);
+
+  /// No description provided for @qcLoadingRegistrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading pending registrations...'**
+  String get qcLoadingRegistrations;
+
+  /// No description provided for @qcLoadingDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading date and registrar... {done}/{total}'**
+  String qcLoadingDetails(int done, int total);
+
+  /// No description provided for @qcRegisteringInAssetRegistry.
+  ///
+  /// In en, this message translates to:
+  /// **'Registering field in the Asset Registry...'**
+  String get qcRegisteringInAssetRegistry;
+
+  /// No description provided for @qcSavingDecision.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving decision and syncing with the cloud...'**
+  String get qcSavingDecision;
+
+  /// No description provided for @qcUpdatingPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating linked photos...'**
+  String get qcUpdatingPhotos;
+
+  /// No description provided for @itemsLostForUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} item(s) cannot be uploaded'**
+  String itemsLostForUpload(int count);
+
+  /// No description provided for @pendingItemLost.
+  ///
+  /// In en, this message translates to:
+  /// **'Local copy lost'**
+  String get pendingItemLost;
 }
 
 class _AppLocalizationsDelegate

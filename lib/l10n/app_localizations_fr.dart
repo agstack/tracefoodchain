@@ -3162,4 +3162,128 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get lastSyncNever => 'jamais';
+
+  @override
+  String get toolsAndSettings => 'Outils et paramètres';
+
+  @override
+  String get statusOnline => 'En ligne';
+
+  @override
+  String get statusOffline => 'Hors ligne';
+
+  @override
+  String get gpsNoFix => 'Pas de GPS';
+
+  @override
+  String get gpsSearching => 'Recherche';
+
+  @override
+  String pendingUploadsShort(int count) {
+    return '$count en att.';
+  }
+
+  @override
+  String get syncedShort => 'À jour';
+
+  @override
+  String get uploadPausedShort => 'En pause';
+
+  @override
+  String syncResultPushed(int count) {
+    return '$count envoyé(s)';
+  }
+
+  @override
+  String get syncResultNothingToDo => 'Rien à envoyer';
+
+  @override
+  String syncResultFailed(int count) {
+    return '$count échec(s) - nouvelle tentative prévue';
+  }
+
+  @override
+  String syncResultConflicts(int count) {
+    return '$count avec conflit de fusion';
+  }
+
+  @override
+  String get syncAlreadyRunning => 'Une synchronisation est déjà en cours';
+
+  @override
+  String syncNextRetry(String time) {
+    return 'Prochaine tentative : $time';
+  }
+
+  @override
+  String syncLastError(String error) {
+    return 'Dernière erreur : $error';
+  }
+
+  @override
+  String get pendingItemsTitle => 'Éléments en attente';
+
+  @override
+  String get pendingItemConflict => 'Conflit de fusion';
+
+  @override
+  String get syncPhaseMedia => 'Envoi des photos';
+
+  @override
+  String get syncPhasePush => 'Envoi des données';
+
+  @override
+  String get syncPhasePull => 'Téléchargement des données';
+
+  @override
+  String get photoNotUploadedYet =>
+      'Photo pas encore envoyée\n(toujours sur l\'appareil de l\'agent)';
+
+  @override
+  String get qcSearchHint => 'Rechercher nom, ID ou agent...';
+
+  @override
+  String get qcAllRegistrars => 'Tous les agents';
+
+  @override
+  String get qcNoMatches => 'Aucune inscription ne correspond au filtre';
+
+  @override
+  String get sortByRegistrar => 'Agent (A-Z)';
+
+  @override
+  String get sortByType => 'Type';
+
+  @override
+  String qcResultCount(int count, int total) {
+    return '$count sur $total affichés';
+  }
+
+  @override
+  String get qcLoadingRegistrations =>
+      'Chargement des inscriptions en attente...';
+
+  @override
+  String qcLoadingDetails(int done, int total) {
+    return 'Chargement date et agent... $done/$total';
+  }
+
+  @override
+  String get qcRegisteringInAssetRegistry =>
+      'Enregistrement de la parcelle dans l\'Asset Registry...';
+
+  @override
+  String get qcSavingDecision =>
+      'Enregistrement de la décision et synchronisation...';
+
+  @override
+  String get qcUpdatingPhotos => 'Mise à jour des photos liées...';
+
+  @override
+  String itemsLostForUpload(int count) {
+    return '$count élément(s) ne peuvent pas être envoyés';
+  }
+
+  @override
+  String get pendingItemLost => 'Copie locale perdue';
 }

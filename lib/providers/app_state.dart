@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/services/background_sync_service.dart';
+import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
@@ -145,16 +146,32 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// "Sync now" - the manual trigger behind the settings button.
-  Future<void> syncNow() async {
-    if (!_isConnected || !_isAuthenticated) return;
-    if (syncSettings.isUploadPaused) return;
+  /// "Sync now" - the manual trigger behind the button.
+  ///
+  /// Returns what actually happened so the caller can tell the user; a button
+  /// press that silently does nothing is indistinguishable from a broken app.
+  /// [ignorePause] defaults to true: this is the deliberate trigger the pause
+  /// switch exists for - pausing stops the automatic traffic so the user can
+  /// pick the moment, it does not lock syncing away.
+  Future<SyncSummary> syncNow({
+    bool force = true,
+    bool ignorePause = true,
+  }) async {
+    if (!_isConnected || !_isAuthenticated) return const SyncSummary();
+
     isSyncing.value = true;
+    String currentCloud = '';
     try {
-      await runFullSync(
+      final summary = await runFullSync(
         syncFromCloud: !isWebLandscape,
-        onStatus: (cloudKey) =>
-            syncStatusNotifier.value = "Synchronisierung mit $cloudKey",
+        force: force,
+        ignorePause: ignorePause,
+        onStatus: (cloudKey) {
+          currentCloud = cloudKey;
+          syncStatusNotifier.value = "Synchronisierung mit $cloudKey";
+        },
+        onDetail: (detail) => syncStatusNotifier.value =
+            "Synchronisierung mit $currentCloud $detail",
       );
       repaintContainerList.value = true;
       if (FirebaseAuth.instance.currentUser != null) {
@@ -163,6 +180,7 @@ class AppState extends ChangeNotifier {
             .getInboxItems(FirebaseAuth.instance.currentUser!.uid);
         inboxCount.value = inbox.length;
       }
+      return summary;
     } finally {
       refreshPendingItemCount();
       isSyncing.value = false;

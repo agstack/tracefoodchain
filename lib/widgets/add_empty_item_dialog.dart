@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/widgets/custom_text_field.dart';
+import 'package:trace_foodchain_app/services/gps_helper.dart';
 import 'package:trace_foodchain_app/services/scanning_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
@@ -223,11 +224,8 @@ class _AddEmptyItemDialogState extends State<AddEmptyItemDialog> {
         throw 'Location permissions are permanently denied';
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-        ),
-      );
+      final Position? position = await getPositionWithTimeout();
+      if (position == null) throw 'No GPS position available';
       setState(() {
         _latitudeController.text = position.latitude.toString();
         _longitudeController.text = position.longitude.toString();

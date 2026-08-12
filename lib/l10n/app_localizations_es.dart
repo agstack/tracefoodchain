@@ -3159,4 +3159,126 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get lastSyncNever => 'nunca';
+
+  @override
+  String get toolsAndSettings => 'Herramientas y ajustes';
+
+  @override
+  String get statusOnline => 'En línea';
+
+  @override
+  String get statusOffline => 'Sin conexión';
+
+  @override
+  String get gpsNoFix => 'Sin GPS';
+
+  @override
+  String get gpsSearching => 'Buscando';
+
+  @override
+  String pendingUploadsShort(int count) {
+    return '$count pend.';
+  }
+
+  @override
+  String get syncedShort => 'Al día';
+
+  @override
+  String get uploadPausedShort => 'En pausa';
+
+  @override
+  String syncResultPushed(int count) {
+    return '$count subidos';
+  }
+
+  @override
+  String get syncResultNothingToDo => 'Nada que subir';
+
+  @override
+  String syncResultFailed(int count) {
+    return '$count fallidos: se reintentará';
+  }
+
+  @override
+  String syncResultConflicts(int count) {
+    return '$count con conflicto de fusión';
+  }
+
+  @override
+  String get syncAlreadyRunning => 'Ya hay una sincronización en curso';
+
+  @override
+  String syncNextRetry(String time) {
+    return 'Próximo intento: $time';
+  }
+
+  @override
+  String syncLastError(String error) {
+    return 'Último error: $error';
+  }
+
+  @override
+  String get pendingItemsTitle => 'Elementos en espera';
+
+  @override
+  String get pendingItemConflict => 'Conflicto de fusión';
+
+  @override
+  String get syncPhaseMedia => 'Subiendo fotos';
+
+  @override
+  String get syncPhasePush => 'Subiendo datos';
+
+  @override
+  String get syncPhasePull => 'Descargando datos';
+
+  @override
+  String get photoNotUploadedYet =>
+      'Foto aún no subida\n(sigue en el dispositivo del registrador)';
+
+  @override
+  String get qcSearchHint => 'Buscar nombre, ID o registrador...';
+
+  @override
+  String get qcAllRegistrars => 'Todos los registradores';
+
+  @override
+  String get qcNoMatches => 'Ninguna solicitud coincide con el filtro';
+
+  @override
+  String get sortByRegistrar => 'Registrador (A-Z)';
+
+  @override
+  String get sortByType => 'Tipo';
+
+  @override
+  String qcResultCount(int count, int total) {
+    return '$count de $total mostrados';
+  }
+
+  @override
+  String get qcLoadingRegistrations => 'Cargando solicitudes pendientes...';
+
+  @override
+  String qcLoadingDetails(int done, int total) {
+    return 'Cargando fecha y registrador... $done/$total';
+  }
+
+  @override
+  String get qcRegisteringInAssetRegistry =>
+      'Registrando la parcela en el Asset Registry...';
+
+  @override
+  String get qcSavingDecision => 'Guardando la decisión y sincronizando...';
+
+  @override
+  String get qcUpdatingPhotos => 'Actualizando fotos vinculadas...';
+
+  @override
+  String itemsLostForUpload(int count) {
+    return '$count elemento(s) no se pueden subir';
+  }
+
+  @override
+  String get pendingItemLost => 'Copia local perdida';
 }

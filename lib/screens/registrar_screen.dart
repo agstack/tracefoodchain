@@ -12,8 +12,10 @@ import '../widgets/gps_position_widget.dart';
 import '../widgets/stepper_registrar_registration.dart';
 import '../widgets/field_boundary_recorder.dart';
 import '../widgets/language_selector.dart';
+import '../widgets/status_chip.dart';
 import '../widgets/sync_control_card.dart';
 import '../services/background_sync_service.dart';
+import '../services/sync_settings_service.dart';
 import '../screens/registrar_qc_screen.dart';
 import '../screens/sign_up_screen.dart';
 import '../screens/view_history_screen.dart';
@@ -51,7 +53,6 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
     _loadUserName();
     _checkUserRole();
     _loadStats();
-    refreshPendingItemCount();
     _startPeriodicSync();
   }
 
@@ -75,15 +76,27 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
 
   /// Counts farmer/farm/field objects in localStorage and updates the stats.
   ///
-  /// - Registered today: farm+human objects whose creation method has an
-  ///   existenceStarts timestamp that falls within today's calendar day.
-  /// - Verified: all farm+human objects with objectState == 'active'.
-  /// - Pending:  all farm+human+field objects with objectState == 'qcPending'.
+  /// All three numbers cover the same object types (human, farm, field, plot):
+  /// - Registered today: objects whose creation method has an existenceStarts
+  ///   timestamp that falls within today's calendar day.
+  /// - Verified: objects with objectState == 'active'.
+  /// - Pending:  objects with objectState == 'qcPending'.
+  ///
+  /// The counts must match what the history screen lists, otherwise the
+  /// dashboard claims registrations the user cannot find anywhere.
   void _loadStats() {
     if (!isLocalStorageInitialized()) return;
     final today = DateTime.now();
     final todayStart = DateTime(today.year, today.month, today.day);
     final todayEnd = todayStart.add(const Duration(days: 1));
+
+    // The registrar's own profile is a `human` object too and is created on
+    // first login - without this it would count as a farmer registered today,
+    // while the history screen (which filters it out) shows nothing.
+    // Fall back to the Firebase UID: the user object is keyed by it, and
+    // appUserDoc may not be loaded yet on the first build.
+    final currentAppUserUid = appUserDoc?['identity']?['UID']?.toString() ??
+        FirebaseAuth.instance.currentUser?.uid;
 
     int registeredToday = 0;
     int verified = 0;
@@ -98,18 +111,34 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
         final objectType = doc['template']?['RALType']?.toString();
         if (objectType == null) continue;
 
-        final isFarmerOrFarm = objectType == 'human' || objectType == 'farm';
-        final isFarmerFarmOrField =
-            isFarmerOrFarm || objectType == 'field' || objectType == 'plot';
+        final objectUid = doc['identity']?['UID']?.toString();
+        if (objectType == 'human' &&
+            currentAppUserUid != null &&
+            objectUid == currentAppUserUid) {
+          continue;
+        }
+
+        // All three numbers describe the SAME population - farmers, farms and
+        // fields. Counting "pending" over a wider set than "registered today"
+        // made the card contradict itself (4 registered vs 5 pending for the
+        // same 2 farmers + 2 farms + 1 field).
+        final isRegistrationObject = objectType == 'human' ||
+            objectType == 'farm' ||
+            objectType == 'field' ||
+            objectType == 'plot';
+        if (!isRegistrationObject) continue;
 
         final objectState = doc['objectState']?.toString();
 
-        // Pending count: all relevant objects awaiting QC
-        if (isFarmerFarmOrField && objectState == 'qcPending') {
-          pending++;
-        }
+        // Same status window the history screen uses - anything outside it is
+        // not listed there and must not be counted here either.
+        final isListedState = objectState == 'active' ||
+            objectState == 'qcPending' ||
+            objectState == 'qcRejected';
+        if (!isListedState) continue;
 
-        if (!isFarmerOrFarm) continue;
+        // Pending count: all relevant objects awaiting QC
+        if (objectState == 'qcPending') pending++;
 
         // Verified count
         if (objectState == 'active') verified++;
@@ -141,6 +170,9 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
         _statPending = pending;
       });
     }
+    // Der Status-Chip zeigt offene Uploads - nach jeder Registrierung neu
+    // zählen, sonst hinkt er bis zum nächsten Sync-Tick hinterher.
+    refreshPendingItemCount();
   }
 
   void _checkUserRole() {
@@ -511,285 +543,35 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome Card
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Theme.of(context).primaryColor,
-                              radius: 30,
-                              child: const Icon(
-                                Icons.verified_user,
-                                size: 32,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    l10n.welcome,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: Colors.grey[600],
-                                        ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _userName,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      'REGISTRAR',
-                                      style: TextStyle(
-                                        color: Colors.green[800],
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Flächeneinheit-Umschalter
-                                  Consumer<AppState>(
-                                    builder: (ctx, appState, _) {
-                                      final l10nCtx = AppLocalizations.of(ctx)!;
-                                      final units = getAreaUnits(country);
-                                      final currentUnit = units.firstWhere(
-                                        (u) =>
-                                            u['symbol'] ==
-                                            appState.preferredAreaUnitSymbol,
-                                        orElse: () => units.first,
-                                      );
-                                      return Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            '${l10nCtx.areaUnitSetting}:',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          OutlinedButton.icon(
-                                            onPressed: () {
-                                              final idx = units.indexWhere(
-                                                  (u) =>
-                                                      u['symbol'] ==
-                                                      currentUnit['symbol']);
-                                              final nextUnit = units[
-                                                  (idx + 1) % units.length];
-                                              appState.setPreferredAreaUnit(
-                                                  nextUnit['symbol'] as String);
-                                            },
-                                            icon: const Icon(Icons.swap_horiz,
-                                                size: 18),
-                                            label: Text(
-                                              currentUnit['symbol'] as String,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor: Colors.blue[700],
-                                              side: BorderSide(
-                                                  color: Colors.blue[400]!),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 8),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                // 1. Begrüßung - eine Zeile statt einer Karte. Name und Rolle
+                //    sind Kontext, keine Aufgabe.
+                _buildGreeting(context, l10n),
+                const SizedBox(height: 12),
+
+                // 2. Statusstreifen: GPS, Verbindung, offene Uploads in einer
+                //    Zeile. Beantwortet vor dem Start die Frage "kann ich jetzt
+                //    arbeiten und ist meine Arbeit sicher?" - Details per Tap.
+                _buildStatusStrip(context, l10n),
+                const SizedBox(height: 20),
+
+                // 3. Die beiden Felderfassungs-Aufgaben - gleichrangig, weil
+                //    beide echte Außendienst-Arbeit sind.
+                _buildPrimaryActions(context, l10n),
                 const SizedBox(height: 24),
 
-                // Sync-Steuerung: Upload pausieren, offene Elemente, manueller
-                // Sync - direkt im Dashboard, weil hier offline gearbeitet wird.
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                          child: Text(
-                            l10n.syncSectionTitle,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                          ),
-                        ),
-                        const SyncControlCard(showAsCard: false),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                // 4. Motivation + Rückschau: die Tagesleistung als Hero-Zahl,
+                //    der Verlauf als ihr natürlicher Einstieg.
+                _buildTodayCard(context, l10n),
+                const SizedBox(height: 16),
 
-                // Quick Actions Card
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.quickActions,
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                        ),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            _buildActionButton(
-                              context,
-                              icon: Icons.agriculture,
-                              label: l10n.registerFarmFarmer,
-                              color: Colors.blue,
-                              onTap: _openRegistrationForm,
-                            ),
-                            _buildActionButton(
-                              context,
-                              icon: Icons.map,
-                              label: l10n.recordFieldBoundary,
-                              color: Colors.green,
-                              onTap: _openFieldBoundaryRecorder,
-                            ),
-                            _buildActionButton(
-                              context,
-                              icon: Icons.history,
-                              label: l10n.viewHistory,
-                              color: Colors.teal,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ViewHistoryScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // IHCafe-Verzeichnis: nur im Registrar-Workflow angeboten,
-                // damit im Farmer-/Buyer-Workflow kein Speicher belegt wird.
-                const IhcafeCatalogCard(),
-                const SizedBox(height: 24),
-
-                // GPS Position Widget
-                const GpsPositionWidget(),
-                const SizedBox(height: 24),
-
-                // Statistics Card (Placeholder for future)
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.todaysStatistics,
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildStatItem(
-                              context,
-                              icon: Icons.person_add,
-                              label: l10n.registered,
-                              value: '$_statRegisteredToday',
-                              color: Colors.blue,
-                            ),
-                            _buildStatItem(
-                              context,
-                              icon: Icons.check_circle,
-                              label: l10n.verified,
-                              value: '$_statVerified',
-                              color: Colors.green,
-                            ),
-                            _buildStatItem(
-                              context,
-                              icon: Icons.pending,
-                              label: l10n.pending,
-                              value: '$_statPending',
-                              color: Colors.orange,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                // 6. Selten Gebrauchtes eingeklappt. Der Registrar erreicht den
+                //    Settings-Screen nicht, daher liegen Flächeneinheit und das
+                //    volle Sync-Panel hier.
+                _buildToolsSection(context, l10n),
               ],
             ),
           ),
@@ -798,35 +580,172 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context, {
+  Widget _buildGreeting(BuildContext context, AppLocalizations l10n) {
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: Theme.of(context).primaryColor,
+          radius: 20,
+          child: const Icon(Icons.verified_user, size: 22, color: Colors.white),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.welcome,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+              Text(
+                _userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.green[100],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'REGISTRAR',
+            style: TextStyle(
+              color: Colors.green[800],
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusStrip(BuildContext context, AppLocalizations l10n) {
+    return Row(
+      children: [
+        const Expanded(child: GpsPositionWidget(compact: true)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Consumer<AppState>(
+            builder: (context, appState, _) {
+              final online = appState.isConnected;
+              return StatusChip(
+                icon: online ? Icons.wifi : Icons.wifi_off,
+                color: online ? Colors.green : Colors.grey,
+                label: online ? l10n.statusOnline : l10n.statusOffline,
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ValueListenableBuilder<bool>(
+            valueListenable: syncSettings.uploadPaused,
+            builder: (context, paused, _) {
+              return ValueListenableBuilder<int>(
+                valueListenable: syncSettings.pendingItemCount,
+                builder: (context, pending, __) {
+                  final IconData icon;
+                  final Color color;
+                  final String label;
+                  // While paused the label describes the state, so the count
+                  // moves into a badge - otherwise pausing would hide exactly
+                  // the number that matters most while offline.
+                  int? badge;
+                  if (paused) {
+                    icon = Icons.cloud_off;
+                    color = Colors.orange[700]!;
+                    label = l10n.uploadPausedShort;
+                    badge = pending;
+                  } else if (pending > 0) {
+                    icon = Icons.cloud_upload;
+                    color = Colors.orange[700]!;
+                    label = l10n.pendingUploadsShort(pending);
+                  } else {
+                    icon = Icons.cloud_done;
+                    color = Colors.green[700]!;
+                    label = l10n.syncedShort;
+                  }
+                  return StatusChip(
+                    icon: icon,
+                    color: color,
+                    label: label,
+                    badgeCount: badge,
+                    onTap: () => showSyncSheet(context),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Registrieren und Feldgrenzen erfassen sind beide Außendienst-Arbeit und
+  /// bekommen deshalb dieselbe Größe. Unterschieden werden sie über Farbe und
+  /// Icon, nicht über die Hierarchie.
+  Widget _buildPrimaryActions(BuildContext context, AppLocalizations l10n) {
+    return Column(
+      children: [
+        _buildPrimaryButton(
+          icon: Icons.agriculture,
+          label: l10n.registerFarmFarmer,
+          color: Theme.of(context).primaryColor,
+          onTap: _openRegistrationForm,
+        ),
+        const SizedBox(height: 12),
+        _buildPrimaryButton(
+          icon: Icons.map,
+          label: l10n.recordFieldBoundary,
+          color: Colors.blue[700]!,
+          onTap: _openFieldBoundaryRecorder,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryButton({
     required IconData icon,
     required String label,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: (MediaQuery.of(context).size.width - 64) / 2,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          // Das globale ElevatedButton-Theme erzwingt Grün - für den zweiten
+          // Button muss die Farbe daher explizit gesetzt werden.
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          elevation: 3,
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+            Icon(icon, size: 30),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -835,33 +754,191 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
     );
   }
 
-  Widget _buildStatItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+  /// Tagesleistung als Motivation: die "heute registriert"-Zahl dominiert,
+  /// verifiziert/offen stehen als Kontext daneben. Der Verlauf hängt als
+  /// Rückschau direkt darunter - er beantwortet dieselbe Frage in ausführlich.
+  Widget _buildTodayCard(BuildContext context, AppLocalizations l10n) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$_statRegisteredToday',
+                      style: TextStyle(
+                        fontSize: 44,
+                        height: 1.0,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.registeredToday,
+                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMiniStat(
+                        icon: Icons.check_circle,
+                        color: Colors.green[700]!,
+                        label: l10n.verified,
+                        value: _statVerified,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMiniStat(
+                        icon: Icons.pending,
+                        color: Colors.orange[700]!,
+                        label: l10n.pending,
+                        value: _statPending,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ViewHistoryScreen(),
+                ),
+              ).then((_) => _loadStats());
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(Icons.history, size: 20, color: Colors.teal[700]),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.viewHistory,
+                      style: TextStyle(
+                        color: Colors.teal[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: Colors.grey[500]),
+                ],
               ),
-        ),
-        const SizedBox(height: 4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStat({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required int value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
         Text(
-          label,
+          '$value',
           style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
           ),
         ),
       ],
     );
   }
+
+  Widget _buildToolsSection(BuildContext context, AppLocalizations l10n) {
+    return Card(
+      elevation: 0,
+      color: Colors.grey[100],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Theme(
+        // Die Divider der ExpansionTile passen nicht zur flachen Karte.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: const Icon(Icons.tune),
+          title: Text(
+            l10n.toolsAndSettings,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          children: [
+            // Flächeneinheit - für den Registrar nur hier erreichbar, da der
+            // Settings-Screen aus diesem Workflow nicht verlinkt ist.
+            Consumer<AppState>(
+              builder: (ctx, appState, _) {
+                final units = getAreaUnits(country);
+                final currentUnit = units.firstWhere(
+                  (u) => u['symbol'] == appState.preferredAreaUnitSymbol,
+                  orElse: () => units.first,
+                );
+                return ListTile(
+                  leading: const Icon(Icons.straighten),
+                  title: Text(l10n.areaUnitSetting),
+                  subtitle: Text(l10n.areaUnitSettingSubtitle),
+                  trailing: OutlinedButton.icon(
+                    onPressed: () {
+                      final idx = units.indexWhere(
+                          (u) => u['symbol'] == currentUnit['symbol']);
+                      final nextUnit = units[(idx + 1) % units.length];
+                      appState
+                          .setPreferredAreaUnit(nextUnit['symbol'] as String);
+                    },
+                    icon: const Icon(Icons.swap_horiz, size: 18),
+                    label: Text(
+                      currentUnit['symbol'] as String,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1),
+            const SyncControlCard(showAsCard: false),
+            const Divider(height: 1),
+            // IHCafe-Verzeichnis: nur im Registrar-Workflow angeboten, damit im
+            // Farmer-/Buyer-Workflow kein Speicher belegt wird.
+            const IhcafeCatalogCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
 }

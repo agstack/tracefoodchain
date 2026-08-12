@@ -148,6 +148,22 @@ class SyncOutboxService {
 
   int get failingCount => _attempts?.length ?? 0;
 
+  /// The most recent error recorded across all failing items - shown in the
+  /// sync panel so a stuck item is explained rather than just counted.
+  String? get lastErrorSeen {
+    if (_attempts == null || !_attempts!.isOpen) return null;
+    SyncAttempt? newest;
+    for (final raw in _attempts!.values) {
+      final attempt = SyncAttempt.fromMap(raw);
+      if (attempt.lastError == null) continue;
+      if (newest == null ||
+          attempt.firstFailureAt.isAfter(newest.firstFailureAt)) {
+        newest = attempt;
+      }
+    }
+    return newest?.lastError;
+  }
+
   //! ------------------------------------------------- atomic pull staging
 
   /// Discards whatever an interrupted run left behind and starts a fresh batch.

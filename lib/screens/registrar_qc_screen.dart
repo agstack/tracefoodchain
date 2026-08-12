@@ -17,6 +17,7 @@ import '../services/user_registry_api_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
+import '../widgets/data_loading_indicator.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
 
@@ -28,10 +29,62 @@ class RegistrarQCScreen extends StatefulWidget {
   State<RegistrarQCScreen> createState() => _RegistrarQCScreenState();
 }
 
+/// Sort orders offered in the QC list.
+enum _QcSort { dateDesc, dateAsc, registrar, name, type }
+
+/// A pending registration together with the metadata the list needs for
+/// sorting, filtering and searching.
+///
+/// The metadata lives NEXT TO the openRAL object, never inside it: the object
+/// is written back to Firestore on approval and is hashed as a whole, so any
+/// extra key would invalidate it.
+class _QcEntry {
+  _QcEntry({
+    required this.object,
+    required this.ralType,
+    required this.name,
+    this.registeredAt,
+    this.registrarName = '-',
+    this.registrarUid = '',
+    this.alternateIds = const [],
+  });
+
+  final Map<String, dynamic> object;
+  final String ralType;
+  final String name;
+  final DateTime? registeredAt;
+  final String registrarName;
+  final String registrarUid;
+  final List<String> alternateIds;
+
+  String get uid => object['identity']?['UID']?.toString() ?? '';
+
+  /// Everything the search box may match against, lowercased once.
+  late final String searchIndex = [
+    name,
+    uid,
+    registrarName,
+    ...alternateIds,
+  ].join(' ').toLowerCase();
+}
+
 class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
-  List<Map<String, dynamic>> _pendingRegistrations = [];
+  List<_QcEntry> _pendingRegistrations = [];
   bool _isLoading = true;
+
+  /// What the screen is currently busy with. Loading and approving both take
+  /// several network round trips; a bare spinner leaves the reviewer staring at
+  /// an empty screen with no idea whether anything is happening.
+  String? _loadingMessage;
   String _filterType = 'all'; // all, farm, human, field
+  String _registrarFilter = 'all'; // 'all' or a registrar UID
+  _QcSort _sortMode = _QcSort.dateDesc;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  /// Registrar lookups resolved at load time, reused by the detail rows so the
+  /// same method document is not fetched twice per card.
+  final Map<String, Map<String, String>> _registrarCache = {};
 
   @override
   void initState() {
@@ -39,11 +92,29 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     _loadPendingRegistrations();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Shows the busy state with an explanation of the current step.
+  void _setBusy(String? message) {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = message != null;
+      _loadingMessage = message;
+    });
+  }
+
   Future<void> _loadPendingRegistrations() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = null; // l10n is not safe to read from initState
+    });
 
     try {
-      List<Map<String, dynamic>> allPending = [];
+      final List<Map<String, dynamic>> objects = [];
 
       // Abfrage der Cloud-Datenbank (Firestore) statt localStorage
       final querySnapshot = await FirebaseFirestore.instance
@@ -57,37 +128,173 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
         // Filter nur relevante Typen
         if (ralType == 'farm' || ralType == 'human' || ralType == 'field') {
-          allPending.add(obj);
+          objects.add(obj);
         }
       }
 
-      // Sortiere nach Erstellungsdatum (neueste zuerst)
-      allPending.sort((a, b) {
-        final aTime = a['methodHistoryRef']?.isNotEmpty == true
-            ? (a['methodHistoryRef'][0]['timestamp'] ?? '')
-            : '';
-        final bTime = b['methodHistoryRef']?.isNotEmpty == true
-            ? (b['methodHistoryRef'][0]['timestamp'] ?? '')
-            : '';
-        return bTime.compareTo(aTime);
-      });
+      // Resolve creation date and registrar up front - both live on the
+      // creation METHOD, not on the object, and sorting cannot wait for the
+      // per-card FutureBuilders. That is one extra fetch per entry, so report
+      // how far along it is instead of showing a silent spinner.
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      final total = objects.length;
+      int done = 0;
 
+      final entries = await Future.wait(objects.map((obj) async {
+        final entry = await _buildEntry(obj);
+        done++;
+        // Repaint every few items - one setState per document would thrash the
+        // frame budget on a long queue.
+        if (mounted && l10n != null && (done % 5 == 0 || done == total)) {
+          setState(() =>
+              _loadingMessage = l10n.qcLoadingDetails(done, total));
+        }
+        return entry;
+      }));
+
+      if (!mounted) return;
       setState(() {
-        _pendingRegistrations = allPending;
+        _pendingRegistrations = entries;
         _isLoading = false;
+        _loadingMessage = null;
       });
     } catch (e) {
       debugPrint('Error loading pending registrations from cloud: $e');
-      setState(() => _isLoading = false);
+      _setBusy(null);
     }
   }
 
-  List<Map<String, dynamic>> get _filteredRegistrations {
-    if (_filterType == 'all') return _pendingRegistrations;
-    return _pendingRegistrations.where((obj) {
-      final ralType = obj['template']?['RALType'] ?? '';
-      return ralType == _filterType;
+  /// Loads the creation method of [obj] and extracts registration date and
+  /// registrar from it.
+  Future<_QcEntry> _buildEntry(Map<String, dynamic> obj) async {
+    final ralType = obj['template']?['RALType']?.toString() ?? 'unknown';
+    final name = obj['identity']?['name']?.toString() ?? 'Unnamed';
+    final objectUid = obj['identity']?['UID']?.toString() ?? '';
+
+    final alternateIds = <String>[];
+    final rawAltIds = obj['identity']?['alternateIDs'];
+    if (rawAltIds is List) {
+      for (final a in rawAltIds) {
+        final id = a is Map ? a['UID']?.toString() : a?.toString();
+        if (id != null && id.isNotEmpty) alternateIds.add(id);
+      }
+    }
+
+    DateTime? registeredAt;
+    String registrarName = '-';
+    String registrarUid = '';
+
+    try {
+      final methodHistoryRef = obj['methodHistoryRef'];
+      String? methodUID;
+      if (methodHistoryRef is List && methodHistoryRef.isNotEmpty) {
+        final first = methodHistoryRef[0];
+        if (first is Map) methodUID = first['UID']?.toString();
+      }
+
+      if (methodUID != null && methodUID.isNotEmpty) {
+        final methodDoc = await FirebaseFirestore.instance
+            .collection('TFC_methods')
+            .doc(methodUID)
+            .get();
+        final methodData = methodDoc.data();
+        if (methodData != null) {
+          registeredAt =
+              DateTime.tryParse(methodData['existenceStarts']?.toString() ?? '');
+          final executorIdentity = methodData['executor']?['identity'];
+          if (executorIdentity is Map) {
+            registrarName =
+                executorIdentity['name']?.toString().trim().isNotEmpty == true
+                    ? executorIdentity['name'].toString()
+                    : '-';
+            registrarUid = executorIdentity['UID']?.toString() ?? '';
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('QC: could not resolve metadata for $objectUid: $e');
+    }
+
+    if (objectUid.isNotEmpty) {
+      _registrarCache[objectUid] = {
+        'name': registrarName,
+        'uid': registrarUid,
+      };
+    }
+
+    return _QcEntry(
+      object: obj,
+      ralType: ralType,
+      name: name,
+      registeredAt: registeredAt,
+      registrarName: registrarName,
+      registrarUid: registrarUid,
+      alternateIds: alternateIds,
+    );
+  }
+
+  /// All registrars present in the current result set, for the dropdown.
+  Map<String, String> get _availableRegistrars {
+    final map = <String, String>{};
+    for (final entry in _pendingRegistrations) {
+      if (entry.registrarUid.isEmpty) continue;
+      map[entry.registrarUid] = entry.registrarName;
+    }
+    return map;
+  }
+
+  List<_QcEntry> get _filteredRegistrations {
+    final query = _searchQuery.trim().toLowerCase();
+
+    final result = _pendingRegistrations.where((entry) {
+      if (_filterType != 'all' && entry.ralType != _filterType) return false;
+      if (_registrarFilter != 'all' &&
+          entry.registrarUid != _registrarFilter) {
+        return false;
+      }
+      if (query.isNotEmpty && !entry.searchIndex.contains(query)) return false;
+      return true;
     }).toList();
+
+    // Undated entries sort last in both directions - "unknown" is not "oldest".
+    int byDate(_QcEntry a, _QcEntry b, {required bool descending}) {
+      if (a.registeredAt == null && b.registeredAt == null) return 0;
+      if (a.registeredAt == null) return 1;
+      if (b.registeredAt == null) return -1;
+      return descending
+          ? b.registeredAt!.compareTo(a.registeredAt!)
+          : a.registeredAt!.compareTo(b.registeredAt!);
+    }
+
+    switch (_sortMode) {
+      case _QcSort.dateDesc:
+        result.sort((a, b) => byDate(a, b, descending: true));
+        break;
+      case _QcSort.dateAsc:
+        result.sort((a, b) => byDate(a, b, descending: false));
+        break;
+      case _QcSort.registrar:
+        result.sort((a, b) {
+          final cmp = a.registrarName
+              .toLowerCase()
+              .compareTo(b.registrarName.toLowerCase());
+          // Within one registrar the newest registration first.
+          return cmp != 0 ? cmp : byDate(a, b, descending: true);
+        });
+        break;
+      case _QcSort.name:
+        result.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case _QcSort.type:
+        result.sort((a, b) {
+          final cmp = a.ralType.compareTo(b.ralType);
+          return cmp != 0 ? cmp : byDate(a, b, descending: true);
+        });
+        break;
+    }
+    return result;
   }
 
   Future<void> _approveRegistration(Map<String, dynamic> object) async {
@@ -105,7 +312,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
     if (notes == null) return; // Abgebrochen
 
-    setState(() => _isLoading = true);
+    _setBusy(l10n.qcSavingDecision);
 
     try {
       String approvalNotes = notes;
@@ -113,6 +320,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       // Für Field-Objekte: Asset Registry Registrierung durchführen
       final ralType = object['template']?['RALType'];
       if (ralType == 'field') {
+        // Separate step: this call goes to an external registry and is the
+        // slowest part of an approval.
+        _setBusy(l10n.qcRegisteringInAssetRegistry);
         final geoIdResult = await _registerFieldInAssetRegistry(object);
         if (geoIdResult['geoId'] != null) {
           // Füge GeoID zu alternateIDs hinzu
@@ -138,9 +348,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       updatedObject['objectState'] = 'active';
       setSpecificPropertyJSON(
           updatedObject, "approvalNotes", approvalNotes, "String");
-      await changeObjectData(updatedObject);
+      // Push only. The QC screen reads its data straight from Firestore and is
+      // used online, so pulling the whole cloud state back down afterwards adds
+      // nothing but wait time before the UI is usable again.
+      _setBusy(l10n.qcSavingDecision);
+      await changeObjectData(updatedObject, syncFromCloud: false);
 
       // Aktualisiere Status der verknüpften image-Objekte
+      _setBusy(l10n.qcUpdatingPhotos);
       await _updateLinkedImageStatus(
         object,
         'active',
@@ -171,7 +386,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      _setBusy(null);
     }
   }
 
@@ -186,7 +401,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
     if (reason == null) return; // Abgebrochen
 
-    setState(() => _isLoading = true);
+    _setBusy(l10n.qcSavingDecision);
 
     try {
       // Erstelle changeObjectData Methode
@@ -200,9 +415,11 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       updatedObject =
           jsonFullDoubleToInt(sortJsonAlphabetically(updatedObject));
 
-      await changeObjectData(updatedObject);
+      // Push only - see the note in _approveRegistration.
+      await changeObjectData(updatedObject, syncFromCloud: false);
 
       // Aktualisiere Status der verknüpften image-Objekte
+      _setBusy(l10n.qcUpdatingPhotos);
       await _updateLinkedImageStatus(
         object,
         'qcRejected',
@@ -232,7 +449,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      _setBusy(null);
     }
   }
 
@@ -410,8 +627,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       int deletedCount = 0;
 
       // Lösche alle angezeigten Objekte aus Firestore
-      for (var obj in _filteredRegistrations) {
-        final uid = obj['identity']?['UID'];
+      for (var entry in _filteredRegistrations) {
+        final uid = entry.uid.isNotEmpty ? entry.uid : null;
         if (uid != null) {
           await FirebaseFirestore.instance
               .collection('TFC_objects')
@@ -441,7 +658,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      _setBusy(null);
     }
   }
 
@@ -469,90 +686,274 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       ),
       body: Column(
         children: [
-          // Filter Chips
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  FilterChip(
-                    label:
-                        Text('${l10n.all} (${_pendingRegistrations.length})'),
-                    selected: _filterType == 'all',
-                    onSelected: (selected) {
-                      setState(() => _filterType = 'all');
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  FilterChip(
-                    label: Text(
-                        '${l10n.farms} (${_pendingRegistrations.where((o) => o['template']?['RALType'] == 'farm').length})'),
-                    selected: _filterType == 'farm',
-                    onSelected: (selected) {
-                      setState(() => _filterType = 'farm');
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  FilterChip(
-                    label: Text(
-                        '${l10n.farmers} (${_pendingRegistrations.where((o) => o['template']?['RALType'] == 'human').length})'),
-                    selected: _filterType == 'human',
-                    onSelected: (selected) {
-                      setState(() => _filterType = 'human');
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  FilterChip(
-                    label: Text(
-                        '${l10n.fields} (${_pendingRegistrations.where((o) => o['template']?['RALType'] == 'field').length})'),
-                    selected: _filterType == 'field',
-                    onSelected: (selected) {
-                      setState(() => _filterType = 'field');
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _buildSearchField(l10n),
+          _buildSortAndRegistrarRow(l10n),
+          _buildTypeChips(l10n),
+          _buildResultCount(l10n),
 
           // Liste
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredRegistrations.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_circle_outline,
-                                size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              l10n.noPendingRegistrations,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: _filteredRegistrations.length,
-                        itemBuilder: (context, index) {
-                          final obj = _filteredRegistrations[index];
-                          return _buildRegistrationCard(obj);
-                        },
-                      ),
+                ? Center(
+                    // Falls back to the generic text while l10n is not yet
+                    // readable (the first load starts from initState).
+                    child: DataLoadingIndicator(
+                      text: _loadingMessage ?? l10n.qcLoadingRegistrations,
+                    ),
+                  )
+                : _buildList(l10n),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRegistrationCard(Map<String, dynamic> obj) {
+  Widget _buildList(AppLocalizations l10n) {
+    final entries = _filteredRegistrations;
+    if (entries.isEmpty) {
+      // Distinguish "nothing to review" from "your filter hides everything" -
+      // otherwise an active filter looks like an empty queue.
+      final hasActiveFilter = _filterType != 'all' ||
+          _registrarFilter != 'all' ||
+          _searchQuery.trim().isNotEmpty;
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(hasActiveFilter ? Icons.filter_alt_off : Icons.check_circle_outline,
+                size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              hasActiveFilter ? l10n.qcNoMatches : l10n.noPendingRegistrations,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            if (hasActiveFilter) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: _resetFilters,
+                icon: const Icon(Icons.clear),
+                label: Text(l10n.all),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: entries.length,
+      itemBuilder: (context, index) => _buildRegistrationCard(entries[index]),
+    );
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _filterType = 'all';
+      _registrarFilter = 'all';
+      _searchQuery = '';
+      _searchController.clear();
+    });
+  }
+
+  Widget _buildSearchField(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: l10n.qcSearchHint,
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => setState(() {
+                    _searchQuery = '';
+                    _searchController.clear();
+                  }),
+                )
+              : null,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortAndRegistrarRow(AppLocalizations l10n) {
+    final registrars = _availableRegistrars;
+    // A registrar dropdown is pointless when everything comes from one person.
+    final showRegistrarFilter = registrars.length > 1;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<_QcSort>(
+              initialValue: _sortMode,
+              isDense: true,
+              decoration: InputDecoration(
+                labelText: l10n.sortBy,
+                prefixIcon: const Icon(Icons.sort, size: 20),
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: _QcSort.dateDesc,
+                  child: Text(l10n.sortByDateDesc),
+                ),
+                DropdownMenuItem(
+                  value: _QcSort.dateAsc,
+                  child: Text(l10n.sortByDateAsc),
+                ),
+                DropdownMenuItem(
+                  value: _QcSort.registrar,
+                  child: Text(l10n.sortByRegistrar),
+                ),
+                DropdownMenuItem(
+                  value: _QcSort.name,
+                  child: Text(l10n.sortByNameAsc),
+                ),
+                DropdownMenuItem(
+                  value: _QcSort.type,
+                  child: Text(l10n.sortByType),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => _sortMode = value);
+              },
+            ),
+          ),
+          if (showRegistrarFilter) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: registrars.containsKey(_registrarFilter)
+                    ? _registrarFilter
+                    : 'all',
+                isDense: true,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.registeredBy,
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'all',
+                    child: Text(l10n.qcAllRegistrars),
+                  ),
+                  ...registrars.entries.map(
+                    (e) => DropdownMenuItem(
+                      value: e.key,
+                      child: Text(e.value, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _registrarFilter = value);
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChips(AppLocalizations l10n) {
+    int countOf(String type) =>
+        _pendingRegistrations.where((e) => e.ralType == type).length;
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            FilterChip(
+              label: Text('${l10n.all} (${_pendingRegistrations.length})'),
+              selected: _filterType == 'all',
+              onSelected: (selected) => setState(() => _filterType = 'all'),
+            ),
+            const SizedBox(width: 8),
+            FilterChip(
+              label: Text('${l10n.farms} (${countOf('farm')})'),
+              selected: _filterType == 'farm',
+              onSelected: (selected) => setState(() => _filterType = 'farm'),
+            ),
+            const SizedBox(width: 8),
+            FilterChip(
+              label: Text('${l10n.farmers} (${countOf('human')})'),
+              selected: _filterType == 'human',
+              onSelected: (selected) => setState(() => _filterType = 'human'),
+            ),
+            const SizedBox(width: 8),
+            FilterChip(
+              label: Text('${l10n.fields} (${countOf('field')})'),
+              selected: _filterType == 'field',
+              onSelected: (selected) => setState(() => _filterType = 'field'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultCount(AppLocalizations l10n) {
+    if (_isLoading || _pendingRegistrations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final shown = _filteredRegistrations.length;
+    final total = _pendingRegistrations.length;
+    if (shown == total) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          l10n.qcResultCount(shown, total),
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  /// Small icon + text pair used for the metadata line on a card.
+  Widget _buildCardMeta(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.grey[600]),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+        ),
+      ],
+    );
+  }
+
+  String _formatRegistrationDate(DateTime utc) {
+    final local = utc.toLocal();
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.yMd(locale).add_Hm().format(local);
+  }
+
+  Widget _buildRegistrationCard(_QcEntry entry) {
+    final obj = entry.object;
     final l10n = AppLocalizations.of(context)!;
-    final ralType = obj['template']?['RALType'] ?? 'unknown';
-    final name = obj['identity']?['name'] ?? 'Unnamed';
+    final ralType = entry.ralType;
+    final name = entry.name;
 
     IconData icon;
     Color color;
@@ -589,7 +990,28 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           child: Icon(icon, color: Colors.white),
         ),
         title: Text(name, style: const TextStyle(color: Colors.black)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.black87)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(subtitle, style: const TextStyle(color: Colors.black87)),
+            const SizedBox(height: 2),
+            // Date and registrar directly on the card: they are the two things
+            // a reviewer scans the queue by.
+            Wrap(
+              spacing: 12,
+              runSpacing: 2,
+              children: [
+                _buildCardMeta(
+                  Icons.event,
+                  entry.registeredAt != null
+                      ? _formatRegistrationDate(entry.registeredAt!)
+                      : '-',
+                ),
+                _buildCardMeta(Icons.person_outline, entry.registrarName),
+              ],
+            ),
+          ],
+        ),
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -777,6 +1199,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             return _buildPhotoWidget(
               photoPath: imageData['url'] as String,
               isLocalFile: imageData['isLocal'] as bool,
+              notUploaded: imageData['notUploaded'] == true,
               label: l10n.nationalIDPhoto,
             );
           }
@@ -812,6 +1235,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             return _buildPhotoWidget(
               photoPath: imageData['url'] as String,
               isLocalFile: imageData['isLocal'] as bool,
+              notUploaded: imageData['notUploaded'] == true,
               label: l10n.consentFormPhoto,
             );
           }
@@ -885,6 +1309,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             return _buildPhotoWidget(
               photoPath: imageData['url'] as String,
               isLocalFile: imageData['isLocal'] as bool,
+              notUploaded: imageData['notUploaded'] == true,
               label: l10n.fieldPhoto,
             );
           }
@@ -905,6 +1330,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// Lädt den Namen und UID des Registrars aus der Methoden-Historie
   Future<Map<String, String>> _getRegistrarInfo(
       Map<String, dynamic> obj) async {
+    // Already resolved while loading the list - do not fetch the same method
+    // document a second time for the expanded card.
+    final objectUid = obj['identity']?['UID']?.toString();
+    if (objectUid != null && _registrarCache.containsKey(objectUid)) {
+      return _registrarCache[objectUid]!;
+    }
     try {
       // Hole ersten Eintrag aus methodHistoryRef
       final methodHistoryRef = obj['methodHistoryRef'];
@@ -1220,6 +1651,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     required String photoPath,
     required bool isLocalFile,
     required String label,
+    bool notUploaded = false,
   }) {
     final l10n = AppLocalizations.of(context)!;
 
@@ -1234,7 +1666,33 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 fontWeight: FontWeight.bold, color: Colors.black),
           ),
           const SizedBox(height: 8),
-          GestureDetector(
+          // A photo that never reached the cloud is not a loading error - say
+          // so, otherwise the reviewer cannot tell a broken link from a
+          // registration that is simply still on the registrar's phone.
+          if (notUploaded)
+            Container(
+              height: 150,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.orange[200]!),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.orange[50],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cloud_off, size: 32, color: Colors.orange[700]),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.photoNotUploadedYet,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.orange[900], fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          else
+            GestureDetector(
             onTap: () => _showFullScreenImage(photoPath, isLocalFile),
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
@@ -1293,10 +1751,11 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            l10n.tapToEnlarge,
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
-          ),
+          if (!notUploaded)
+            Text(
+              l10n.tapToEnlarge,
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
         ],
       ),
     );
@@ -1928,7 +2387,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           updatedImage =
               jsonFullDoubleToInt(sortJsonAlphabetically(updatedImage));
 
-          await changeObjectData(updatedImage);
+          // Push only - this runs once per linked photo, so a full pull each
+          // time would multiply the wait after every QC decision.
+          await changeObjectData(updatedImage, syncFromCloud: false);
 
           debugPrint('Image $imageUID updated successfully');
         } catch (e) {
@@ -1987,24 +2448,34 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
       // Extrahiere downloadURL aus specificProperties (Cloud URL)
       var downloadURL = getSpecificPropertyfromJSON(imageObj, 'downloadURL');
+      final localPath = getSpecificPropertyfromJSON(imageObj, 'localDownloadURL');
+      final storagePath = getSpecificPropertyfromJSON(imageObj, 'storagePath');
 
-      debugPrint('Raw downloadURL type: ${downloadURL.runtimeType}');
-      debugPrint('Raw downloadURL value: $downloadURL');
+      // Full picture of what the cloud actually stores for this image - the QC
+      // view is where a failed upload becomes visible, so name the cause.
+      debugPrint('[QC IMAGE] uid=$imageUID\n'
+          '  objectState : ${imageObj['objectState']}\n'
+          '  name        : ${imageObj['identity']?['name']}\n'
+          '  downloadURL : ${downloadURL.runtimeType} "$downloadURL"\n'
+          '  storagePath : "$storagePath"\n'
+          '  localPath   : "$localPath"');
 
-      // Fallback auf localDownloadURL wenn downloadURL leer ist
-      if (downloadURL == null ||
-          downloadURL.toString().isEmpty ||
-          downloadURL == '-no data found-') {
-        downloadURL = getSpecificPropertyfromJSON(imageObj, 'localDownloadURL');
-        debugPrint('Using localDownloadURL: $downloadURL');
-      }
+      bool hasValue(dynamic v) =>
+          v != null && v.toString().isNotEmpty && v != '-no data found-';
 
-      if (downloadURL == null ||
-          downloadURL.toString().isEmpty ||
-          downloadURL == '-no data found-') {
-        debugPrint(
-            'No downloadURL or localDownloadURL found in image object: $imageUID');
-        return null;
+      if (!hasValue(downloadURL)) {
+        // No cloud URL means the photo never completed upload+verification.
+        // Falling back to localDownloadURL is pointless here: that path or blob
+        // URL belongs to the registrar's device, not to the reviewer's.
+        debugPrint('[QC IMAGE] uid=$imageUID has NO cloud downloadURL - the'
+            ' photo has not been uploaded (or not verified) yet.'
+            ' localDownloadURL is not usable on this device.');
+        cloudLogService.warn('QC: image without cloud URL', data: {
+          'uid': imageUID,
+          'hasLocalPath': '${hasValue(localPath)}',
+          'storagePath': '$storagePath',
+        });
+        return {'url': '', 'isLocal': false, 'notUploaded': true};
       }
 
       // Konvertiere zu String und entferne mögliche Anführungszeichen

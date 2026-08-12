@@ -534,23 +534,25 @@ class _ItemsListState extends State<ItemsList> {
             return Text(snapshot.error.toString());
           }
           final nestedContents = snapshot.data ?? [];
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final tileWidth = constraints.maxWidth;
-              // Now you can use tileWidth as needed
-              //
-
-              return ExpansionTile(
-                title: _buildCardHeader(container, nestedContents, tileWidth),
-                children: [
-                  Column(
-                    children: nestedContents
-                        .map((item) => _buildContentItem(item))
-                        .toList(),
-                  )
-                ],
-              );
-            },
+          // The LayoutBuilder wraps ONLY the header, which is the only part
+          // that needs the available width. Wrapping the whole ExpansionTile
+          // meant its entire child subtree - including further nested
+          // containers with their own LayoutBuilders - got inflated inside a
+          // layout callback. Reparenting anything in there (a Tooltip, a text
+          // field, any overlay) then mutates the outer LayoutBuilder mid-layout
+          // and trips "_RenderLayoutBuilder was mutated in performLayout".
+          return ExpansionTile(
+            title: LayoutBuilder(
+              builder: (context, constraints) => _buildCardHeader(
+                  container, nestedContents, constraints.maxWidth),
+            ),
+            children: [
+              Column(
+                children: nestedContents
+                    .map((item) => _buildContentItem(item))
+                    .toList(),
+              )
+            ],
           );
         });
   }
@@ -943,54 +945,53 @@ class _ItemsListState extends State<ItemsList> {
                     ),
                     const SizedBox(height: 8),
                     // Animated progress bar for fill level
-                    LayoutBuilder(builder: (context, constraints) {
-                      double maxCapacity =
-                          getSpecificPropertyfromJSON(container, "max capacity")
-                                  is num
-                              ? getSpecificPropertyfromJSON(
-                                      container, "max capacity")
-                                  .toDouble()
-                              : double.tryParse(getSpecificPropertyfromJSON(
-                                          container, "max capacity")
-                                      .toString()) ??
-                                  0.0;
-                      double computedCapacity =
-                          computeCoffeeSum(container, maxCapacity);
-                      double freeCapacity =
-                          computedCapacity < 0 ? 0 : computedCapacity;
-                      // Calculate progress as a fraction of the available max capacity.
-                      double progress = (maxCapacity > 0)
-                          ? (freeCapacity / maxCapacity)
-                          : 0.0;
-                      progress = progress.clamp(0.0, 1.0);
-                      return Stack(
-                        children: [
-                          Container(
-                            width: 150,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 500),
-                            width: 150 * progress,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            curve: Curves.easeInOut,
-                          ),
-                        ],
-                      );
-                    })
+                    _buildFillLevelBar(container),
                   ],
                 )
               ],
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  /// Fill level bar of a container.
+  ///
+  /// This used to sit inside a LayoutBuilder that never read its constraints -
+  /// the bar has a fixed width of 150. Every superfluous LayoutBuilder adds a
+  /// subtree that gets rebuilt DURING layout, and nesting those is what
+  /// produces "_RenderLayoutBuilder was mutated in performLayout".
+  Widget _buildFillLevelBar(Map<String, dynamic> container) {
+    final rawCapacity = getSpecificPropertyfromJSON(container, "max capacity");
+    final double maxCapacity = rawCapacity is num
+        ? rawCapacity.toDouble()
+        : double.tryParse(rawCapacity.toString()) ?? 0.0;
+    final double computedCapacity = computeCoffeeSum(container, maxCapacity);
+    final double freeCapacity = computedCapacity < 0 ? 0 : computedCapacity;
+    // Calculate progress as a fraction of the available max capacity.
+    final double progress =
+        (maxCapacity > 0 ? freeCapacity / maxCapacity : 0.0).clamp(0.0, 1.0);
+
+    return Stack(
+      children: [
+        Container(
+          width: 150,
+          height: 10,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(5),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          width: 150 * progress,
+          height: 10,
+          decoration: BoxDecoration(
+            color: Colors.green,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          curve: Curves.easeInOut,
         ),
       ],
     );

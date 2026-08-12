@@ -294,6 +294,38 @@ extension CustomColorScheme on ColorScheme {
   Color get complement5 => const Color(0xFF101E1E);
 }
 
+/// Prints every LayoutBuilder currently in the tree together with the widget
+/// chain that created it (including source locations).
+///
+/// The "_RenderLayoutBuilder was mutated in performLayout" assertion names two
+/// render objects by hash but not by origin. This walks the element tree and
+/// reports exactly those two, so the next occurrence points straight at the
+/// offending widget instead of requiring a full render tree dump.
+void _dumpLayoutBuilderCreators() {
+  int found = 0;
+
+  void visit(Element element) {
+    final renderObject = element.renderObject;
+    if (renderObject != null &&
+        renderObject.runtimeType.toString().contains('RenderLayoutBuilder')) {
+      found++;
+      debugPrint('  [$found] ${renderObject.runtimeType}'
+          '#${renderObject.hashCode.toRadixString(16)}');
+      // 12 links up the chain is enough to reach our own widget above the
+      // framework wrappers.
+      debugPrint('      ${element.debugGetCreatorChain(12)}');
+    }
+    element.visitChildren(visit);
+  }
+
+  try {
+    WidgetsBinding.instance.rootElement?.visitChildren(visit);
+    if (found == 0) debugPrint('  (kein LayoutBuilder im Baum gefunden)');
+  } catch (e) {
+    debugPrint('  LayoutBuilder-Suche fehlgeschlagen: $e');
+  }
+}
+
 void main() async {
   // Enable detailed stack traces for debugging
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -330,10 +362,11 @@ void main() async {
           debugPrint(node.toStringDeep());
         }
 
-        // Kompletter Render-Tree: hier tauchen beide _RenderLayoutBuilder mit
-        // ihrem "creator" (Widget + Quelldatei) auf.
-        debugPrint('---- RENDER TREE DUMP ----');
-        debugDumpRenderTree();
+        // Nur die LayoutBuilder mit ihrer Widget-Herkunft. Ein kompletter
+        // Render-Tree-Dump enthält die Antwort zwar auch, ist aber tausende
+        // Zeilen lang und damit praktisch unbrauchbar.
+        debugPrint('---- LAYOUTBUILDERS IM BAUM ----');
+        _dumpLayoutBuilderCreators();
         debugPrint('════════ END LAYOUT-MUTATION DEBUG ════════\n');
       } catch (e) {
         debugPrint('LAYOUT-MUTATION DEBUG failed to collect info: $e');

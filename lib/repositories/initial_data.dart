@@ -1047,6 +1047,18 @@ Map<String, dynamic> initialCloudConnectorTraceFoodchain = {
         },
         {
           "value": {
+            "definition":
+                "Endpoint to get all relevant objects and methods from cloud, "
+                    "with optional pagination for low bandwidth connections. "
+                    "Falls back to syncFromCloud when not reachable.",
+            "url":
+                "https://europe-west3-tracefoodchain.cloudfunctions.net/syncFromCloudBeta"
+          },
+          "unit": "json",
+          "key": "syncFromCloudBeta"
+        },
+        {
+          "value": {
             "definition": "Endpoint to get a user doc by its email.",
             "url":
                 "https://europe-west3-tracefoodchain.cloudfunctions.net/findUserByEmail"
