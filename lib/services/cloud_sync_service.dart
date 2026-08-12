@@ -341,10 +341,20 @@ class CloudSyncService {
   bool _rerunRequested = false;
   bool _isUploadingPhotos = false; // Flag to prevent parallel photo uploads
 
-  /// WP B2: how many entries the cloud may put into one pull response. Small
-  /// enough that a fresh device on a weak connection makes progress in bounded
-  /// steps instead of one large download that keeps failing.
-  static const int _pullPageSize = 50;
+  /// WP B2: page size for the pull.
+  ///
+  /// Careful: the server pages over the COMPARED lists (its own hash tables),
+  /// not over the differences. The number of round trips is therefore
+  /// ceil(totalCloudEntries / pageSize) no matter how little actually differs -
+  /// with 50 that meant 38 requests to discover 12 changed documents.
+  ///
+  /// The response payload, on the other hand, only carries the entries that
+  /// really differ within the window. A larger page size therefore costs
+  /// almost nothing for a device that is roughly in sync, and only bounds the
+  /// worst case of a fresh device where everything differs. 250 keeps that
+  /// worst case well below the old unbounded single response while cutting the
+  /// round trips of the common case by a factor of five.
+  static const int _pullPageSize = 250;
 
   /// Backstop so a server that always reports `hasMore` cannot spin forever.
   static const int _maxPullPages = 500;
@@ -369,6 +379,11 @@ class CloudSyncService {
 
   CloudSyncService(String domain) : apiClient = CloudApiClient(domain: domain);
 
+  /// How long an upload may make no progress at all before we give up on it.
+  /// Generous on purpose - field devices on 2G need minutes for one photo -
+  /// but finite, so a dead connection cannot wedge the media queue.
+  static const Duration _uploadStallTimeout = Duration(minutes: 3);
+
   /// Professional file upload with progress tracking for both Web and Native platforms
   /// Returns a Map with 'downloadURL' and 'storagePath' on success, or null on failure
   Future<Map<String, String?>?> _uploadFileWithProgress({
@@ -387,8 +402,10 @@ class CloudSyncService {
 
       String? downloadURL;
       String? storagePath;
-      bool uploadFinishedOrFailed = false;
-      TaskState? finalState;
+      final Completer<TaskState> completer = Completer<TaskState>();
+      void finish(TaskState state) {
+        if (!completer.isCompleted) completer.complete(state);
+      }
 
       // Platform-specific upload
       late UploadTask uploadTask;
@@ -409,11 +426,17 @@ class CloudSyncService {
         uploadTask = storageRef.putFile(file, metadata);
       }
 
+      // A stalled upload must not block the queue forever: every byte that
+      // arrives refreshes this stamp, and the watchdog below kills the task
+      // once nothing has moved for _uploadStallTimeout.
+      DateTime lastActivity = DateTime.now();
+
       // Listen to upload progress
       final subscription = uploadTask.snapshotEvents.listen(
         (TaskSnapshot taskSnapshot) async {
           switch (taskSnapshot.state) {
             case TaskState.running:
+              lastActivity = DateTime.now();
               final progress = taskSnapshot.totalBytes > 0
                   ? (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) *
                       100.0
@@ -423,6 +446,7 @@ class CloudSyncService {
               break;
 
             case TaskState.paused:
+              lastActivity = DateTime.now();
               debugPrint('Upload paused');
               break;
 
@@ -435,34 +459,56 @@ class CloudSyncService {
               } catch (e) {
                 debugPrint('Error getting download URL: $e');
               }
-              uploadFinishedOrFailed = true;
-              finalState = TaskState.success;
+              finish(TaskState.success);
               break;
 
             case TaskState.canceled:
               debugPrint('Upload canceled');
-              uploadFinishedOrFailed = true;
-              finalState = TaskState.canceled;
+              finish(TaskState.canceled);
               break;
 
             case TaskState.error:
               debugPrint('Upload error');
-              uploadFinishedOrFailed = true;
-              finalState = TaskState.error;
+              finish(TaskState.error);
               break;
           }
         },
         onError: (error) {
+          // Firebase's Android plugin cancels the native task as soon as the
+          // snapshot stream is torn down, which happens right after a
+          // successful upload - the resulting "operation was cancelled"
+          // (-13040) event arrives late and must not undo a success.
+          if (completer.isCompleted) {
+            debugPrint('Upload stream error after completion, ignored: $error');
+            return;
+          }
           debugPrint('Upload stream error: $error');
-          uploadFinishedOrFailed = true;
-          finalState = TaskState.error;
+          finish(TaskState.error);
         },
       );
 
-      // Wait for upload to complete
-      while (!uploadFinishedOrFailed) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
+      // Watchdog: without it a connection that dies mid-transfer never
+      // produces a terminal event and uploadPendingPhotos hangs for good.
+      final watchdog = Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (completer.isCompleted) {
+          timer.cancel();
+          return;
+        }
+        if (DateTime.now().difference(lastActivity) < _uploadStallTimeout) {
+          return;
+        }
+        timer.cancel();
+        debugPrint('Upload stalled, cancelling: $fileName');
+        cloudLogService.warn('media: upload stalled, cancelling', data: {
+          'file': fileName,
+          'stalledForSeconds': '${_uploadStallTimeout.inSeconds}',
+        });
+        unawaited(uploadTask.cancel().catchError((_) => false));
+        finish(TaskState.canceled);
+      });
+
+      final TaskState finalState = await completer.future;
+      watchdog.cancel();
 
       // Cancel subscription
       await subscription.cancel();

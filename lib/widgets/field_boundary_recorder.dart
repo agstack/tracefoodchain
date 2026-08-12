@@ -881,7 +881,10 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       debugPrint('Field re-added to method with updated history');
 
       //Step 6: persist process
-      await setObjectMethod(fieldRegisterMethod, true, true); //sign it!
+      // Push only. Registering a field produces data, it does not need the
+      // cloud's state - and each pull walks the complete cloud hash table.
+      await setObjectMethod(fieldRegisterMethod, true, true,
+          syncFromCloud: false); //sign it!
       debugPrint(
           'Method ${getObjectMethodUID(fieldRegisterMethod)} to register a field saved and signed');
 
@@ -914,7 +917,8 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
         addOutputobject(fieldImageMethod, fieldImage, 'image');
         debugPrint('Field Image re-added to method with updated history');
 
-        await setObjectMethod(fieldImageMethod, true, true);
+        await setObjectMethod(fieldImageMethod, true, true,
+            syncFromCloud: false);
         debugPrint(
             'Field Image method ${getObjectMethodUID(fieldImageMethod)} saved and signed successfully');
       }
@@ -954,7 +958,7 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
       debugPrint('Farm area updated');
 
 //ChangeObject Methode aufrufen um Farm zu speichern
-      await changeObjectData(updatedFarm);
+      await changeObjectData(updatedFarm, syncFromCloud: false);
       debugPrint('Farm updated with new field link and area');
 
 //**************************************************************** */

@@ -23,7 +23,6 @@ import '../providers/app_state.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
-import '../widgets/ihcafe_producer_widgets.dart';
 
 class RegistrarScreen extends StatefulWidget {
   const RegistrarScreen({super.key});
@@ -416,7 +415,8 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
                         final processedDoc =
                             jsonFullDoubleToInt(sortJsonAlphabetically(updated))
                                 as Map<String, dynamic>;
-                        await changeObjectData(processedDoc);
+                        await changeObjectData(processedDoc,
+                            syncFromCloud: false);
                         appUserDoc = processedDoc;
                         if (mounted) {
                           _loadUserName();
@@ -931,10 +931,10 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
             ),
             const Divider(height: 1),
             const SyncControlCard(showAsCard: false),
-            const Divider(height: 1),
-            // IHCafe-Verzeichnis: nur im Registrar-Workflow angeboten, damit im
-            // Farmer-/Buyer-Workflow kein Speicher belegt wird.
-            const IhcafeCatalogCard(),
+            // Das IHCafe-Verzeichnis wird hier bewusst NICHT angeboten: der
+            // komplette Export soll nicht auf die Registrar-Phones geladen
+            // werden. Import und Suche liegen beim Registrar Coordinator im
+            // QC-Screen (Webapp).
           ],
         ),
       ),

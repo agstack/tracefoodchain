@@ -55,6 +55,11 @@ class _StepperRegistrarRegistrationState
   /// abgelegt. Bei mehreren Fincas wählt der Registrar aus.
   IhcafeFinca? _selectedIhcafeFinca;
 
+  /// Ob lokal ein IHCafe-Verzeichnis vorliegt. Importiert wird es nur noch im
+  /// QC-Screen (Registrar Coordinator, Webapp) - auf Registrar-Phones ohne
+  /// Verzeichnis wird die Auswahl-Schaltfläche daher gar nicht erst angeboten.
+  bool _ihcafeAvailable = false;
+
   // Farm Daten
   final TextEditingController _farmNameController = TextEditingController();
   final TextEditingController _farmIDController = TextEditingController();
@@ -99,6 +104,13 @@ class _StepperRegistrarRegistrationState
     super.initState();
     _initializeAndCheckStorage();
     _getCurrentPosition();
+    _checkIhcafeAvailability();
+  }
+
+  Future<void> _checkIhcafeAvailability() async {
+    final available = await IhcafeProducerService.instance.isAvailable;
+    if (!mounted || !available) return;
+    setState(() => _ihcafeAvailable = true);
   }
 
   /// Prüfe und warte auf localStorage-Initialisierung
@@ -1826,19 +1838,22 @@ class _StepperRegistrarRegistrationState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Auswahl aus dem IHCafe-Verzeichnis statt Abtippen ──────────────
-        OutlinedButton.icon(
-          onPressed: () async {
-            final producer = await showIhcafeProducerPicker(context);
-            if (producer == null || !mounted) return;
-            // Bei mehreren Fincas fragt pickIhcafeFinca nach, sonst nimmt es
-            // ohne Rückfrage die einzige.
-            final finca = await pickIhcafeFinca(context, producer);
-            if (!mounted) return;
-            _applyIhcafeProducer(producer, finca);
-          },
-          icon: const Icon(Icons.person_search),
-          label: Text(l10n.ihcafeSelectProducerButton),
-        ),
+        // Nur sichtbar, wenn das Verzeichnis lokal vorliegt (Import erfolgt im
+        // QC-Screen des Registrar Coordinators, nicht auf Registrar-Phones).
+        if (_ihcafeAvailable)
+          OutlinedButton.icon(
+            onPressed: () async {
+              final producer = await showIhcafeProducerPicker(context);
+              if (producer == null || !mounted) return;
+              // Bei mehreren Fincas fragt pickIhcafeFinca nach, sonst nimmt es
+              // ohne Rückfrage die einzige.
+              final finca = await pickIhcafeFinca(context, producer);
+              if (!mounted) return;
+              _applyIhcafeProducer(producer, finca);
+            },
+            icon: const Icon(Icons.person_search),
+            label: Text(l10n.ihcafeSelectProducerButton),
+          ),
         if (_selectedIhcafeProducer != null) ...[
           const SizedBox(height: 8),
           Container(

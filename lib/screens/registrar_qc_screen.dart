@@ -18,6 +18,7 @@ import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
 import '../widgets/data_loading_indicator.dart';
+import '../widgets/ihcafe_producer_widgets.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
 
@@ -89,13 +90,38 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPendingRegistrations();
+    _loadPendingRegistrations(fromInitState: true);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Drops a decided registration from the in-memory queue.
+  ///
+  /// The object has just left `qcPending`, so a full reload would return this
+  /// exact list minus that one entry - at the price of one collection query
+  /// plus one method fetch per remaining registration. On a queue of any size
+  /// that is seconds of waiting for a result we already know.
+  void _removeEntryLocally(Map<String, dynamic> object) {
+    final String uid = object['identity']?['UID']?.toString() ?? '';
+    if (uid.isEmpty || !mounted) return;
+
+    setState(() {
+      _pendingRegistrations =
+          _pendingRegistrations.where((e) => e.uid != uid).toList();
+      _registrarCache.remove(uid);
+
+      // Deciding the last entry of the registrar currently filtered on would
+      // otherwise leave an empty list behind with no visible reason.
+      if (_registrarFilter != 'all' &&
+          !_pendingRegistrations
+              .any((e) => e.registrarUid == _registrarFilter)) {
+        _registrarFilter = 'all';
+      }
+    });
   }
 
   /// Shows the busy state with an explanation of the current step.
@@ -107,11 +133,23 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     });
   }
 
-  Future<void> _loadPendingRegistrations() async {
-    setState(() {
+  /// [fromInitState] suppresses the initial setState: at that point this
+  /// element is being built, and marking it dirty from inside its own build
+  /// forces a rebuild within the running build/layout pass. With a
+  /// LayoutBuilder above the route - device_preview wraps the whole app in one
+  /// while `!kReleaseMode` - that surfaces as
+  /// "_RenderLayoutBuilder was mutated in performLayout" when the screen opens.
+  /// The fields are simply assigned instead; the first build reads them anyway.
+  Future<void> _loadPendingRegistrations({bool fromInitState = false}) async {
+    if (fromInitState) {
       _isLoading = true;
       _loadingMessage = null; // l10n is not safe to read from initState
-    });
+    } else {
+      setState(() {
+        _isLoading = true;
+        _loadingMessage = null;
+      });
+    }
 
     try {
       final List<Map<String, dynamic>> objects = [];
@@ -365,6 +403,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
       // UI aktualisieren
       repaintContainerList.value = true;
+      _removeEntryLocally(object);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -373,7 +412,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        await _loadPendingRegistrations();
       }
     } catch (e) {
       debugPrint('Error approving registration: $e');
@@ -428,6 +466,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       );
 
       repaintContainerList.value = true;
+      _removeEntryLocally(object);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -436,7 +475,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             backgroundColor: Colors.orange,
           ),
         );
-        await _loadPendingRegistrations();
       }
     } catch (e) {
       debugPrint('Error rejecting registration: $e');
@@ -678,6 +716,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               onPressed: _debugDeleteAllDisplayedObjects,
               tooltip: 'DEBUG: Delete all displayed objects',
             ),
+          // IHCafe-Verzeichnis: liegt bewusst nur hier beim Registrar
+          // Coordinator, nicht im Registrar-Workflow - der komplette Export
+          // soll nicht auf die Registrar-Phones geladen werden.
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            tooltip: l10n.ihcafeDirectoryTitle,
+            onPressed: _showIhcafeDirectory,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadPendingRegistrations,
@@ -702,6 +748,32 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                     ),
                   )
                 : _buildList(l10n),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Import/Status des IHCafe-Produzentenverzeichnisses.
+  ///
+  /// Der Import gehört zum QC-Arbeitsplatz des Registrar Coordinators: der
+  /// Export ist mehrere MB gross und soll nicht auf jedes Registrar-Phone
+  /// geladen werden.
+  Future<void> _showIhcafeDirectory() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+        content: const SizedBox(
+          width: 460,
+          child: SingleChildScrollView(child: IhcafeCatalogCard(dense: true)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.close),
           ),
         ],
       ),

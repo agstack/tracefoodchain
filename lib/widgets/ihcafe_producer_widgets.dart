@@ -9,9 +9,13 @@ import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 
 /// UI-Bausteine für das IHCafe-Produzentenverzeichnis (lokalisiert).
 ///
-/// Beide Bausteine werden ausschließlich im Registrar- und im
-/// Fast-Upload-Workflow eingebunden. Im Farmer-/Buyer-Workflow werden sie
-/// bewusst nicht angeboten, damit dort kein Speicher belegt wird.
+/// Der Import (IhcafeCatalogCard) wird ausschließlich beim Registrar
+/// Coordinator angeboten - im QC-Screen und im Fast-Upload-Workflow (Webapp).
+/// Auf Registrar-Phones sowie im Farmer-/Buyer-Workflow bewusst nicht, damit
+/// der mehrere MB grosse Export dort nicht landet.
+///
+/// Die Produzentensuche (showIhcafeProducerPicker) steht überall zur
+/// Verfügung, wo ein Verzeichnis lokal vorliegt.
 
 /// Statuskarte: zeigt ob das Verzeichnis lokal vorliegt und erlaubt Import
 /// bzw. Löschen.

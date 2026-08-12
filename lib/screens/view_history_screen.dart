@@ -1103,7 +1103,7 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
 
       final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(updated))
           as Map<String, dynamic>;
-      await changeObjectData(processedDoc);
+      await changeObjectData(processedDoc, syncFromCloud: false);
     } else {
       // farm – start from passed doc (already deep-copied)
       doc['identity']['name'] = controllers['farmName']!.text.trim();
@@ -1165,7 +1165,7 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
 
       final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(doc))
           as Map<String, dynamic>;
-      await changeObjectData(processedDoc);
+      await changeObjectData(processedDoc, syncFromCloud: false);
     }
   }
 

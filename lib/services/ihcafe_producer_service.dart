@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-/// Offline-Verzeichnis der IHCafe-Produzenten (Registrar/Fast Upload).
+/// Offline-Verzeichnis der IHCafe-Produzenten (Registrar Coordinator).
 ///
-/// Der Registrar importiert den IHCafe-Export einmalig (im Online-Zustand bzw.
-/// per Dateiauswahl) und kann die Liste danach ohne Netz durchsuchen, um einen
-/// Produzenten auszuwählen statt ihn abzutippen.
+/// Der Registrar Coordinator importiert den IHCafe-Export einmalig per
+/// Dateiauswahl - im QC-Screen bzw. im Fast Upload der Webapp - und kann die
+/// Liste danach durchsuchen, um einen Produzenten auszuwählen bzw. Importe
+/// dagegen abzugleichen.
 ///
-/// Bewusst NUR für den Registrar- und den Fast-Upload-Workflow gedacht. Im
-/// Farmer-/Buyer-Workflow wird der Import nicht angeboten, damit dort kein
-/// Speicher belegt wird.
+/// Der Import wird bewusst NUR dort angeboten: auf den Registrar-Phones und im
+/// Farmer-/Buyer-Workflow soll der mehrere MB grosse Datensatz nicht landen.
 ///
 /// Gespeichert wird eine verdichtete Form des Exports: aus 28,6 MB Rohdaten
 /// werden rund 8 MB, weil regional, agencia und status-Details entfallen.

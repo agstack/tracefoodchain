@@ -347,8 +347,27 @@ void main() async {
         // NACH der von Flutter normalerweise elidierten Framework-Sektion.
         final StackTrace? stack = details.stack;
         if (stack != null) {
+          final List<String> lines = stack.toString().split('\n');
+
+          // Zuerst nur die App-eigenen Frames: der Auslöser einer Mutation
+          // während des Layouts ist immer eine unserer Zeilen zwischen lauter
+          // package:flutter-Frames - die geht im vollen Trace unter.
+          final List<String> appFrames = lines
+              .where((String line) =>
+                  line.contains('package:trace_foodchain_app/') ||
+                  line.contains('package:device_preview/'))
+              .toList();
+          debugPrint('---- APP FRAMES (Verursacher) ----');
+          if (appFrames.isEmpty) {
+            debugPrint('  (keine - der Auslöser liegt komplett im Framework)');
+          } else {
+            for (final String line in appFrames) {
+              debugPrint(line);
+            }
+          }
+
           debugPrint('---- FULL STACK (untruncated) ----');
-          for (final String line in stack.toString().split('\n')) {
+          for (final String line in lines) {
             debugPrint(line);
           }
         }
@@ -436,8 +455,25 @@ void main() async {
   runApp(
     ChangeNotifierProvider.value(
       value: appState,
+      // device_preview hängt die gesamte App unter einen GlobalKey (_appKey),
+      // der je nach Preview-/Toolbar-Zustand die Position im Baum wechselt.
+      // Das dabei ausgelöste Reparenting reaktiviert jedes OverlayPortal im
+      // App-Baum - seit Flutter 3.27 ist jeder Tooltip eines - und hängt dessen
+      // Deferred Child neu ins Overlay ein. Passiert das innerhalb des
+      // Layout-Callbacks von device_preview's eigenem LayoutBuilder, wirft
+      // Flutter "_RenderLayoutBuilder was mutated in performLayout".
+      //
+      // Ob es kracht, entscheidet ein Race: nur wenn ein setState aus einem
+      // aufgelösten Future zwischen Build- und Layout-Phase desselben Frames
+      // landet, wird der Rebuild ins Layout hineingezogen. Darum trat der
+      // Fehler bevorzugt auf Screens mit vielen asynchronen setState auf
+      // (QC-Screen) und nur manchmal.
+      //
+      // Deshalb standardmässig aus. Bei Bedarf einschalten mit:
+      //   flutter run --dart-define=DEVICE_PREVIEW=true
       child: DevicePreview(
-        enabled: !kReleaseMode,
+        enabled: !kReleaseMode &&
+            const bool.fromEnvironment('DEVICE_PREVIEW', defaultValue: false),
         builder: (context) =>
             const MyApp(), // MyApp wird nun vom GlobalSnackBarListener umschlossen
       ),

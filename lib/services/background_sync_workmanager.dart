@@ -22,9 +22,16 @@ void backgroundSyncDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task != kPeriodicSyncTask) return true;
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      // Only initialize once per isolate. A second Firebase.initializeApp()
+      // against an already initialized native plugin makes firebase_core call
+      // didReinitializeFirebaseCore(), and the Storage plugin answers that with
+      // FlutterFirebaseStorageTask.cancelInProgressTasks() - a *static*
+      // registry, so it kills the foreground app's running photo uploads too.
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
       await Hive.initFlutter();
 
       await syncSettings.load();
