@@ -1761,6 +1761,11 @@
   "errorLoadingImage": "Error loading image",
   "unnamed": "Unnamed",
   "mapView": "Map View",
+  "mapTypeLabel": "Map Type",
+  "mapTypeNormal": "Standard",
+  "mapTypeSatellite": "Satellite",
+  "mapTypeHybrid": "Hybrid",
+  "mapTypeTerrain": "Terrain",
   "debugDeleteAllObjects": "DEBUG: Delete All Displayed Objects",
   "confirmDeleteAllObjects": "Are you sure you want to delete all {count} displayed objects? This action cannot be undone!",
   "@confirmDeleteAllObjects": {

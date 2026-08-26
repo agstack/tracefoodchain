@@ -1761,6 +1761,11 @@
   "errorLoadingImage": "Fehler beim Laden des Bildes",
   "unnamed": "Unbenannt",
   "mapView": "Kartenansicht",
+  "mapTypeLabel": "Kartenansicht",
+  "mapTypeNormal": "Standard",
+  "mapTypeSatellite": "Satellit",
+  "mapTypeHybrid": "Hybrid",
+  "mapTypeTerrain": "Gelände",
   "debugDeleteAllObjects": "DEBUG: Alle angezeigten Objekte löschen",
   "confirmDeleteAllObjects": "Möchten Sie wirklich alle {count} angezeigten Objekte löschen? Diese Aktion kann nicht rückgängig gemacht werden!",
   "@confirmDeleteAllObjects": {

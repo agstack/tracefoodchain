@@ -2302,6 +2302,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                             ),
                           }
                         : {},
+                    mapType: MapType.satellite,
                     zoomControlsEnabled: false,
                     mapToolbarEnabled: false,
                     myLocationButtonEnabled: false,
@@ -2366,57 +2367,124 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       return;
     }
 
+    // Satellit ist die Standardansicht; im Vollbild kann umgeschaltet werden.
+    MapType selectedMapType = MapType.satellite;
+
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: Stack(
-          children: [
-            // Bildschirmfüllende Map
-            GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: center,
-                zoom: boundaries != null ? 17 : 15,
-              ),
-              markers: location != null && boundaries == null
-                  ? {
-                      Marker(
-                        markerId: const MarkerId('location'),
-                        position: location,
-                        infoWindow: InfoWindow(
-                          title: obj['identity']?['name'] ?? l10n.mapView,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setMapState) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              // Bildschirmfüllende Map
+              GoogleMap(
+                mapType: selectedMapType,
+                initialCameraPosition: CameraPosition(
+                  target: center,
+                  zoom: boundaries != null ? 17 : 15,
+                ),
+                markers: location != null && boundaries == null
+                    ? {
+                        Marker(
+                          markerId: const MarkerId('location'),
+                          position: location,
+                          infoWindow: InfoWindow(
+                            title: obj['identity']?['name'] ?? l10n.mapView,
+                          ),
                         ),
-                      ),
-                    }
-                  : {},
-              circles: (boundaries != null &&
-                      accuracies != null &&
-                      (accuracies.length == boundaries.length ||
-                          accuracies.length == boundaries.length - 1))
-                  ? _createAccuracyCircles(boundaries, accuracies)
-                  : {},
-              polygons: boundaries != null
-                  ? {
-                      Polygon(
-                        polygonId: const PolygonId('boundary'),
-                        points: boundaries,
-                        strokeColor: Colors.blue,
-                        strokeWidth: 3,
-                        fillColor: Colors.blue.withOpacity(0.2),
-                      ),
-                    }
-                  : {},
-              myLocationButtonEnabled: true,
-              zoomControlsEnabled: true,
-            ),
-            // GPS-Qualitäts-Legende (nur wenn Accuracies vorhanden)
-            if (accuracies != null && accuracies.isNotEmpty)
+                      }
+                    : {},
+                circles: (boundaries != null &&
+                        accuracies != null &&
+                        (accuracies.length == boundaries.length ||
+                            accuracies.length == boundaries.length - 1))
+                    ? _createAccuracyCircles(boundaries, accuracies)
+                    : {},
+                polygons: boundaries != null
+                    ? {
+                        Polygon(
+                          polygonId: const PolygonId('boundary'),
+                          points: boundaries,
+                          strokeColor: Colors.blue,
+                          strokeWidth: 3,
+                          fillColor: Colors.blue.withOpacity(0.2),
+                        ),
+                      }
+                    : {},
+                myLocationButtonEnabled: true,
+                zoomControlsEnabled: true,
+              ),
+              // GPS-Qualitäts-Legende (nur wenn Accuracies vorhanden)
+              if (accuracies != null && accuracies.isNotEmpty)
+                Positioned(
+                  bottom: 100,
+                  left: 16,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          l10n.gpsQualityLegend,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildLegendItem(
+                            Colors.green, '≤ 5m', l10n.gpsQualityExcellent),
+                        _buildLegendItem(
+                            Colors.lightGreen, '≤ 10m', l10n.gpsQualityGood),
+                        _buildLegendItem(
+                            Colors.orange, '≤ 15m', l10n.gpsQualityMedium),
+                        _buildLegendItem(
+                            Colors.red, '> 15m', l10n.gpsQualityPoor),
+                      ],
+                    ),
+                  ),
+                ),
+              // Schließen-Button
               Positioned(
-                bottom: 100,
+                top: 40,
+                right: 16,
+                child: FloatingActionButton(
+                  backgroundColor: Colors.white,
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.close, color: Colors.black),
+                ),
+              ),
+              // Umschalter für die Kartenansicht
+              Positioned(
+                top: 112,
+                right: 16,
+                child: _buildMapTypeSelector(
+                  selectedMapType,
+                  (type) => setMapState(() => selectedMapType = type),
+                ),
+              ),
+              // Titel
+              Positioned(
+                top: 40,
                 left: 16,
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -2428,70 +2496,79 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Text(
+                    obj['identity']?['name'] ?? l10n.mapView,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Auswahl der Kartenansicht für die Vollbild-Map (Satellit ist Standard)
+  Widget _buildMapTypeSelector(
+    MapType selected,
+    ValueChanged<MapType> onSelected,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final types = <MapType, String>{
+      MapType.satellite: l10n.mapTypeSatellite,
+      MapType.hybrid: l10n.mapTypeHybrid,
+      MapType.terrain: l10n.mapTypeTerrain,
+      MapType.normal: l10n.mapTypeNormal,
+    };
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      elevation: 4,
+      child: PopupMenuButton<MapType>(
+        tooltip: l10n.mapTypeLabel,
+        initialValue: selected,
+        onSelected: onSelected,
+        itemBuilder: (context) => types.entries
+            .map((entry) => PopupMenuItem<MapType>(
+                  value: entry.key,
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        l10n.gpsQualityLegend,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
+                      Icon(
+                        entry.key == selected
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        size: 18,
+                        color: Colors.black54,
                       ),
-                      const SizedBox(height: 8),
-                      _buildLegendItem(
-                          Colors.green, '≤ 5m', l10n.gpsQualityExcellent),
-                      _buildLegendItem(
-                          Colors.lightGreen, '≤ 10m', l10n.gpsQualityGood),
-                      _buildLegendItem(
-                          Colors.orange, '≤ 15m', l10n.gpsQualityMedium),
-                      _buildLegendItem(
-                          Colors.red, '> 15m', l10n.gpsQualityPoor),
+                      const SizedBox(width: 8),
+                      Text(entry.value),
                     ],
                   ),
+                ))
+            .toList(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.layers, color: Colors.black87),
+              const SizedBox(width: 8),
+              Text(
+                types[selected] ?? l10n.mapTypeLabel,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            // Schließen-Button
-            Positioned(
-              top: 40,
-              right: 16,
-              child: FloatingActionButton(
-                backgroundColor: Colors.white,
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Icon(Icons.close, color: Colors.black),
-              ),
-            ),
-            // Titel
-            Positioned(
-              top: 40,
-              left: 16,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  obj['identity']?['name'] ?? l10n.mapView,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

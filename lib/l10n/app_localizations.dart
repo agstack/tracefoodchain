@@ -4740,6 +4740,36 @@ abstract class AppLocalizations {
   /// **'Map View'**
   String get mapView;
 
+  /// No description provided for @mapTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Map Type'**
+  String get mapTypeLabel;
+
+  /// No description provided for @mapTypeNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get mapTypeNormal;
+
+  /// No description provided for @mapTypeSatellite.
+  ///
+  /// In en, this message translates to:
+  /// **'Satellite'**
+  String get mapTypeSatellite;
+
+  /// No description provided for @mapTypeHybrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Hybrid'**
+  String get mapTypeHybrid;
+
+  /// No description provided for @mapTypeTerrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Terrain'**
+  String get mapTypeTerrain;
+
   /// No description provided for @debugDeleteAllObjects.
   ///
   /// In en, this message translates to:

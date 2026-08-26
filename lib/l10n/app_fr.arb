@@ -1761,6 +1761,11 @@
   "errorLoadingImage": "Erreur lors du chargement de l'image",
   "unnamed": "Sans nom",
   "mapView": "Vue de la Carte",
+  "mapTypeLabel": "Type de Carte",
+  "mapTypeNormal": "Standard",
+  "mapTypeSatellite": "Satellite",
+  "mapTypeHybrid": "Hybride",
+  "mapTypeTerrain": "Relief",
   "debugDeleteAllObjects": "DEBUG: Supprimer Tous les Objets Affichés",
   "confirmDeleteAllObjects": "Êtes-vous sûr de vouloir supprimer tous les {count} objets affichés ? Cette action ne peut pas être annulée !",
   "@confirmDeleteAllObjects": {

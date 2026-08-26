@@ -2682,6 +2682,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get mapView => 'Kartenansicht';
 
   @override
+  String get mapTypeLabel => 'Kartenansicht';
+
+  @override
+  String get mapTypeNormal => 'Standard';
+
+  @override
+  String get mapTypeSatellite => 'Satellit';
+
+  @override
+  String get mapTypeHybrid => 'Hybrid';
+
+  @override
+  String get mapTypeTerrain => 'Gelände';
+
+  @override
   String get debugDeleteAllObjects => 'DEBUG: Alle angezeigten Objekte löschen';
 
   @override

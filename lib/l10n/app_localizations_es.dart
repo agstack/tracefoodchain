@@ -2691,6 +2691,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mapView => 'Vista de Mapa';
 
   @override
+  String get mapTypeLabel => 'Tipo de Mapa';
+
+  @override
+  String get mapTypeNormal => 'Estándar';
+
+  @override
+  String get mapTypeSatellite => 'Satélite';
+
+  @override
+  String get mapTypeHybrid => 'Híbrido';
+
+  @override
+  String get mapTypeTerrain => 'Relieve';
+
+  @override
   String get debugDeleteAllObjects =>
       'DEBUG: Eliminar Todos los Objetos Mostrados';
 
