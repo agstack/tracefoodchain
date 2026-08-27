@@ -1,6 +1,10 @@
+import 'dart:convert';
+
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:trace_foodchain_app/utils/file_download.dart';
 import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
@@ -689,6 +693,56 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  /// Exportiert die aktuell gefilterte User-Liste (Name + E-Mail) als CSV
+  Future<void> _exportFilteredUsersAsCsv() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_filteredUsers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.noUsersToExport)),
+      );
+      return;
+    }
+
+    try {
+      final rows = <List<String>>[
+        [l10n.name, l10n.email],
+        for (final user in _filteredUsers)
+          [
+            (user['name'] ?? '').toString(),
+            (user['email'] ?? '').toString(),
+          ],
+      ];
+
+      final csv = const ListToCsvConverter().convert(rows);
+      // BOM voranstellen, damit Excel Umlaute/Akzente korrekt anzeigt
+      final bytes = utf8.encode('﻿$csv');
+
+      final ts = DateTime.now();
+      final filename = 'users_'
+          '${ts.year}${ts.month.toString().padLeft(2, '0')}${ts.day.toString().padLeft(2, '0')}_'
+          '${ts.hour.toString().padLeft(2, '0')}${ts.minute.toString().padLeft(2, '0')}.csv';
+
+      await downloadFile(bytes, filename);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.usersExportedCsv(_filteredUsers.length)),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${l10n.errorExportingUsers}: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -730,6 +784,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           //   onPressed: _showDebugInfo,
           //   tooltip: 'Debug Info',
           // ),
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: l10n.exportUsersCsv,
+            onPressed: _isLoading ? null : _exportFilteredUsersAsCsv,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadUsers,

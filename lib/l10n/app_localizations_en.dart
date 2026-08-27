@@ -1200,6 +1200,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get exportUsersCsv => 'Export as CSV';
+
+  @override
+  String get noUsersToExport => 'No users to export';
+
+  @override
+  String usersExportedCsv(int count) {
+    return '$count users exported';
+  }
+
+  @override
+  String get errorExportingUsers => 'Error exporting users';
+
+  @override
   String get exportToExcel => 'Export to Excel';
 
   @override

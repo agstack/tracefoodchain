@@ -478,6 +478,17 @@
       }
     }
   },
+  "exportUsersCsv": "Exporter en CSV",
+  "noUsersToExport": "Aucun utilisateur à exporter",
+  "usersExportedCsv": "{count} utilisateurs exportés",
+  "@usersExportedCsv": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "errorExportingUsers": "Erreur lors de l'exportation des utilisateurs",
   "exportToExcel": "Exporter vers Excel",
   "resetPasswordEmailSent": "E-mail de réinitialisation du mot de passe envoyé",
   "forgotPasswordQuestion": "Mot de passe oublié?",

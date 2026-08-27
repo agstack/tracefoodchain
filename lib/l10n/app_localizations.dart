@@ -2352,6 +2352,30 @@ abstract class AppLocalizations {
   /// **'Editable for {hours} more hours'**
   String within24hEdit(int hours);
 
+  /// No description provided for @exportUsersCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as CSV'**
+  String get exportUsersCsv;
+
+  /// No description provided for @noUsersToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No users to export'**
+  String get noUsersToExport;
+
+  /// No description provided for @usersExportedCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} users exported'**
+  String usersExportedCsv(int count);
+
+  /// No description provided for @errorExportingUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Error exporting users'**
+  String get errorExportingUsers;
+
   /// No description provided for @exportToExcel.
   ///
   /// In en, this message translates to:
