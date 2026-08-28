@@ -1810,6 +1810,31 @@
   "gpsQualityAverage": "GPS Quality (Avg)",
   "gpsQualityRange": "GPS Quality (Range)",
   "gpsQualityWarning": "Poor GPS quality detected (>10m accuracy)",
+  "qcShowMapView": "Show all polygons on one map",
+  "qcShowListView": "Show list",
+  "qcMapNoPolygons": "No field polygons in the current selection",
+  "qcMapVisibleCount": "{visible} of {total} polygons in view",
+  "@qcMapVisibleCount": {
+      "placeholders": {
+          "visible": {
+              "type": "int"
+          },
+          "total": {
+              "type": "int"
+          }
+      }
+  },
+  "qcMapCapped": "Only the {max} least accurate ones are drawn - zoom in for the rest",
+  "@qcMapCapped": {
+      "placeholders": {
+          "max": {
+              "type": "int"
+          }
+      }
+  },
+  "qcMapFitAll": "Fit all polygons",
+  "qcMapWorstAccuracy": "Worst GPS accuracy",
+  "gpsQualityUnknown": "No accuracy data",
   "gpsQualityLegend": "GPS Quality",
   "gpsQualityExcellent": "Excellent",
   "gpsQualityGood": "Good",

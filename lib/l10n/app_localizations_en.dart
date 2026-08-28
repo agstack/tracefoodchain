@@ -2742,6 +2742,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gpsQualityWarning => 'Poor GPS quality detected (>10m accuracy)';
 
   @override
+  String get qcShowMapView => 'Show all polygons on one map';
+
+  @override
+  String get qcShowListView => 'Show list';
+
+  @override
+  String get qcMapNoPolygons => 'No field polygons in the current selection';
+
+  @override
+  String qcMapVisibleCount(int visible, int total) {
+    return '$visible of $total polygons in view';
+  }
+
+  @override
+  String qcMapCapped(int max) {
+    return 'Only the $max least accurate ones are drawn - zoom in for the rest';
+  }
+
+  @override
+  String get qcMapFitAll => 'Fit all polygons';
+
+  @override
+  String get qcMapWorstAccuracy => 'Worst GPS accuracy';
+
+  @override
+  String get gpsQualityUnknown => 'No accuracy data';
+
+  @override
   String get gpsQualityLegend => 'GPS Quality';
 
   @override

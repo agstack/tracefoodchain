@@ -4908,6 +4908,54 @@ abstract class AppLocalizations {
   /// **'Poor GPS quality detected (>10m accuracy)'**
   String get gpsQualityWarning;
 
+  /// No description provided for @qcShowMapView.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all polygons on one map'**
+  String get qcShowMapView;
+
+  /// No description provided for @qcShowListView.
+  ///
+  /// In en, this message translates to:
+  /// **'Show list'**
+  String get qcShowListView;
+
+  /// No description provided for @qcMapNoPolygons.
+  ///
+  /// In en, this message translates to:
+  /// **'No field polygons in the current selection'**
+  String get qcMapNoPolygons;
+
+  /// No description provided for @qcMapVisibleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{visible} of {total} polygons in view'**
+  String qcMapVisibleCount(int visible, int total);
+
+  /// No description provided for @qcMapCapped.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the {max} least accurate ones are drawn - zoom in for the rest'**
+  String qcMapCapped(int max);
+
+  /// No description provided for @qcMapFitAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit all polygons'**
+  String get qcMapFitAll;
+
+  /// No description provided for @qcMapWorstAccuracy.
+  ///
+  /// In en, this message translates to:
+  /// **'Worst GPS accuracy'**
+  String get qcMapWorstAccuracy;
+
+  /// No description provided for @gpsQualityUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'No accuracy data'**
+  String get gpsQualityUnknown;
+
   /// No description provided for @gpsQualityLegend.
   ///
   /// In en, this message translates to:

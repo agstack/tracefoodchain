@@ -2789,6 +2789,35 @@ class AppLocalizationsFr extends AppLocalizations {
       'Mauvaise qualité GPS détectée (précision >10m)';
 
   @override
+  String get qcShowMapView => 'Afficher tous les polygones sur une carte';
+
+  @override
+  String get qcShowListView => 'Afficher la liste';
+
+  @override
+  String get qcMapNoPolygons =>
+      'Aucun polygone de parcelle dans la sélection actuelle';
+
+  @override
+  String qcMapVisibleCount(int visible, int total) {
+    return '$visible des $total polygones dans la vue';
+  }
+
+  @override
+  String qcMapCapped(int max) {
+    return 'Seuls les $max les moins précis sont dessinés - zoomez pour le reste';
+  }
+
+  @override
+  String get qcMapFitAll => 'Ajuster tous les polygones';
+
+  @override
+  String get qcMapWorstAccuracy => 'Pire précision GPS';
+
+  @override
+  String get gpsQualityUnknown => 'Pas de données de précision';
+
+  @override
   String get gpsQualityLegend => 'Qualité GPS';
 
   @override

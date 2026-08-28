@@ -2773,6 +2773,34 @@ class AppLocalizationsDe extends AppLocalizations {
       'Schlechte GPS-Qualität erkannt (>10m Genauigkeit)';
 
   @override
+  String get qcShowMapView => 'Alle Polygone auf einer Karte anzeigen';
+
+  @override
+  String get qcShowListView => 'Liste anzeigen';
+
+  @override
+  String get qcMapNoPolygons => 'Keine Feld-Polygone in der aktuellen Auswahl';
+
+  @override
+  String qcMapVisibleCount(int visible, int total) {
+    return '$visible von $total Polygonen im Ausschnitt';
+  }
+
+  @override
+  String qcMapCapped(int max) {
+    return 'Nur die $max ungenauesten werden gezeichnet - für den Rest hineinzoomen';
+  }
+
+  @override
+  String get qcMapFitAll => 'Alle Polygone einpassen';
+
+  @override
+  String get qcMapWorstAccuracy => 'Schlechteste GPS-Genauigkeit';
+
+  @override
+  String get gpsQualityUnknown => 'Keine Genauigkeitsdaten';
+
+  @override
   String get gpsQualityLegend => 'GPS-Qualität';
 
   @override

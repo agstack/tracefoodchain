@@ -19,6 +19,9 @@ import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
 import '../widgets/data_loading_indicator.dart';
 import '../widgets/ihcafe_producer_widgets.dart';
+import '../widgets/map_type_selector.dart';
+import '../widgets/qc_overview_map.dart';
+import '../utils/gps_quality.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
 
@@ -91,6 +94,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// several network round trips; a bare spinner leaves the reviewer staring at
   /// an empty screen with no idea whether anything is happening.
   String? _loadingMessage;
+  /// Übersichtskarte statt Liste: dieselben Einträge, dieselben Filter.
+  bool _showMap = false;
+
   String _filterType = 'all'; // all, farm, human, field
   String _registrarFilter = 'all'; // 'all' or a registrar UID
   _QcSort _sortMode = _QcSort.dateDesc;
@@ -669,79 +675,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return 'POLYGON ((${wktCoordinates.join(', ')}))';
   }
 
-  Future<void> _debugDeleteAllDisplayedObjects() async {
-    final l10n = AppLocalizations.of(context)!;
-
-    // Bestätigungs-Dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.debugDeleteAllObjects,
-            style: const TextStyle(color: Colors.red)),
-        content: Text(
-          l10n.confirmDeleteAllObjects(_filteredRegistrations.length),
-          style: const TextStyle(color: Colors.black87),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      int deletedCount = 0;
-
-      // Lösche alle angezeigten Objekte aus Firestore
-      for (var entry in _filteredRegistrations) {
-        final uid = entry.uid.isNotEmpty ? entry.uid : null;
-        if (uid != null) {
-          await FirebaseFirestore.instance
-              .collection('TFC_objects')
-              .doc(uid)
-              .delete();
-          deletedCount++;
-        }
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.objectsDeleted(deletedCount)),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        await _loadPendingRegistrations();
-      }
-    } catch (e) {
-      debugPrint('Error deleting objects: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${l10n.errorDeleting}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      _setBusy(null);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -750,17 +683,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       appBar: AppBar(
         title: Text(l10n.reviewPendingRegistrations),
         actions: [
-          // Debug-Button zum Löschen aller angezeigten Objekte
-          if (kDebugMode && _filteredRegistrations.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_forever),
-              color: Colors.red,
-              onPressed: _debugDeleteAllDisplayedObjects,
-              tooltip: 'DEBUG: Delete all displayed objects',
-            ),
           // IHCafe-Verzeichnis: liegt bewusst nur hier beim Registrar
           // Coordinator, nicht im Registrar-Workflow - der komplette Export
           // soll nicht auf die Registrar-Phones geladen werden.
+          IconButton(
+            icon: Icon(_showMap ? Icons.list : Icons.map),
+            tooltip: _showMap ? l10n.qcShowListView : l10n.qcShowMapView,
+            onPressed: () => setState(() => _showMap = !_showMap),
+          ),
           IconButton(
             icon: const Icon(Icons.menu_book),
             tooltip: l10n.ihcafeDirectoryTitle,
@@ -779,7 +709,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           _buildTypeChips(l10n),
           _buildResultCount(l10n),
 
-          // Liste
+          // Liste bzw. Übersichtskarte
           Expanded(
             child: _isLoading
                 ? Center(
@@ -789,7 +719,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       text: _loadingMessage ?? l10n.qcLoadingRegistrations,
                     ),
                   )
-                : _buildList(l10n),
+                : (_showMap
+                    ? QcOverviewMap(
+                        polygons: _mapPolygons,
+                        onPolygonTap: _showPolygonSheet,
+                      )
+                    : _buildList(l10n)),
           ),
         ],
       ),
@@ -858,6 +793,148 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       padding: const EdgeInsets.all(8),
       itemCount: entries.length,
       itemBuilder: (context, index) => _buildRegistrationCard(entries[index]),
+    );
+  }
+
+  /// Polygone für die Übersichtskarte - aus denselben Einträgen, die die Liste
+  /// zeigt, damit Suche und Filter auf beide Ansichten wirken. Objekte ohne
+  /// verwertbare Boundaries (Farmen, Farmer, abgebrochene Aufnahmen) fallen
+  /// hier heraus.
+  List<QcMapPolygon> get _mapPolygons {
+    final result = <QcMapPolygon>[];
+    for (final entry in _filteredRegistrations) {
+      if (entry.uid.isEmpty) continue; // PolygonId muss eindeutig sein
+      final points = _getBoundariesFromObject(entry.object);
+      if (points == null || points.length < 3) continue;
+
+      final area = getSpecificPropertyfromJSON(entry.object, 'area');
+      result.add(QcMapPolygon(
+        uid: entry.uid,
+        name: entry.name,
+        points: points,
+        accuracies: _getBoundaryAccuracies(entry.object),
+        registrarName: entry.registrarName,
+        areaHa: (area is num) ? area.toDouble() : null,
+      ));
+    }
+    return result;
+  }
+
+  /// Auswahl auf der Übersichtskarte: Eckdaten des Feldes plus derselbe
+  /// Freigabe-Flow wie in der Liste.
+  void _showPolygonSheet(QcMapPolygon polygon) {
+    final l10n = AppLocalizations.of(context)!;
+    final matches = _pendingRegistrations.where((e) => e.uid == polygon.uid);
+    if (matches.isEmpty) return;
+
+    final entry = matches.first;
+    final obj = entry.object;
+    final worst = polygon.worstAccuracyValue;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              entry.name,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(color: Colors.black),
+            ),
+            const SizedBox(height: 12),
+            _buildCardMeta(Icons.person_outline, entry.registrarName),
+            const SizedBox(height: 4),
+            _buildCardMeta(
+              Icons.event,
+              entry.registeredAt != null
+                  ? _formatRegistrationDate(entry.registeredAt!)
+                  : '-',
+            ),
+            if (polygon.areaHa != null) ...[
+              const SizedBox(height: 4),
+              _buildCardMeta(
+                Icons.crop_square,
+                '${l10n.fieldArea}: ${polygon.areaHa!.toStringAsFixed(2)} ha',
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: worst == null
+                        ? Colors.blueGrey
+                        : gpsAccuracyColor(worst),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${l10n.qcMapWorstAccuracy}: '
+                  '${worst == null ? l10n.gpsQualityUnknown : '${worst.toStringAsFixed(1)} m'}',
+                  style: const TextStyle(color: Colors.black87),
+                ),
+              ],
+            ),
+            const Divider(height: 28),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    showDialog(
+                      context: context,
+                      builder: (_) => _ObjectDetailsDialog(obj: obj),
+                    );
+                  },
+                  icon: const Icon(Icons.info_outline),
+                  label: Text(l10n.fieldDetails),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _showFullScreenMap(obj);
+                  },
+                  icon: const Icon(Icons.fullscreen),
+                  label: Text(l10n.mapView),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _rejectRegistration(obj);
+                  },
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.rejectRegistration),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _approveRegistration(obj);
+                  },
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.approveRegistration),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1353,27 +1430,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       ]);
 
       // National ID Photo anzeigen - lade aus image-Objekt via linkedObjectRef
-      details.add(FutureBuilder<Map<String, dynamic>?>(
-        future: _getImageURLFromLinkedObject(obj, 'nationalIDPhoto'),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasData && snapshot.data != null) {
-            final imageData = snapshot.data!;
-            return _buildPhotoWidget(
-              photoPath: imageData['url'] as String,
-              isLocalFile: imageData['isLocal'] as bool,
-              notUploaded: imageData['notUploaded'] == true,
-              label: l10n.nationalIDPhoto,
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ));
+      details.add(
+          _buildLinkedPhoto(obj, 'nationalIDPhoto', l10n.nationalIDPhoto));
 
       details.add(_buildDetailRow(l10n.phoneNumber, phone));
     } else if (ralType == 'farm') {
@@ -1389,27 +1447,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       ]);
 
       // Consent Form Photo anzeigen - lade aus image-Objekt via linkedObjectRef
-      details.add(FutureBuilder<Map<String, dynamic>?>(
-        future: _getImageURLFromLinkedObject(obj, 'consentFormPhoto'),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasData && snapshot.data != null) {
-            final imageData = snapshot.data!;
-            return _buildPhotoWidget(
-              photoPath: imageData['url'] as String,
-              isLocalFile: imageData['isLocal'] as bool,
-              notUploaded: imageData['notUploaded'] == true,
-              label: l10n.consentFormPhoto,
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ));
+      details.add(
+          _buildLinkedPhoto(obj, 'consentFormPhoto', l10n.consentFormPhoto));
+      // Zweite Aufnahme (z.B. Rückseite des Formulars) - in der App optional,
+      // deshalb fällt der Block still weg, wenn es sie nicht gibt.
+      details.add(
+          _buildLinkedPhoto(obj, 'consentFormPhoto2', l10n.consentFormPhoto2));
 
       // Eigentümer der Farm - wird asynchron geladen
       details.add(_buildOwnerRow(obj, l10n));
@@ -1463,27 +1506,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       }
 
       // Field Photo anzeigen - lade aus image-Objekt via linkedObjectRef
-      details.add(FutureBuilder<Map<String, dynamic>?>(
-        future: _getImageURLFromLinkedObject(obj, 'fieldRegistrationPhoto'),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasData && snapshot.data != null) {
-            final imageData = snapshot.data!;
-            return _buildPhotoWidget(
-              photoPath: imageData['url'] as String,
-              isLocalFile: imageData['isLocal'] as bool,
-              notUploaded: imageData['notUploaded'] == true,
-              label: l10n.fieldPhoto,
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ));
+      details.add(
+          _buildLinkedPhoto(obj, 'fieldRegistrationPhoto', l10n.fieldPhoto));
     }
 
     // Registered by - wird asynchron geladen
@@ -1813,6 +1837,33 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
+  /// Lädt ein verknüpftes Foto anhand seiner Rolle nach und zeigt es an.
+  /// Fehlt das Bild - etwa die optionale zweite Aufnahme der
+  /// Einverständniserklärung -, bleibt die Stelle leer.
+  Widget _buildLinkedPhoto(
+      Map<String, dynamic> obj, String role, String label) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _getImageURLFromLinkedObject(obj, role),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final imageData = snapshot.data;
+        if (imageData == null) return const SizedBox.shrink();
+
+        return _buildPhotoWidget(
+          photoPath: imageData['url'] as String,
+          isLocalFile: imageData['isLocal'] as bool,
+          notUploaded: imageData['notUploaded'] == true,
+          label: label,
+        );
+      },
+    );
+  }
+
   /// Generisches Widget für Foto-Anzeige mit Tap-to-Zoom
   /// Unterstützt sowohl Cloud-URLs als auch lokale Dateipfade
   Widget _buildPhotoWidget({
@@ -2118,17 +2169,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   /// Berechnet Farbe basierend auf GPS-Genauigkeit (Grün=gut, Gelb=mittel, Rot=schlecht)
-  Color _getAccuracyColor(double accuracy) {
-    if (accuracy <= 5.0) {
-      return Colors.green; // Sehr gut
-    } else if (accuracy <= 10.0) {
-      return Colors.lightGreen; // Gut
-    } else if (accuracy <= 15.0) {
-      return Colors.orange; // Mittel
-    } else {
-      return Colors.red; // Schlecht
-    }
-  }
+  Color _getAccuracyColor(double accuracy) => gpsAccuracyColor(accuracy);
 
   /// Erstellt Kreise für GPS-Qualitätsvisualisierung (farbcodierte Kreise an Eckpunkten)
   Set<Circle> _createAccuracyCircles(
@@ -2473,9 +2514,10 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               Positioned(
                 top: 112,
                 right: 16,
-                child: _buildMapTypeSelector(
-                  selectedMapType,
-                  (type) => setMapState(() => selectedMapType = type),
+                child: MapTypeSelector(
+                  selected: selectedMapType,
+                  onSelected: (type) =>
+                      setMapState(() => selectedMapType = type),
                 ),
               ),
               // Titel
@@ -2504,67 +2546,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Auswahl der Kartenansicht für die Vollbild-Map (Satellit ist Standard)
-  Widget _buildMapTypeSelector(
-    MapType selected,
-    ValueChanged<MapType> onSelected,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-    final types = <MapType, String>{
-      MapType.satellite: l10n.mapTypeSatellite,
-      MapType.hybrid: l10n.mapTypeHybrid,
-      MapType.terrain: l10n.mapTypeTerrain,
-      MapType.normal: l10n.mapTypeNormal,
-    };
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
-      elevation: 4,
-      child: PopupMenuButton<MapType>(
-        tooltip: l10n.mapTypeLabel,
-        initialValue: selected,
-        onSelected: onSelected,
-        itemBuilder: (context) => types.entries
-            .map((entry) => PopupMenuItem<MapType>(
-                  value: entry.key,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        entry.key == selected
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        size: 18,
-                        color: Colors.black54,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(entry.value),
-                    ],
-                  ),
-                ))
-            .toList(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.layers, color: Colors.black87),
-              const SizedBox(width: 8),
-              Text(
-                types[selected] ?? l10n.mapTypeLabel,
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
