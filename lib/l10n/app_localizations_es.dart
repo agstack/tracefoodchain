@@ -2812,6 +2812,79 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gpsQualityUnknown => 'Sin datos de precisión';
 
   @override
+  String get gpsQualityManual => 'Corregido manualmente';
+
+  @override
+  String get qcEditPolygon => 'Editar polígono';
+
+  @override
+  String get qcEditPolygonHint =>
+      'Arrastre un vértice para moverlo, tóquelo para eliminarlo; toque la superficie o un borde para añadir un vértice ahí.';
+
+  @override
+  String get qcEditPolygonUndo => 'Deshacer';
+
+  @override
+  String get qcEditPolygonReset => 'Descartar cambios';
+
+  @override
+  String qcEditPolygonSummary(int moved, int added, int deleted) {
+    return '$moved movidos, $added añadidos, $deleted eliminados';
+  }
+
+  @override
+  String get qcEditPolygonNoChanges => 'No hay cambios que guardar';
+
+  @override
+  String get qcEditPolygonTapTooFar =>
+      'Toque más cerca del lindero para añadir un vértice';
+
+  @override
+  String get qcEditPolygonSelfIntersect =>
+      'Los bordes se cruzan. Revise el polígono: un vértice accidental reduce la superficie en lugar de aumentarla.';
+
+  @override
+  String qcEditPolygonAreaBefore(String area) {
+    return 'Antes de la corrección: $area ha';
+  }
+
+  @override
+  String get qcEditPolygonSaveTitle => '¿Guardar el cambio del polígono?';
+
+  @override
+  String qcEditPolygonSaveMessage(String area) {
+    return 'La parcela corregida abarca $area ha. El cambio queda registrado en el historial del objeto y firmado digitalmente.';
+  }
+
+  @override
+  String get qcEditPolygonDiscardTitle => '¿Descartar los cambios?';
+
+  @override
+  String get qcEditPolygonDiscardMessage =>
+      'Las correcciones del polígono no se han guardado y se perderán.';
+
+  @override
+  String get qcDeleteCornerTitle => '¿Eliminar el vértice?';
+
+  @override
+  String qcDeleteCornerMessage(int index) {
+    return 'El vértice $index se eliminará del polígono.';
+  }
+
+  @override
+  String get qcMinThreeCorners => 'Un polígono necesita al menos tres vértices';
+
+  @override
+  String get qcPolygonSaving =>
+      'Guardando y firmando el cambio del polígono...';
+
+  @override
+  String get qcPolygonSaved => 'Cambio del polígono guardado';
+
+  @override
+  String get qcPolygonSaveFailed => 'No se pudo guardar el cambio del polígono';
+
+  @override
   String get gpsQualityLegend => 'Calidad GPS';
 
   @override
@@ -3313,6 +3386,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String qcResultCount(int count, int total) {
     return '$count de $total mostrados';
   }
+
+  @override
+  String get qcDateOrderUnavailable =>
+      'Orden de carga: por ahora el servidor no puede ordenar la cola por fecha, así que puede que los registros más recientes no estén arriba.';
+
+  @override
+  String qcLoadedOfTotal(int loaded, int total) {
+    return '$loaded de $total cargados';
+  }
+
+  @override
+  String get qcLoadMoreAll => 'Cargar todo lo restante';
 
   @override
   String get qcLoadingRegistrations => 'Cargando solicitudes pendientes...';

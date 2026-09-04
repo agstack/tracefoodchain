@@ -2818,6 +2818,82 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gpsQualityUnknown => 'Pas de données de précision';
 
   @override
+  String get gpsQualityManual => 'Corrigé manuellement';
+
+  @override
+  String get qcEditPolygon => 'Modifier le polygone';
+
+  @override
+  String get qcEditPolygonHint =>
+      'Faites glisser un sommet pour le déplacer, touchez-le pour le supprimer ; touchez la surface ou un bord pour y ajouter un sommet.';
+
+  @override
+  String get qcEditPolygonUndo => 'Annuler';
+
+  @override
+  String get qcEditPolygonReset => 'Abandonner les modifications';
+
+  @override
+  String qcEditPolygonSummary(int moved, int added, int deleted) {
+    return '$moved déplacés, $added ajoutés, $deleted supprimés';
+  }
+
+  @override
+  String get qcEditPolygonNoChanges => 'Aucune modification à enregistrer';
+
+  @override
+  String get qcEditPolygonTapTooFar =>
+      'Touchez plus près de la limite pour ajouter un sommet';
+
+  @override
+  String get qcEditPolygonSelfIntersect =>
+      'Les bords se croisent. Vérifiez le polygone : un sommet accidentel réduit la surface au lieu de l\'augmenter.';
+
+  @override
+  String qcEditPolygonAreaBefore(String area) {
+    return 'Avant la correction : $area ha';
+  }
+
+  @override
+  String get qcEditPolygonSaveTitle =>
+      'Enregistrer la modification du polygone ?';
+
+  @override
+  String qcEditPolygonSaveMessage(String area) {
+    return 'La parcelle corrigée couvre $area ha. La modification est consignée dans l\'historique de l\'objet et signée numériquement.';
+  }
+
+  @override
+  String get qcEditPolygonDiscardTitle => 'Abandonner les modifications ?';
+
+  @override
+  String get qcEditPolygonDiscardMessage =>
+      'Les corrections du polygone n\'ont pas été enregistrées et seront perdues.';
+
+  @override
+  String get qcDeleteCornerTitle => 'Supprimer le sommet ?';
+
+  @override
+  String qcDeleteCornerMessage(int index) {
+    return 'Le sommet $index sera retiré du polygone.';
+  }
+
+  @override
+  String get qcMinThreeCorners =>
+      'Un polygone doit avoir au moins trois sommets';
+
+  @override
+  String get qcPolygonSaving =>
+      'Enregistrement et signature de la modification...';
+
+  @override
+  String get qcPolygonSaved => 'Modification du polygone enregistrée';
+
+  @override
+  String get qcPolygonSaveFailed =>
+      'Impossible d\'enregistrer la modification du polygone';
+
+  @override
   String get gpsQualityLegend => 'Qualité GPS';
 
   @override
@@ -3317,6 +3393,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String qcResultCount(int count, int total) {
     return '$count sur $total affichés';
   }
+
+  @override
+  String get qcDateOrderUnavailable =>
+      'Ordre de chargement : le serveur ne peut pas trier la file par date pour l\'instant, les entrées les plus récentes ne sont donc pas forcément en haut.';
+
+  @override
+  String qcLoadedOfTotal(int loaded, int total) {
+    return '$loaded sur $total chargés';
+  }
+
+  @override
+  String get qcLoadMoreAll => 'Charger tout le reste';
 
   @override
   String get qcLoadingRegistrations =>

@@ -4956,6 +4956,126 @@ abstract class AppLocalizations {
   /// **'No accuracy data'**
   String get gpsQualityUnknown;
 
+  /// No description provided for @gpsQualityManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manually corrected'**
+  String get gpsQualityManual;
+
+  /// No description provided for @qcEditPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit polygon'**
+  String get qcEditPolygon;
+
+  /// No description provided for @qcEditPolygonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a corner to move it, tap a corner to delete it, tap the field area or one of its edges to add a corner there.'**
+  String get qcEditPolygonHint;
+
+  /// No description provided for @qcEditPolygonUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get qcEditPolygonUndo;
+
+  /// No description provided for @qcEditPolygonReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get qcEditPolygonReset;
+
+  /// No description provided for @qcEditPolygonSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{moved} moved, {added} added, {deleted} deleted'**
+  String qcEditPolygonSummary(int moved, int added, int deleted);
+
+  /// No description provided for @qcEditPolygonNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes to save'**
+  String get qcEditPolygonNoChanges;
+
+  /// No description provided for @qcEditPolygonTapTooFar.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap closer to the field boundary to add a corner there'**
+  String get qcEditPolygonTapTooFar;
+
+  /// No description provided for @qcEditPolygonSelfIntersect.
+  ///
+  /// In en, this message translates to:
+  /// **'The edges cross each other. Check the polygon - a stray corner makes the area smaller, not larger.'**
+  String get qcEditPolygonSelfIntersect;
+
+  /// No description provided for @qcEditPolygonAreaBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Before the correction: {area} ha'**
+  String qcEditPolygonAreaBefore(String area);
+
+  /// No description provided for @qcEditPolygonSaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save polygon change?'**
+  String get qcEditPolygonSaveTitle;
+
+  /// No description provided for @qcEditPolygonSaveMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The corrected field covers {area} ha. The change is recorded in the object history and digitally signed.'**
+  String qcEditPolygonSaveMessage(String area);
+
+  /// No description provided for @qcEditPolygonDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get qcEditPolygonDiscardTitle;
+
+  /// No description provided for @qcEditPolygonDiscardMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The polygon corrections have not been saved and will be lost.'**
+  String get qcEditPolygonDiscardMessage;
+
+  /// No description provided for @qcDeleteCornerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete corner?'**
+  String get qcDeleteCornerTitle;
+
+  /// No description provided for @qcDeleteCornerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Corner {index} will be removed from the polygon.'**
+  String qcDeleteCornerMessage(int index);
+
+  /// No description provided for @qcMinThreeCorners.
+  ///
+  /// In en, this message translates to:
+  /// **'A polygon needs at least three corners'**
+  String get qcMinThreeCorners;
+
+  /// No description provided for @qcPolygonSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving polygon change and signing it...'**
+  String get qcPolygonSaving;
+
+  /// No description provided for @qcPolygonSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygon change saved'**
+  String get qcPolygonSaved;
+
+  /// No description provided for @qcPolygonSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the polygon change'**
+  String get qcPolygonSaveFailed;
+
   /// No description provided for @gpsQualityLegend.
   ///
   /// In en, this message translates to:
@@ -5813,6 +5933,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} of {total} shown'**
   String qcResultCount(int count, int total);
+
+  /// No description provided for @qcDateOrderUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted by load order: the server cannot order the queue by date right now, so the newest entries may not be at the top.'**
+  String get qcDateOrderUnavailable;
+
+  /// No description provided for @qcLoadedOfTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{loaded} of {total} loaded'**
+  String qcLoadedOfTotal(int loaded, int total);
+
+  /// No description provided for @qcLoadMoreAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Load all remaining'**
+  String get qcLoadMoreAll;
 
   /// No description provided for @qcLoadingRegistrations.
   ///

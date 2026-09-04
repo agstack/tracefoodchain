@@ -2770,6 +2770,78 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gpsQualityUnknown => 'No accuracy data';
 
   @override
+  String get gpsQualityManual => 'Manually corrected';
+
+  @override
+  String get qcEditPolygon => 'Edit polygon';
+
+  @override
+  String get qcEditPolygonHint =>
+      'Drag a corner to move it, tap a corner to delete it, tap the field area or one of its edges to add a corner there.';
+
+  @override
+  String get qcEditPolygonUndo => 'Undo';
+
+  @override
+  String get qcEditPolygonReset => 'Discard changes';
+
+  @override
+  String qcEditPolygonSummary(int moved, int added, int deleted) {
+    return '$moved moved, $added added, $deleted deleted';
+  }
+
+  @override
+  String get qcEditPolygonNoChanges => 'No changes to save';
+
+  @override
+  String get qcEditPolygonTapTooFar =>
+      'Tap closer to the field boundary to add a corner there';
+
+  @override
+  String get qcEditPolygonSelfIntersect =>
+      'The edges cross each other. Check the polygon - a stray corner makes the area smaller, not larger.';
+
+  @override
+  String qcEditPolygonAreaBefore(String area) {
+    return 'Before the correction: $area ha';
+  }
+
+  @override
+  String get qcEditPolygonSaveTitle => 'Save polygon change?';
+
+  @override
+  String qcEditPolygonSaveMessage(String area) {
+    return 'The corrected field covers $area ha. The change is recorded in the object history and digitally signed.';
+  }
+
+  @override
+  String get qcEditPolygonDiscardTitle => 'Discard changes?';
+
+  @override
+  String get qcEditPolygonDiscardMessage =>
+      'The polygon corrections have not been saved and will be lost.';
+
+  @override
+  String get qcDeleteCornerTitle => 'Delete corner?';
+
+  @override
+  String qcDeleteCornerMessage(int index) {
+    return 'Corner $index will be removed from the polygon.';
+  }
+
+  @override
+  String get qcMinThreeCorners => 'A polygon needs at least three corners';
+
+  @override
+  String get qcPolygonSaving => 'Saving polygon change and signing it...';
+
+  @override
+  String get qcPolygonSaved => 'Polygon change saved';
+
+  @override
+  String get qcPolygonSaveFailed => 'Could not save the polygon change';
+
+  @override
   String get gpsQualityLegend => 'GPS Quality';
 
   @override
@@ -3257,6 +3329,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String qcResultCount(int count, int total) {
     return '$count of $total shown';
   }
+
+  @override
+  String get qcDateOrderUnavailable =>
+      'Sorted by load order: the server cannot order the queue by date right now, so the newest entries may not be at the top.';
+
+  @override
+  String qcLoadedOfTotal(int loaded, int total) {
+    return '$loaded of $total loaded';
+  }
+
+  @override
+  String get qcLoadMoreAll => 'Load all remaining';
 
   @override
   String get qcLoadingRegistrations => 'Loading pending registrations...';

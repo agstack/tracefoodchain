@@ -3,7 +3,7 @@ description: Trace Foodchains App for the diasca project
 
 publish_to: 'none'
 
-version: 1.7.1+33
+version: 1.7.3+35
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -67,6 +67,7 @@ dependencies:
   google_maps_flutter_web: ^0.5.4
   # Used directly for the stable openRAL hashes and the media outbox fingerprints
   crypto: ^3.0.0
+  pointer_interceptor: ^0.10.1+2
 
 
   # flutter_test: any

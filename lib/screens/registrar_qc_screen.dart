@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
@@ -19,6 +22,8 @@ import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
 import '../widgets/data_loading_indicator.dart';
 import '../widgets/ihcafe_producer_widgets.dart';
+import '../services/field_geometry_service.dart';
+import '../widgets/field_polygon_editor.dart';
 import '../widgets/map_type_selector.dart';
 import '../widgets/qc_overview_map.dart';
 import '../utils/gps_quality.dart';
@@ -63,6 +68,19 @@ class _QcEntry {
   final String registrarEmail;
   final List<String> alternateIds;
 
+  /// Neue Fassung desselben Eintrags mit korrigiertem Objekt - nach einer
+  /// Polygonänderung, ohne die bereits aufgelösten Metadaten erneut zu laden.
+  _QcEntry withObject(Map<String, dynamic> updated) => _QcEntry(
+        object: updated,
+        ralType: ralType,
+        name: name,
+        registeredAt: registeredAt,
+        registrarName: registrarName,
+        registrarUid: registrarUid,
+        registrarEmail: registrarEmail,
+        alternateIds: alternateIds,
+      );
+
   String get uid => object['identity']?['UID']?.toString() ?? '';
 
   /// Label for the registrar filter. Not everyone fills in a name, so the mail
@@ -96,6 +114,45 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   String? _loadingMessage;
   /// Übersichtskarte statt Liste: dieselben Einträge, dieselben Filter.
   bool _showMap = false;
+
+  /// Seitengröße der Warteschlange. Die Registrierungen werden portionsweise
+  /// geladen: bei mehreren tausend offenen Vorgängen wäre alles auf einmal
+  /// minutenlanges Warten, bevor überhaupt etwas zu sehen ist.
+  static const int _pageSize = 150;
+
+  /// Wie viele Einträge ein Nachladevorgang mindestens liefern soll, bevor er
+  /// die Liste aktualisiert.
+  static const int _targetPerLoad = 50;
+
+  /// Seitengröße der Methodenabfrage. Methoden-Dokumente tragen die vollen
+  /// Ein- und Ausgangsobjekte, sind also deutlich schwerer als Objekte.
+  static const int _methodPageSize = 60;
+
+  /// Phase 1: Cursor über die Erzeugungsmethoden, neueste zuerst.
+  DocumentSnapshot<Map<String, dynamic>>? _methodCursor;
+  bool _methodsExhausted = false;
+
+  /// Phase 2: Cursor über die Objekte selbst - das Sicherheitsnetz für
+  /// Registrierungen, deren Erzeugungsmethode kein Datum trägt.
+  DocumentSnapshot<Map<String, dynamic>>? _objectCursor;
+  bool _objectsExhausted = false;
+
+  /// Bereits geladene Objekt-UIDs, damit Phase 2 nichts doppelt anhängt.
+  final Set<String> _loadedUids = {};
+
+  bool _loadingMore = false;
+
+  bool get _hasMore => !_methodsExhausted || !_objectsExhausted;
+
+  /// Gesetzt, wenn die nach Zeitpunkt sortierte Methodenabfrage nicht bedient
+  /// werden konnte (in aller Regel: der zusammengesetzte Index fehlt noch).
+  /// Dann stimmt "neueste zuerst" nur noch innerhalb des Geladenen - das darf
+  /// nicht stillschweigend passieren.
+  bool _dateOrderUnavailable = false;
+
+  /// Gesamtzahl offener Vorgänge in der Cloud, über eine count()-Abfrage - die
+  /// zählt serverseitig und lädt keine Dokumente.
+  int? _totalPending;
 
   String _filterType = 'all'; // all, farm, human, field
   String _registrarFilter = 'all'; // 'all' or a registrar UID
@@ -142,6 +199,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         _registrarFilter = 'all';
       }
     });
+
+    // Wer die obersten Vorgänge abarbeitet, soll nicht vor einer leeren Liste
+    // stehen, während in der Cloud noch tausende offen sind.
+    if (_hasMore && _pendingRegistrations.length < _pageSize ~/ 3) {
+      unawaited(_loadNextPage());
+    }
   }
 
   /// Shows the busy state with an explanation of the current step.
@@ -152,6 +215,24 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       _loadingMessage = message;
     });
   }
+
+  /// [fromInitState] suppresses the initial setState: at that point this
+  /// element is being built, and marking it dirty from inside its own build
+  /// forces a rebuild within the running build/layout pass. With a
+  /// LayoutBuilder above the route - device_preview wraps the whole app in one
+  /// while `!kReleaseMode` - that surfaces as
+  /// "_RenderLayoutBuilder was mutated in performLayout" when the screen opens.
+  /// The fields are simply assigned instead; the first build reads them anyway.
+  /// Abfrage der offenen Vorgänge, nach Dokument-ID geordnet.
+  ///
+  /// Nach Datum liesse sich hier nicht sortieren: das Registrierungsdatum steht
+  /// nicht am Objekt, sondern an der zugehörigen Methode. Die Sortierung
+  /// "neueste zuerst" passiert deshalb im Client über das, was geladen ist.
+  Query<Map<String, dynamic>> _pendingQuery() => FirebaseFirestore.instance
+      .collection('TFC_objects')
+      .where('objectState', isEqualTo: 'qcPending')
+      .orderBy(FieldPath.documentId)
+      .limit(_pageSize);
 
   /// [fromInitState] suppresses the initial setState: at that point this
   /// element is being built, and marking it dirty from inside its own build
@@ -171,61 +252,329 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       });
     }
 
+    // Neu aufsetzen - der Refresh-Knopf führt hier ebenfalls herein.
+    _pendingRegistrations = [];
+    _registrarCache.clear();
+    _loadedUids.clear();
+    _methodCursor = null;
+    _methodsExhausted = false;
+    _dateOrderUnavailable = false;
+    _objectCursor = null;
+    _objectsExhausted = false;
+    _totalPending = null;
+
+    // Nur fürs Anzeigen ("150 von 2500 geladen"), deshalb ohne await im
+    // kritischen Pfad.
+    unawaited(_loadTotalCount());
+
     try {
-      final List<Map<String, dynamic>> objects = [];
-
-      // Abfrage der Cloud-Datenbank (Firestore) statt localStorage
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .where('objectState', isEqualTo: 'qcPending')
-          .get();
-
-      for (var doc in querySnapshot.docs) {
-        final obj = doc.data() as Map<String, dynamic>;
-        final ralType = obj['template']?['RALType'] ?? 'unknown';
-
-        // Filter nur relevante Typen
-        if (ralType == 'farm' || ralType == 'human' || ralType == 'field') {
-          objects.add(obj);
-        }
+      await _loadNextPage(initial: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadingMessage = null;
+        });
       }
-
-      // Resolve creation date and registrar up front - both live on the
-      // creation METHOD, not on the object, and sorting cannot wait for the
-      // per-card FutureBuilders. That is one extra fetch per entry, so report
-      // how far along it is instead of showing a silent spinner.
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context);
-      final total = objects.length;
-      int done = 0;
-
-      final entries = await Future.wait(objects.map((obj) async {
-        final entry = await _buildEntry(obj);
-        done++;
-        // Repaint every few items - one setState per document would thrash the
-        // frame budget on a long queue.
-        if (mounted && l10n != null && (done % 5 == 0 || done == total)) {
-          setState(() =>
-              _loadingMessage = l10n.qcLoadingDetails(done, total));
-        }
-        return entry;
-      }));
-
-      if (!mounted) return;
-      setState(() {
-        _pendingRegistrations = entries;
-        _isLoading = false;
-        _loadingMessage = null;
-      });
-    } catch (e) {
-      debugPrint('Error loading pending registrations from cloud: $e');
-      _setBusy(null);
     }
   }
 
-  /// Loads the creation method of [obj] and extracts registration date and
-  /// registrar from it.
-  Future<_QcEntry> _buildEntry(Map<String, dynamic> obj) async {
+  Future<void> _loadTotalCount() async {
+    try {
+      // Je Typ einzeln: offene Bild-Objekte tragen denselben Zustand, gehören
+      // aber nicht in die Warteschlange - eine Gesamtzahl über alle wäre eine
+      // andere Zahl als die Liste zeigt.
+      final counts = await Future.wait(
+        ['farm', 'human', 'field'].map(
+          (ralType) => FirebaseFirestore.instance
+              .collection('TFC_objects')
+              .where('objectState', isEqualTo: 'qcPending')
+              .where('template.RALType', isEqualTo: ralType)
+              .count()
+              .get(),
+        ),
+      );
+
+      final total =
+          counts.fold<int>(0, (sum, snapshot) => sum + (snapshot.count ?? 0));
+      if (mounted) setState(() => _totalPending = total);
+    } catch (e) {
+      debugPrint('QC: could not count pending registrations: $e');
+    }
+  }
+
+  /// Die gerade laufende Seitenabfrage.
+  ///
+  /// Wer währenddessen nachlädt, bekommt dieselbe Zukunft zurück statt ein
+  /// stilles "mache ich nicht" - sonst dreht [_loadAllRemaining] leer, während
+  /// die Fusszeile schon eine Seite holt.
+  Future<void>? _pageInFlight;
+
+  Future<void> _loadNextPage({bool initial = false}) {
+    final running = _pageInFlight;
+    if (running != null) return running;
+    if (!_hasMore && !initial) return Future.value();
+
+    final future = _loadPage(initial: initial)
+        .whenComplete(() => _pageInFlight = null);
+    _pageInFlight = future;
+    return future;
+  }
+
+  /// Lädt die nächste Portion und hängt sie an die Liste an.
+  ///
+  /// Zwei Phasen: zuerst über die Erzeugungsmethoden, die als einzige ein
+  /// Datum tragen - das ergibt die global korrekte Reihenfolge "neueste
+  /// zuerst". Sind die durch, folgt ein Durchlauf über die Objekte selbst, der
+  /// alles einsammelt, was dabei nicht aufgetaucht ist.
+  Future<void> _loadPage({bool initial = false}) async {
+    _loadingMore = true;
+    if (!initial && mounted) setState(() {});
+
+    final collected = <_QcEntry>[];
+
+    try {
+      // Eine Methodenseite liefert nur die Registrierungen, die noch offen
+      // sind - der Rest ist längst entschieden. Deshalb weitersuchen, bis
+      // genug zusammenkommt.
+      int rounds = 0;
+      while (collected.length < _targetPerLoad &&
+          !_methodsExhausted &&
+          rounds < 5) {
+        rounds++;
+        collected.addAll(await _loadFromCreationMethods());
+      }
+
+      if (collected.length < _targetPerLoad && _methodsExhausted) {
+        collected.addAll(await _loadFromObjects());
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _pendingRegistrations = [..._pendingRegistrations, ...collected];
+        _loadingMore = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading pending registrations from cloud: $e');
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// Phase 1: eine Seite Erzeugungsmethoden, absteigend nach Zeitpunkt.
+  ///
+  /// Datum und Registrar stehen damit schon fest, bevor das Objekt geladen ist
+  /// - der frühere Einzelabruf je Eintrag entfällt vollständig.
+  Future<List<_QcEntry>> _loadFromCreationMethods() async {
+    try {
+      var query = FirebaseFirestore.instance
+          .collection('TFC_methods')
+          .where('template.RALType', isEqualTo: 'generateDigitalSibling')
+          .orderBy('existenceStarts', descending: true)
+          .limit(_methodPageSize);
+      if (_methodCursor != null) {
+        query = query.startAfterDocument(_methodCursor!);
+      }
+
+      final snapshot = await query.get();
+      if (snapshot.docs.length < _methodPageSize) _methodsExhausted = true;
+      if (snapshot.docs.isNotEmpty) _methodCursor = snapshot.docs.last;
+
+      // Objekt-UID je Methode - das Ziel der Erzeugung.
+      final methodByObjectUid = <String, Map<String, dynamic>>{};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final uid = _createdObjectUid(data);
+        if (uid == null || uid.isEmpty) continue;
+        if (_loadedUids.contains(uid)) continue;
+        methodByObjectUid.putIfAbsent(uid, () => data);
+      }
+      if (methodByObjectUid.isEmpty) return const [];
+
+      final objects = await _fetchObjects(methodByObjectUid.keys.toList());
+
+      final entries = <_QcEntry>[];
+      for (final entry in methodByObjectUid.entries) {
+        final obj = objects[entry.key];
+        if (obj == null) continue;
+        // Nur was noch zur Entscheidung ansteht - der Rest ist erledigt.
+        if (obj['objectState'] != 'qcPending') continue;
+        final ralType = obj['template']?['RALType'];
+        if (ralType != 'farm' && ralType != 'human' && ralType != 'field') {
+          continue;
+        }
+        _loadedUids.add(entry.key);
+        entries.add(_entryFromObject(obj, entry.value));
+      }
+      return entries;
+    } catch (e) {
+      // Fehlt der zusammengesetzte Index, liefert Firestore hier einen Fehler
+      // samt Anlege-Link. Die Warteschlange soll deswegen nicht leer bleiben:
+      // Phase 2 übernimmt, dann eben ohne globale Datumssortierung.
+      debugPrint('QC: creation-method query unavailable ($e) - '
+          'falling back to scanning objects');
+      _methodsExhausted = true;
+      // Nur melden, wenn noch gar nichts über die Methoden hereinkam - sonst
+      // war es das reguläre Ende der Liste.
+      if (_methodCursor == null) _dateOrderUnavailable = true;
+      return const [];
+    }
+  }
+
+  /// UID des Objekts, das eine Erzeugungsmethode hervorgebracht hat.
+  String? _createdObjectUid(Map<String, dynamic> method) {
+    final outputs = method['outputObjects'];
+    if (outputs is List) {
+      for (final output in outputs) {
+        if (output is Map) {
+          final uid = output['identity']?['UID']?.toString();
+          if (uid != null && uid.isNotEmpty) return uid;
+        }
+      }
+    }
+    final refs = method['outputObjectsRef'];
+    if (refs is List) {
+      for (final ref in refs) {
+        if (ref is Map) {
+          final uid = ref['UID']?.toString();
+          if (uid != null && uid.isNotEmpty) return uid;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Phase 2: Durchlauf über die offenen Objekte selbst.
+  ///
+  /// Fängt auf, was in Phase 1 nicht auftauchen konnte - etwa Registrierungen,
+  /// deren Erzeugungsmethode kein `existenceStarts` trägt. Solche Einträge
+  /// haben kein Datum und sortieren deshalb ans Ende.
+  Future<List<_QcEntry>> _loadFromObjects() async {
+    if (_objectsExhausted) return const [];
+
+    var query = _pendingQuery();
+    if (_objectCursor != null) {
+      query = query.startAfterDocument(_objectCursor!);
+    }
+
+    final snapshot = await query.get();
+    if (snapshot.docs.length < _pageSize) _objectsExhausted = true;
+    if (snapshot.docs.isNotEmpty) _objectCursor = snapshot.docs.last;
+
+    final objects = <Map<String, dynamic>>[];
+    for (final doc in snapshot.docs) {
+      final obj = doc.data();
+      final uid = obj['identity']?['UID']?.toString() ?? '';
+      if (uid.isEmpty || _loadedUids.contains(uid)) continue;
+      final ralType = obj['template']?['RALType'] ?? 'unknown';
+      if (ralType == 'farm' || ralType == 'human' || ralType == 'field') {
+        _loadedUids.add(uid);
+        objects.add(obj);
+      }
+    }
+
+    return _buildEntries(objects);
+  }
+
+  /// Holt Objekt-Dokumente in Zehnerbündeln (Grenze von `whereIn`).
+  Future<Map<String, Map<String, dynamic>>> _fetchObjects(
+      List<String> uids) async {
+    final result = <String, Map<String, dynamic>>{};
+    if (uids.isEmpty) return result;
+
+    final chunks = <List<String>>[];
+    for (int i = 0; i < uids.length; i += 10) {
+      chunks.add(uids.sublist(i, math.min(i + 10, uids.length)));
+    }
+
+    final snapshots = await Future.wait(chunks.map((chunk) =>
+        FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get()));
+
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        result[doc.id] = doc.data();
+      }
+    }
+    return result;
+  }
+
+  /// Lädt alle verbleibenden Seiten - für die Übersichtskarte, die nur zeigen
+  /// kann, was geladen ist.
+  Future<void> _loadAllRemaining() async {
+    // Obergrenze als Notbremse: eine Schleife über Netzwerkabfragen, die aus
+    // irgendeinem Grund nicht vorankommt, darf die App nicht festhalten.
+    for (int page = 0; page < 200 && _hasMore && mounted; page++) {
+      await _loadNextPage();
+    }
+  }
+
+  /// Löst Datum und Registrar für eine ganze Seite auf.
+  ///
+  /// Beides steht an der Erzeugungsmethode, nicht am Objekt. Ein Einzelabruf je
+  /// Eintrag wären hunderte Rundreisen pro Seite; gefragt wird deshalb in
+  /// Bündeln von zehn Methoden-IDs.
+  Future<List<_QcEntry>> _buildEntries(
+      List<Map<String, dynamic>> objects) async {
+    final methodUidByObject = <String, String>{};
+    final methodUids = <String>{};
+
+    for (final obj in objects) {
+      final objectUid = obj['identity']?['UID']?.toString() ?? '';
+      final methodHistoryRef = obj['methodHistoryRef'];
+      if (objectUid.isEmpty || methodHistoryRef is! List) continue;
+      if (methodHistoryRef.isEmpty) continue;
+
+      final first = methodHistoryRef.first;
+      if (first is! Map) continue;
+      final methodUid = first['UID']?.toString();
+      if (methodUid == null || methodUid.isEmpty) continue;
+
+      methodUidByObject[objectUid] = methodUid;
+      methodUids.add(methodUid);
+    }
+
+    final methods = await _fetchMethods(methodUids.toList());
+
+    return [
+      for (final obj in objects)
+        _entryFromObject(
+          obj,
+          methods[methodUidByObject[obj['identity']?['UID']?.toString() ?? '']],
+        ),
+    ];
+  }
+
+  /// Holt Methoden-Dokumente in Zehnerbündeln (Grenze von `whereIn`).
+  Future<Map<String, Map<String, dynamic>>> _fetchMethods(
+      List<String> uids) async {
+    final result = <String, Map<String, dynamic>>{};
+    if (uids.isEmpty) return result;
+
+    final chunks = <List<String>>[];
+    for (int i = 0; i < uids.length; i += 10) {
+      chunks.add(uids.sublist(i, math.min(i + 10, uids.length)));
+    }
+
+    final snapshots = await Future.wait(chunks.map((chunk) =>
+        FirebaseFirestore.instance
+            .collection('TFC_methods')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get()));
+
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        result[doc.id] = doc.data();
+      }
+    }
+    return result;
+  }
+
+  /// Baut den Listeneintrag aus Objekt und - falls vorhanden - der zugehörigen
+  /// Erzeugungsmethode, aus der Registrierungsdatum und Registrar stammen.
+  _QcEntry _entryFromObject(
+      Map<String, dynamic> obj, Map<String, dynamic>? methodData) {
     final ralType = obj['template']?['RALType']?.toString() ?? 'unknown';
     final name = obj['identity']?['name']?.toString() ?? 'Unnamed';
     final objectUid = obj['identity']?['UID']?.toString() ?? '';
@@ -244,39 +593,25 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     String registrarUid = '';
     String registrarEmail = '';
 
-    try {
-      final methodHistoryRef = obj['methodHistoryRef'];
-      String? methodUID;
-      if (methodHistoryRef is List && methodHistoryRef.isNotEmpty) {
-        final first = methodHistoryRef[0];
-        if (first is Map) methodUID = first['UID']?.toString();
-      }
-
-      if (methodUID != null && methodUID.isNotEmpty) {
-        final methodDoc = await FirebaseFirestore.instance
-            .collection('TFC_methods')
-            .doc(methodUID)
-            .get();
-        final methodData = methodDoc.data();
-        if (methodData != null) {
-          registeredAt =
-              DateTime.tryParse(methodData['existenceStarts']?.toString() ?? '');
-          final executor = methodData['executor'];
-          if (executor is Map) {
-            final executorIdentity = executor['identity'];
-            if (executorIdentity is Map) {
-              registrarName =
-                  executorIdentity['name']?.toString().trim().isNotEmpty == true
-                      ? executorIdentity['name'].toString()
-                      : '-';
-              registrarUid = executorIdentity['UID']?.toString() ?? '';
-            }
-            registrarEmail = _extractEmail(executor);
+    if (methodData != null) {
+      try {
+        registeredAt =
+            DateTime.tryParse(methodData['existenceStarts']?.toString() ?? '');
+        final executor = methodData['executor'];
+        if (executor is Map) {
+          final executorIdentity = executor['identity'];
+          if (executorIdentity is Map) {
+            registrarName =
+                executorIdentity['name']?.toString().trim().isNotEmpty == true
+                    ? executorIdentity['name'].toString()
+                    : '-';
+            registrarUid = executorIdentity['UID']?.toString() ?? '';
           }
+          registrarEmail = _extractEmail(executor);
         }
+      } catch (e) {
+        debugPrint('QC: could not read metadata for $objectUid: $e');
       }
-    } catch (e) {
-      debugPrint('QC: could not resolve metadata for $objectUid: $e');
     }
 
     if (objectUid.isNotEmpty) {
@@ -704,6 +1039,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       ),
       body: Column(
         children: [
+          if (_dateOrderUnavailable) _buildDateOrderWarning(l10n),
           _buildSearchField(l10n),
           _buildSortAndRegistrarRow(l10n),
           _buildTypeChips(l10n),
@@ -720,9 +1056,18 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                     ),
                   )
                 : (_showMap
-                    ? QcOverviewMap(
-                        polygons: _mapPolygons,
-                        onPolygonTap: _showPolygonSheet,
+                    ? Column(
+                        children: [
+                          // Die Karte zeigt nur, was geladen ist - beim
+                          // regionsweiten Absuchen muss das sichtbar sein.
+                          if (_hasMore) _buildMapLoadHint(l10n),
+                          Expanded(
+                            child: QcOverviewMap(
+                              polygons: _mapPolygons,
+                              onPolygonTap: _showPolygonSheet,
+                            ),
+                          ),
+                        ],
                       )
                     : _buildList(l10n)),
           ),
@@ -759,6 +1104,30 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
   Widget _buildList(AppLocalizations l10n) {
     final entries = _filteredRegistrations;
+
+    if (entries.isEmpty && _hasMore) {
+      // Der Filter greift nur auf das bereits Geladene. Solange noch Seiten
+      // fehlen, ist "nichts gefunden" schlicht nicht wahr - also weitersuchen.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => unawaited(_loadNextPage()));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              _totalPending != null
+                  ? l10n.qcLoadedOfTotal(
+                      _pendingRegistrations.length, _totalPending!)
+                  : l10n.qcLoadingRegistrations,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (entries.isEmpty) {
       // Distinguish "nothing to review" from "your filter hides everything" -
       // otherwise an active filter looks like an empty queue.
@@ -791,8 +1160,96 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     }
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: entries.length,
-      itemBuilder: (context, index) => _buildRegistrationCard(entries[index]),
+      itemCount: entries.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, index) => index == entries.length
+          ? _buildLoadMoreFooter(l10n)
+          : _buildRegistrationCard(entries[index]),
+    );
+  }
+
+  /// Warnung, wenn die Warteschlange nicht global nach Datum geordnet werden
+  /// konnte.
+  Widget _buildDateOrderWarning(AppLocalizations l10n) {
+    return Container(
+      width: double.infinity,
+      color: Colors.orange[50],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              size: 18, color: Colors.orange[900]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.qcDateOrderUnavailable,
+              style: TextStyle(fontSize: 12, color: Colors.orange[900]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Hinweis über der Übersichtskarte, solange noch Seiten fehlen.
+  Widget _buildMapLoadHint(AppLocalizations l10n) {
+    return Container(
+      width: double.infinity,
+      color: Colors.amber[50],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.amber[900]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _totalPending != null
+                  ? l10n.qcLoadedOfTotal(
+                      _pendingRegistrations.length, _totalPending!)
+                  : l10n.qcLoadingRegistrations,
+              style: TextStyle(fontSize: 12, color: Colors.amber[900]),
+            ),
+          ),
+          TextButton(
+            onPressed:
+                _loadingMore ? null : () => unawaited(_loadAllRemaining()),
+            child: Text(l10n.qcLoadMoreAll),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Fusszeile der Liste. Dass sie gebaut wird, heisst: der Nutzer ist unten
+  /// angekommen - das ist der Auslöser für die nächste Portion.
+  Widget _buildLoadMoreFooter(AppLocalizations l10n) {
+    if (!_loadingMore) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => unawaited(_loadNextPage()));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(height: 12),
+          if (_totalPending != null)
+            Text(
+              l10n.qcLoadedOfTotal(_pendingRegistrations.length, _totalPending!),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          // Die Übersichtskarte kann nur zeigen, was geladen ist - vor dem
+          // Umschalten lohnt der Rest am Stück.
+          TextButton(
+            onPressed: _loadingMore ? null : () => unawaited(_loadAllRemaining()),
+            child: Text(l10n.qcLoadMoreAll),
+          ),
+        ],
+      ),
     );
   }
 
@@ -834,7 +1291,10 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
-      builder: (sheetContext) => Padding(
+      // Ohne PointerInterceptor erreicht ein Klick auf die Schaltflächen im Web
+      // zusätzlich die Karte darunter.
+      builder: (sheetContext) => PointerInterceptor(
+          child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -934,7 +1394,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 
@@ -1159,14 +1619,22 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       return const SizedBox.shrink();
     }
     final shown = _filteredRegistrations.length;
-    final total = _pendingRegistrations.length;
-    if (shown == total) return const SizedBox.shrink();
+    final loaded = _pendingRegistrations.length;
+    final total = _totalPending;
+
+    final parts = <String>[
+      if (shown != loaded) l10n.qcResultCount(shown, loaded),
+      // Wie viel der Warteschlange überhaupt schon im Zugriff ist.
+      if (total != null && loaded < total) l10n.qcLoadedOfTotal(loaded, total),
+    ];
+    if (parts.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
-          l10n.qcResultCount(shown, total),
+          parts.join('  ·  '),
           style: TextStyle(color: Colors.grey[600], fontSize: 12),
         ),
       ),
@@ -1473,8 +1941,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       // GPS-Qualität anzeigen
       final accuracies = getSpecificPropertyfromJSON(obj, 'boundaryAccuracies');
       if (accuracies is List && accuracies.isNotEmpty) {
-        final accuracyValues =
-            accuracies.map((e) => (e is num) ? e.toDouble() : 0.0).toList();
+        // Von Hand korrigierte Ecken tragen keine Messunsicherheit und würden
+        // den Durchschnitt sonst nach unten ziehen.
+        final accuracyValues = accuracies
+            .map((e) => (e is num) ? e.toDouble() : 0.0)
+            .where((a) => !isManuallyEditedAccuracy(a))
+            .toList();
         final avgAcc =
             accuracyValues.reduce((a, b) => a + b) / accuracyValues.length;
         final maxAcc = accuracyValues.reduce((a, b) => a > b ? a : b);
@@ -2385,12 +2857,77 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
+  /// Schreibt eine im Karteneditor korrigierte Feldgrenze über den signierten
+  /// openRAL-Pfad und übernimmt die neue Fassung in die Liste.
+  ///
+  /// Die geschriebene Version kommt direkt aus dem Service zurück; ein erneutes
+  /// Laden aus Firestore wäre ein Rennen gegen den asynchronen Cloud-Sync und
+  /// würde oft noch den alten Stand zeigen.
+  Future<void> _saveGeometryEdit(
+      Map<String, dynamic> obj, FieldGeometryEdit edit) async {
+    final l10n = AppLocalizations.of(context)!;
+    _setBusy(l10n.qcPolygonSaving);
+
+    try {
+      final updated = await saveFieldGeometry(field: obj, edit: edit);
+      final uid = updated['identity']?['UID']?.toString() ?? '';
+
+      if (mounted) {
+        setState(() {
+          _pendingRegistrations = [
+            for (final entry in _pendingRegistrations)
+              entry.uid == uid ? entry.withObject(updated) : entry,
+          ];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.qcPolygonSaved),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      repaintContainerList.value = true;
+    } catch (e) {
+      debugPrint('Error saving polygon change: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${l10n.qcPolygonSaveFailed}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      _setBusy(null);
+    }
+  }
+
   /// Zeigt Map in bildschirmfüllender Ansicht
-  void _showFullScreenMap(Map<String, dynamic> obj) {
+  Future<void> _showFullScreenMap(Map<String, dynamic> obj) async {
     final l10n = AppLocalizations.of(context)!;
     final location = _getLocationFromObject(obj);
     final boundaries = _getBoundariesFromObject(obj);
     final accuracies = _getBoundaryAccuracies(obj);
+
+    // Felder mit Polygon bekommen die Editor-Seite - dort lassen sich Ecken
+    // verschieben, löschen und ergänzen. Punkt-Objekte (Farm, Farmer) behalten
+    // die einfache Kartenansicht darunter.
+    if (boundaries != null && boundaries.length >= 3) {
+      final edit = await Navigator.of(context).push<FieldGeometryEdit>(
+        MaterialPageRoute(
+          builder: (_) => FieldPolygonMapPage(
+            title: obj['identity']?['name']?.toString() ?? l10n.mapView,
+            points: boundaries,
+            accuracies: accuracies,
+            canEdit: obj['template']?['RALType'] == 'field',
+          ),
+        ),
+      );
+      if (edit != null && edit.hasChanges) {
+        await _saveGeometryEdit(obj, edit);
+      }
+      return;
+    }
 
     // Berechne Kamera-Position
     LatLng center;
@@ -2504,11 +3041,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               Positioned(
                 top: 40,
                 right: 16,
-                child: FloatingActionButton(
+                child: PointerInterceptor(
+                    child: FloatingActionButton(
                   backgroundColor: Colors.white,
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Icon(Icons.close, color: Colors.black),
-                ),
+                )),
               ),
               // Umschalter für die Kartenansicht
               Positioned(
@@ -2750,7 +3288,9 @@ class _ApprovalDialogState extends State<_ApprovalDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return AlertDialog(
+    // Kann über der Übersichtskarte liegen - siehe PointerInterceptor oben.
+    return PointerInterceptor(
+        child: AlertDialog(
       title: Text(
         widget.isApproval ? l10n.approveRegistration : l10n.rejectRegistration,
         style: const TextStyle(color: Colors.black),
@@ -2818,7 +3358,7 @@ class _ApprovalDialogState extends State<_ApprovalDialog> {
               : l10n.rejectRegistration),
         ),
       ],
-    );
+    ));
   }
 }
 

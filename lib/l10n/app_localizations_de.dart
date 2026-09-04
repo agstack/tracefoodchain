@@ -2801,6 +2801,80 @@ class AppLocalizationsDe extends AppLocalizations {
   String get gpsQualityUnknown => 'Keine Genauigkeitsdaten';
 
   @override
+  String get gpsQualityManual => 'Manuell korrigiert';
+
+  @override
+  String get qcEditPolygon => 'Polygon bearbeiten';
+
+  @override
+  String get qcEditPolygonHint =>
+      'Ecke ziehen zum Verschieben, Ecke antippen zum Löschen, auf die Fläche oder eine Kante tippen setzt dort eine neue Ecke.';
+
+  @override
+  String get qcEditPolygonUndo => 'Rückgängig';
+
+  @override
+  String get qcEditPolygonReset => 'Änderungen verwerfen';
+
+  @override
+  String qcEditPolygonSummary(int moved, int added, int deleted) {
+    return '$moved verschoben, $added hinzugefügt, $deleted gelöscht';
+  }
+
+  @override
+  String get qcEditPolygonNoChanges => 'Keine Änderungen zum Speichern';
+
+  @override
+  String get qcEditPolygonTapTooFar =>
+      'Zum Setzen einer Ecke näher an die Feldgrenze tippen';
+
+  @override
+  String get qcEditPolygonSelfIntersect =>
+      'Die Kanten überschneiden sich. Bitte das Polygon prüfen - eine versehentliche Ecke macht die Fläche kleiner, nicht größer.';
+
+  @override
+  String qcEditPolygonAreaBefore(String area) {
+    return 'Vor der Korrektur: $area ha';
+  }
+
+  @override
+  String get qcEditPolygonSaveTitle => 'Polygonänderung speichern?';
+
+  @override
+  String qcEditPolygonSaveMessage(String area) {
+    return 'Das korrigierte Feld umfasst $area ha. Die Änderung wird in der Objekthistorie festgehalten und digital signiert.';
+  }
+
+  @override
+  String get qcEditPolygonDiscardTitle => 'Änderungen verwerfen?';
+
+  @override
+  String get qcEditPolygonDiscardMessage =>
+      'Die Polygonkorrekturen wurden nicht gespeichert und gehen verloren.';
+
+  @override
+  String get qcDeleteCornerTitle => 'Ecke löschen?';
+
+  @override
+  String qcDeleteCornerMessage(int index) {
+    return 'Ecke $index wird aus dem Polygon entfernt.';
+  }
+
+  @override
+  String get qcMinThreeCorners => 'Ein Polygon braucht mindestens drei Ecken';
+
+  @override
+  String get qcPolygonSaving =>
+      'Polygonänderung wird gespeichert und signiert...';
+
+  @override
+  String get qcPolygonSaved => 'Polygonänderung gespeichert';
+
+  @override
+  String get qcPolygonSaveFailed =>
+      'Polygonänderung konnte nicht gespeichert werden';
+
+  @override
   String get gpsQualityLegend => 'GPS-Qualität';
 
   @override
@@ -3295,6 +3369,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String qcResultCount(int count, int total) {
     return '$count von $total angezeigt';
   }
+
+  @override
+  String get qcDateOrderUnavailable =>
+      'Reihenfolge nach Ladevorgang: Die Warteschlange kann serverseitig gerade nicht nach Datum sortiert werden, die neuesten Einträge stehen daher womöglich nicht oben.';
+
+  @override
+  String qcLoadedOfTotal(int loaded, int total) {
+    return '$loaded von $total geladen';
+  }
+
+  @override
+  String get qcLoadMoreAll => 'Rest komplett laden';
 
   @override
   String get qcLoadingRegistrations => 'Lade ausstehende Registrierungen...';

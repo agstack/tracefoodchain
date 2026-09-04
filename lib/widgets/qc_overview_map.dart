@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/gps_quality.dart';
@@ -76,11 +77,9 @@ class _QcOverviewMapState extends State<QcOverviewMap> {
   MapType _mapType = MapType.satellite;
   String? _selectedUid;
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
+  // Kein dispose() für den Kartencontroller: den entsorgt das GoogleMap-Widget
+  // selbst. Ein zweiter Aufruf lässt die Web-Implementierung mit
+  // "Maps cannot be retrieved before calling buildView!" auflaufen.
 
   /// Umschließende Box aller Polygone, für den ersten Kameraschwenk.
   LatLngBounds? get _allBounds {
@@ -280,7 +279,8 @@ class _QcOverviewMapState extends State<QcOverviewMap> {
         Positioned(
           top: 76,
           right: 12,
-          child: Material(
+          child: PointerInterceptor(
+              child: Material(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
             elevation: 4,
@@ -289,7 +289,7 @@ class _QcOverviewMapState extends State<QcOverviewMap> {
               icon: const Icon(Icons.zoom_out_map, color: Colors.black87),
               onPressed: _fitAll,
             ),
-          ),
+          )),
         ),
         Positioned(
           bottom: 16,
@@ -354,7 +354,8 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return PointerInterceptor(
+        child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -368,6 +369,6 @@ class _Chip extends StatelessWidget {
         ],
       ),
       child: child,
-    );
+    ));
   }
 }

@@ -1835,6 +1835,60 @@
   "qcMapFitAll": "Fit all polygons",
   "qcMapWorstAccuracy": "Worst GPS accuracy",
   "gpsQualityUnknown": "No accuracy data",
+  "gpsQualityManual": "Manually corrected",
+  "qcEditPolygon": "Edit polygon",
+  "qcEditPolygonHint": "Drag a corner to move it, tap a corner to delete it, tap the field area or one of its edges to add a corner there.",
+  "qcEditPolygonUndo": "Undo",
+  "qcEditPolygonReset": "Discard changes",
+  "qcEditPolygonSummary": "{moved} moved, {added} added, {deleted} deleted",
+  "@qcEditPolygonSummary": {
+      "placeholders": {
+          "moved": {
+              "type": "int"
+          },
+          "added": {
+              "type": "int"
+          },
+          "deleted": {
+              "type": "int"
+          }
+      }
+  },
+  "qcEditPolygonNoChanges": "No changes to save",
+  "qcEditPolygonTapTooFar": "Tap closer to the field boundary to add a corner there",
+  "qcEditPolygonSelfIntersect": "The edges cross each other. Check the polygon - a stray corner makes the area smaller, not larger.",
+  "qcEditPolygonAreaBefore": "Before the correction: {area} ha",
+  "@qcEditPolygonAreaBefore": {
+      "placeholders": {
+          "area": {
+              "type": "String"
+          }
+      }
+  },
+  "qcEditPolygonSaveTitle": "Save polygon change?",
+  "qcEditPolygonSaveMessage": "The corrected field covers {area} ha. The change is recorded in the object history and digitally signed.",
+  "@qcEditPolygonSaveMessage": {
+      "placeholders": {
+          "area": {
+              "type": "String"
+          }
+      }
+  },
+  "qcEditPolygonDiscardTitle": "Discard changes?",
+  "qcEditPolygonDiscardMessage": "The polygon corrections have not been saved and will be lost.",
+  "qcDeleteCornerTitle": "Delete corner?",
+  "qcDeleteCornerMessage": "Corner {index} will be removed from the polygon.",
+  "@qcDeleteCornerMessage": {
+      "placeholders": {
+          "index": {
+              "type": "int"
+          }
+      }
+  },
+  "qcMinThreeCorners": "A polygon needs at least three corners",
+  "qcPolygonSaving": "Saving polygon change and signing it...",
+  "qcPolygonSaved": "Polygon change saved",
+  "qcPolygonSaveFailed": "Could not save the polygon change",
   "gpsQualityLegend": "GPS Quality",
   "gpsQualityExcellent": "Excellent",
   "gpsQualityGood": "Good",
@@ -2145,6 +2199,19 @@
       }
     }
   },
+  "qcDateOrderUnavailable": "Sorted by load order: the server cannot order the queue by date right now, so the newest entries may not be at the top.",
+  "qcLoadedOfTotal": "{loaded} of {total} loaded",
+  "@qcLoadedOfTotal": {
+      "placeholders": {
+          "loaded": {
+              "type": "int"
+          },
+          "total": {
+              "type": "int"
+          }
+      }
+  },
+  "qcLoadMoreAll": "Load all remaining",
   "qcLoadingRegistrations": "Loading pending registrations...",
   "qcLoadingDetails": "Loading date and registrar... {done}/{total}",
   "@qcLoadingDetails": {

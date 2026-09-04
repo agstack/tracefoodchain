@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../l10n/app_localizations.dart';
 
@@ -26,7 +27,10 @@ class MapTypeSelector extends StatelessWidget {
       MapType.normal: l10n.mapTypeNormal,
     };
 
-    return Material(
+    // Auf Web liegt die Karte als HTML-Element unter der Flutter-Oberfläche;
+    // ohne diesen Schutz erreicht ein Klick auf den Umschalter auch die Karte.
+    return PointerInterceptor(
+        child: Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(8),
       elevation: 4,
@@ -37,7 +41,8 @@ class MapTypeSelector extends StatelessWidget {
         itemBuilder: (context) => types.entries
             .map((entry) => PopupMenuItem<MapType>(
                   value: entry.key,
-                  child: Row(
+                  child: PointerInterceptor(
+                      child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
@@ -50,7 +55,7 @@ class MapTypeSelector extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(entry.value),
                     ],
-                  ),
+                  )),
                 ))
             .toList(),
         child: Padding(
@@ -71,6 +76,6 @@ class MapTypeSelector extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
