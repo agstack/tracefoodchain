@@ -13,6 +13,34 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
+// Several plugins hard-code `compileSdk 34` in their own build.gradle
+// (connectivity_plus, device_info_plus, file_picker, file_saver, firebase_auth,
+// flutter_local_notifications, flutter_secure_storage, mobile_scanner, printing,
+// share_plus, workmanager). As soon as such a plugin pulls an androidx artifact
+// that requires API 35+ - androidx.core 1.15.0 via file_picker is the one that
+// trips first - the AAR metadata check fails the whole build.
+//
+// Lift every plugin subproject to the SDK the app itself compiles against.
+// Raising compileSdk only widens the APIs available at compile time; runtime
+// behaviour is governed by targetSdk and stays untouched.
+subprojects {
+    // ':app' is already evaluated at this point (evaluationDependsOn above), so
+    // registering an afterEvaluate hook on it would throw.
+    if (project.name == 'app') {
+        return
+    }
+    afterEvaluate {
+        if (project.hasProperty('android')) {
+            def appCompileSdk = rootProject.project(':app').android.compileSdk
+            if (appCompileSdk != null &&
+                    (project.android.compileSdk == null ||
+                     project.android.compileSdk < appCompileSdk)) {
+                project.android.compileSdk = appCompileSdk
+            }
+        }
+    }
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }

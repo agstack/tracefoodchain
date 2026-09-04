@@ -107,7 +107,19 @@ ThemeData customTheme = ThemeData(
   visualDensity: VisualDensity.adaptivePlatformDensity,
 
   //* TEXT
-  textTheme: Typography.englishLike2018.apply(fontSizeFactor: 1),
+  // The 2018 geometry styles carry `inherit: false`. TextStyle.merge returns
+  // such a style UNCHANGED, so merging them into the theme's default text
+  // theme throws its colors away - and a TextStyle with `inherit: false` and
+  // no color paints WHITE. That is why every widget reading the text theme
+  // directly (AlertDialog title and content, AppBar titles, ...) rendered
+  // white on white. Supplying the colors here restores them; `bodyColor`
+  // covers headlineSmall/title/body/label, `displayColor` the display and
+  // large headline styles.
+  textTheme: Typography.englishLike2018.apply(
+    fontSizeFactor: 1,
+    bodyColor: Colors.black87,
+    displayColor: Colors.black87,
+  ),
   //  const TextTheme(//
   //   displayLarge: TextStyle(
   //       fontSize: 72.0, fontWeight: FontWeight.bold, color: Colors.black),

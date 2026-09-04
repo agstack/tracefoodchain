@@ -28,13 +28,27 @@ class KeyManager {
 
   String? get _currentUid => FirebaseAuth.instance.currentUser?.uid;
 
-  /// Makes sure the signed-in user has their own keypair AND that the matching
-  /// public key is registered in the cloud.
+  /// True when the public key of the locally stored keypair could not be
+  /// (re-)sent to the cloud on the last attempt - typically because the device
+  /// was offline. Signing keeps working; the registration is retried as soon as
+  /// connectivity is back (see [retryPendingPublicKeyRegistration]).
+  bool get publicKeyRegistrationPending => _publicKeyRegistrationPending;
+  bool _publicKeyRegistrationPending = false;
+
+  /// Makes sure the signed-in user has their own keypair AND - best effort -
+  /// that the matching public key is registered in the cloud.
   ///
   /// Re-registering on every login is deliberate: a key that exists locally but
   /// never reached the cloud (failed request, app killed, user switch) is
   /// exactly the failure that makes every later push fail on the signature
   /// check. Re-sending is cheap and repairs it silently.
+  ///
+  /// A FAILED re-registration must NOT disable signing though. The private key
+  /// is on the device, so signing works offline - and the app is built to be
+  /// used offline. Treating the failed upload as "no secure communication"
+  /// locked users out of the app entirely after they had started it once
+  /// without network coverage. The attempt is therefore remembered and retried
+  /// when the device is online again.
   ///
   /// Returns true when signing is possible.
   Future<bool> ensureKeysForCurrentUser() async {
@@ -55,13 +69,29 @@ class KeyManager {
 
     if (privateKey != null) {
       final registered = await _registerPublicKeyOf(privateKey);
+      _publicKeyRegistrationPending = !registered;
       debugPrint('KeyManager: existing key for $uid,'
           ' public key registered: $registered');
-      return registered;
+      return true;
     }
 
     debugPrint('KeyManager: no key for $uid yet, generating a new keypair');
     return generateAndStoreKeys();
+  }
+
+  /// Re-sends the public key after a failed attempt (offline start).
+  ///
+  /// Call this when connectivity returns. Does nothing when there is nothing
+  /// to repair. Returns true when the key is registered in the cloud.
+  Future<bool> retryPendingPublicKeyRegistration() async {
+    if (!_publicKeyRegistrationPending) return true;
+    final privateKey = await getPrivateKey();
+    if (privateKey == null) return false;
+
+    final registered = await _registerPublicKeyOf(privateKey);
+    _publicKeyRegistrationPending = !registered;
+    debugPrint('KeyManager: retried public key registration: $registered');
+    return registered;
   }
 
   /// Removes the pre-multi-user key so nothing can fall back to it.
@@ -88,6 +118,7 @@ class KeyManager {
       if (success) {
         // Nur wenn Cloud-Speicherung erfolgreich war, privaten Schlüssel lokal speichern
         await savePrivateKey(privateKey);
+        _publicKeyRegistrationPending = false;
         return true;
       } else {
         debugPrint('KeyManager: public key could NOT be stored in the cloud -'

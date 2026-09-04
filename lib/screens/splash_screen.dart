@@ -450,6 +450,13 @@ class _SplashScreenState extends State<SplashScreen>
             'hadLocalKey': '$hadKeyBefore',
             'uid': FirebaseAuth.instance.currentUser?.uid ?? '',
           });
+    } else if (keyManager.publicKeyRegistrationPending) {
+      // Local key present, cloud registration could not be refreshed (offline).
+      // Signing works, so the app stays usable; the registration is retried on
+      // the next reconnect (see AppState._updateConnectionStatus).
+      await cloudLogService.warn(
+          'SplashScreen: Keypair ready, public key registration deferred',
+          data: {'hadLocalKey': '$hadKeyBefore'});
     } else {
       await cloudLogService.info(
           'SplashScreen: Keypair ready and public key registered',

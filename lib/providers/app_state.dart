@@ -211,6 +211,18 @@ class AppState extends ChangeNotifier {
           results.any((result) => result != ConnectivityResult.none);
       setConnected(hasConnection);
       if ((oldConnectionState == false) && (hasConnection == true)) {
+        // A public key that could not be registered at app start (offline
+        // launch) must be repaired BEFORE anything is pushed - otherwise the
+        // cloud rejects every signature. This runs regardless of the upload
+        // pause switch because it uploads no user data.
+        if (_isAuthenticated && keyManager.publicKeyRegistrationPending) {
+          final registered =
+              await keyManager.retryPendingPublicKeyRegistration();
+          secureCommunicationEnabled = true;
+          debugPrint('AppState: deferred public key registration retried,'
+              ' success: $registered');
+        }
+
         //If state changes from offline to online, sync data to cloud!
         //WP A2: unless the user has deliberately paused uploads.
         if (syncSettings.isUploadPaused) {
