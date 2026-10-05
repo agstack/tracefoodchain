@@ -6041,6 +6041,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} method(s) queued for upload'**
   String resyncQueued(int count);
+
+  /// No description provided for @qcOpenReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Open review'**
+  String get qcOpenReview;
+
+  /// No description provided for @qcFieldCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no fields to review} =1{1 field to review} other{{count} fields to review}}'**
+  String qcFieldCount(int count);
+
+  /// No description provided for @qcChecklistProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} checks'**
+  String qcChecklistProgress(int done, int total);
+
+  /// No description provided for @qcChecklistIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Tick all checks to approve the farm.'**
+  String get qcChecklistIncomplete;
+
+  /// No description provided for @qcNoLinkedFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'No linked farm found for this registration.'**
+  String get qcNoLinkedFarm;
+
+  /// No description provided for @qcNotPartOfReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Already decided - shown for context only, not part of this review.'**
+  String get qcNotPartOfReview;
+
+  /// No description provided for @qcNoPhotoDocumentation.
+  ///
+  /// In en, this message translates to:
+  /// **'No photo documentation on record (e.g. imported data).'**
+  String get qcNoPhotoDocumentation;
+
+  /// No description provided for @qcCheckNationalId.
+  ///
+  /// In en, this message translates to:
+  /// **'ID document checked: photo present, legible and matching the farmer\'s data'**
+  String get qcCheckNationalId;
+
+  /// No description provided for @qcCheckConsentForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent form checked: photo present and document correct'**
+  String get qcCheckConsentForm;
+
+  /// No description provided for @qcCheckConsentForm2.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent form, second photo checked'**
+  String get qcCheckConsentForm2;
+
+  /// No description provided for @qcCheckFieldPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Field photo checked: present and matching the field'**
+  String get qcCheckFieldPhoto;
+
+  /// No description provided for @qcCheckPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygon geometry checked and approved'**
+  String get qcCheckPolygon;
+
+  /// No description provided for @qcCheckPhotoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo not available - cannot be confirmed'**
+  String get qcCheckPhotoUnavailable;
 }
 
 class _AppLocalizationsDelegate

@@ -2110,5 +2110,18 @@
   "resyncMissing": "Reenviar {count} faltantes",
   "inCloud": "En la nube",
   "notInCloud": "No está en la nube",
-  "resyncQueued": "{count} método(s) en cola para subir"
+  "resyncQueued": "{count} método(s) en cola para subir",
+  "qcOpenReview": "Abrir revisión",
+  "qcFieldCount": "{count, plural, =0{ninguna parcela por revisar} =1{1 parcela por revisar} other{{count} parcelas por revisar}}",
+  "qcChecklistProgress": "{done} de {total} verificaciones",
+  "qcChecklistIncomplete": "Marque todas las verificaciones para aprobar la finca.",
+  "qcNoLinkedFarm": "No se encontró una finca vinculada a este registro.",
+  "qcNotPartOfReview": "Ya decidido - solo como contexto, no forma parte de esta revisión.",
+  "qcNoPhotoDocumentation": "No hay documentación fotográfica (p. ej. datos importados).",
+  "qcCheckNationalId": "Documento de identidad verificado: foto presente, legible y coincide con los datos del productor",
+  "qcCheckConsentForm": "Formulario de consentimiento verificado: foto presente y documento correcto",
+  "qcCheckConsentForm2": "Formulario de consentimiento, segunda foto verificada",
+  "qcCheckFieldPhoto": "Foto de la parcela verificada: presente y corresponde a la parcela",
+  "qcCheckPolygon": "Geometría del polígono verificada y aprobada",
+  "qcCheckPhotoUnavailable": "Foto no disponible - no se puede confirmar"
 }

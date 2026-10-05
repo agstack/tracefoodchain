@@ -3467,4 +3467,63 @@ class AppLocalizationsFr extends AppLocalizations {
   String resyncQueued(int count) {
     return '$count méthode(s) en attente d\'envoi';
   }
+
+  @override
+  String get qcOpenReview => 'Ouvrir la vérification';
+
+  @override
+  String qcFieldCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count parcelles à vérifier',
+      one: '1 parcelle à vérifier',
+      zero: 'aucune parcelle à vérifier',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String qcChecklistProgress(int done, int total) {
+    return '$done sur $total points de contrôle';
+  }
+
+  @override
+  String get qcChecklistIncomplete =>
+      'Cochez tous les points de contrôle pour approuver la ferme.';
+
+  @override
+  String get qcNoLinkedFarm =>
+      'Aucune ferme liée trouvée pour cet enregistrement.';
+
+  @override
+  String get qcNotPartOfReview =>
+      'Déjà décidé - affiché pour information, ne fait pas partie de cette vérification.';
+
+  @override
+  String get qcNoPhotoDocumentation =>
+      'Aucune documentation photo enregistrée (p. ex. données importées).';
+
+  @override
+  String get qcCheckNationalId =>
+      'Pièce d\'identité vérifiée : photo présente, lisible et conforme aux données du producteur';
+
+  @override
+  String get qcCheckConsentForm =>
+      'Formulaire de consentement vérifié : photo présente et document correct';
+
+  @override
+  String get qcCheckConsentForm2 =>
+      'Formulaire de consentement, deuxième photo vérifiée';
+
+  @override
+  String get qcCheckFieldPhoto =>
+      'Photo de la parcelle vérifiée : présente et correspondant à la parcelle';
+
+  @override
+  String get qcCheckPolygon => 'Géométrie du polygone vérifiée et approuvée';
+
+  @override
+  String get qcCheckPhotoUnavailable =>
+      'Photo non disponible - impossible de confirmer';
 }

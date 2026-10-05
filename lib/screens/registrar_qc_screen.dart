@@ -17,6 +17,7 @@ import '../main.dart';
 import '../services/open_ral_service.dart';
 import '../services/asset_registry_api_service.dart';
 import '../services/user_registry_api_service.dart';
+import '../helpers/deep_copy_map.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
@@ -39,7 +40,139 @@ class RegistrarQCScreen extends StatefulWidget {
 }
 
 /// Sort orders offered in the QC list.
-enum _QcSort { dateDesc, dateAsc, registrar, name, type }
+enum _QcSort { dateDesc, dateAsc, registrar, name }
+
+/// Fotorollen je Objekttyp, die im QC als Prüfpunkt abgehakt werden müssen -
+/// sofern das Objekt ein solches Foto verknüpft hat. Excel-Importe tragen keine
+/// Fotos und bekommen deshalb keine Foto-Prüfpunkte.
+const Map<String, List<String>> _qcPhotoRoles = {
+  'human': ['nationalIDPhoto'],
+  'farm': ['consentFormPhoto', 'consentFormPhoto2'],
+  'field': ['fieldRegistrationPhoto'],
+};
+
+/// Prüfpunkt-Schlüssel für die Freigabe der Feldgrenze.
+const String _qcPolygonCheck = 'polygonGeometry';
+
+/// Ein Punkt der QC-Checkliste. [check] ist die Fotorolle oder
+/// [_qcPolygonCheck] und landet so im signierten QC-Job.
+class _QcCheck {
+  const _QcCheck({
+    required this.object,
+    required this.check,
+  });
+
+  final Map<String, dynamic> object;
+  final String check;
+
+  String get objectUid => object['identity']?['UID']?.toString() ?? '';
+  String get objectType => object['template']?['RALType']?.toString() ?? '';
+  String get id => '$objectUid|$check';
+  bool get isPhoto => check != _qcPolygonCheck;
+}
+
+/// Eine Farm samt Farmer und offenen Feldern - die Einheit, die im QC am Stück
+/// geprüft und entschieden wird.
+///
+/// Farm oder Farmer können bereits freigegeben sein (nachträglich erfasste
+/// Felder, weitere Farm eines bekannten Farmers); sie stehen dann nur als
+/// Kontext in der Karte und sind nicht Teil der Entscheidung.
+class _QcBundle {
+  _QcBundle({required this.key, this.farm, this.farmer});
+
+  /// Farm-UID, oder die UID des offenen Objekts, wenn keine Farm gefunden wurde.
+  final String key;
+  Map<String, dynamic>? farm;
+  Map<String, dynamic>? farmer;
+  final List<Map<String, dynamic>> fields = [];
+
+  DateTime? registeredAt;
+  String registrarName = '-';
+  String registrarUid = '';
+  String registrarEmail = '';
+  final Set<String> alternateIds = {};
+
+  static String uidOf(Map<String, dynamic>? obj) =>
+      obj?['identity']?['UID']?.toString() ?? '';
+
+  static bool isPending(Map<String, dynamic>? obj) =>
+      obj?['objectState'] == 'qcPending';
+
+  List<Map<String, dynamic>> get members => [
+        if (farmer != null) farmer!,
+        if (farm != null) farm!,
+        ...fields,
+      ];
+
+  List<Map<String, dynamic>> get pendingMembers =>
+      members.where(isPending).toList();
+
+  List<Map<String, dynamic>> get pendingFields =>
+      fields.where(isPending).toList();
+
+  bool contains(String uid) => members.any((m) => uidOf(m) == uid);
+
+  String get name {
+    for (final obj in [farm, farmer, ...fields]) {
+      final n = obj?['identity']?['name']?.toString() ?? '';
+      if (n.isNotEmpty) return n;
+    }
+    return 'Unnamed';
+  }
+
+  String get farmerName =>
+      farmer?['identity']?['name']?.toString().trim().isNotEmpty == true
+          ? farmer!['identity']['name'].toString()
+          : '-';
+
+  /// Datum und Registrar übernimmt das Bündel aus den geladenen Einträgen -
+  /// bevorzugt aus dem der Farm, sonst aus dem ersten mit Datum.
+  void absorbEntry(_QcEntry entry) {
+    alternateIds.addAll(entry.alternateIds);
+    final takeOver = entry.registeredAt != null &&
+        (registeredAt == null || entry.ralType == 'farm');
+    if (takeOver || (registrarUid.isEmpty && entry.registrarUid.isNotEmpty)) {
+      registeredAt = entry.registeredAt ?? registeredAt;
+      registrarName = entry.registrarName;
+      registrarUid = entry.registrarUid;
+      registrarEmail = entry.registrarEmail;
+    }
+  }
+
+  /// Setzt die neue Fassung eines Mitglieds ein (Polygonkorrektur, Entscheidung
+  /// in einem anderen Bündel mit demselben Farmer).
+  void replaceObject(Map<String, dynamic> updated) {
+    final uid = uidOf(updated);
+    if (uid.isEmpty) return;
+    if (uidOf(farm) == uid) farm = updated;
+    if (uidOf(farmer) == uid) farmer = updated;
+    for (int i = 0; i < fields.length; i++) {
+      if (uidOf(fields[i]) == uid) fields[i] = updated;
+    }
+  }
+
+  /// Label for the registrar filter. Not everyone fills in a name, so the mail
+  /// address is what actually identifies the person in that case.
+  String get registrarLabel {
+    final hasName = registrarName.isNotEmpty && registrarName != '-';
+    if (hasName && registrarEmail.isNotEmpty) {
+      return '$registrarName ($registrarEmail)';
+    }
+    if (registrarEmail.isNotEmpty) return registrarEmail;
+    return registrarName;
+  }
+
+  /// Everything the search box may match against, lowercased.
+  String get searchIndex => [
+        for (final m in members) ...[
+          m['identity']?['name']?.toString() ?? '',
+          uidOf(m),
+        ],
+        registrarName,
+        registrarEmail,
+        ...alternateIds,
+      ].join(' ').toLowerCase();
+}
 
 /// A pending registration together with the metadata the list needs for
 /// sorting, filtering and searching.
@@ -82,26 +215,6 @@ class _QcEntry {
       );
 
   String get uid => object['identity']?['UID']?.toString() ?? '';
-
-  /// Label for the registrar filter. Not everyone fills in a name, so the mail
-  /// address is what actually identifies the person in that case.
-  String get registrarLabel {
-    final hasName = registrarName.isNotEmpty && registrarName != '-';
-    if (hasName && registrarEmail.isNotEmpty) {
-      return '$registrarName ($registrarEmail)';
-    }
-    if (registrarEmail.isNotEmpty) return registrarEmail;
-    return registrarName;
-  }
-
-  /// Everything the search box may match against, lowercased once.
-  late final String searchIndex = [
-    name,
-    uid,
-    registrarName,
-    registrarEmail,
-    ...alternateIds,
-  ].join(' ').toLowerCase();
 }
 
 class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
@@ -154,7 +267,22 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// zählt serverseitig und lädt keine Dokumente.
   int? _totalPending;
 
-  String _filterType = 'all'; // all, farm, human, field
+  /// Die Prüfeinheiten: je Farm ein Bündel aus Farm, Farmer und Feldern.
+  /// [_pendingRegistrations] bleibt die Liste der geladenen offenen Objekte,
+  /// aus denen die Bündel gebildet werden.
+  List<_QcBundle> _bundles = [];
+
+  /// Abgehakte Prüfpunkte je Bündel: Prüfpunkt-ID -> Zeitpunkt des Abhakens.
+  /// Der Zeitpunkt geht mit in den signierten QC-Job.
+  final Map<String, Map<String, DateTime>> _checks = {};
+
+  /// Foto-Abfragen je Objekt und Rolle. Ohne Cache würde jedes Abhaken die
+  /// Karte neu bauen und alle Fotos erneut aus Firestore laden.
+  final Map<String, Future<Map<String, dynamic>?>> _photoFutures = {};
+
+  /// Bündel, das nach einem Sprung aus der Übersichtskarte aufgeklappt wird.
+  String? _focusBundleKey;
+
   String _registrarFilter = 'all'; // 'all' or a registrar UID
   _QcSort _sortMode = _QcSort.dateDesc;
   String _searchQuery = '';
@@ -176,26 +304,39 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     super.dispose();
   }
 
-  /// Drops a decided registration from the in-memory queue.
+  /// Drops a decided bundle from the in-memory queue.
   ///
-  /// The object has just left `qcPending`, so a full reload would return this
-  /// exact list minus that one entry - at the price of one collection query
-  /// plus one method fetch per remaining registration. On a queue of any size
-  /// that is seconds of waiting for a result we already know.
-  void _removeEntryLocally(Map<String, dynamic> object) {
-    final String uid = object['identity']?['UID']?.toString() ?? '';
-    if (uid.isEmpty || !mounted) return;
+  /// Its objects have just left `qcPending`, so a full reload would return this
+  /// exact list minus that bundle - at the price of the whole query chain
+  /// again. [decided] are the written object versions: another bundle may share
+  /// the farmer (second farm of the same person) and must show the new state.
+  void _removeBundleLocally(
+      _QcBundle bundle, List<Map<String, dynamic>> decided) {
+    if (!mounted) return;
+    final decidedUids = decided.map(_QcBundle.uidOf).toSet();
 
     setState(() {
-      _pendingRegistrations =
-          _pendingRegistrations.where((e) => e.uid != uid).toList();
-      _registrarCache.remove(uid);
+      _bundles = _bundles.where((b) => b.key != bundle.key).toList();
+      for (final other in _bundles) {
+        for (final obj in decided) {
+          other.replaceObject(obj);
+        }
+      }
+      // Ein Bündel, in dem dadurch nichts Offenes mehr steht, ist erledigt.
+      _bundles = _bundles.where((b) => b.pendingMembers.isNotEmpty).toList();
+
+      _pendingRegistrations = _pendingRegistrations
+          .where((e) => !decidedUids.contains(e.uid))
+          .toList();
+      for (final uid in decidedUids) {
+        _registrarCache.remove(uid);
+      }
+      _checks.remove(bundle.key);
 
       // Deciding the last entry of the registrar currently filtered on would
       // otherwise leave an empty list behind with no visible reason.
       if (_registrarFilter != 'all' &&
-          !_pendingRegistrations
-              .any((e) => e.registrarUid == _registrarFilter)) {
+          !_bundles.any((b) => b.registrarUid == _registrarFilter)) {
         _registrarFilter = 'all';
       }
     });
@@ -254,6 +395,10 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
     // Neu aufsetzen - der Refresh-Knopf führt hier ebenfalls herein.
     _pendingRegistrations = [];
+    _bundles = [];
+    _checks.clear();
+    _photoFutures.clear();
+    _focusBundleKey = null;
     _registrarCache.clear();
     _loadedUids.clear();
     _methodCursor = null;
@@ -349,9 +494,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         collected.addAll(await _loadFromObjects());
       }
 
+      final newBundles = await _groupIntoBundles(collected);
+
       if (!mounted) return;
       setState(() {
         _pendingRegistrations = [..._pendingRegistrations, ...collected];
+        _bundles = [..._bundles, ...newBundles];
         _loadingMore = false;
       });
     } catch (e) {
@@ -495,6 +643,212 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     for (final snapshot in snapshots) {
       for (final doc in snapshot.docs) {
         result[doc.id] = doc.data();
+      }
+    }
+    return result;
+  }
+
+  /// Ordnet neu geladene offene Objekte ihrer Farm zu und baut für jede noch
+  /// unbekannte Farm das Bündel aus Farm, Farmer und allen offenen Feldern.
+  ///
+  /// Ausgangspunkt sind bewusst alle offenen Objekte, nicht nur offene Farmen:
+  /// Felder lassen sich nachträglich an eine bereits freigegebene Farm hängen
+  /// und würden in einer reinen Farm-Warteschlange nie auftauchen.
+  Future<List<_QcBundle>> _groupIntoBundles(List<_QcEntry> entries) async {
+    final created = <String, _QcBundle>{};
+    _QcBundle? bundleFor(String key) => created[key] ??
+        _bundles.cast<_QcBundle?>().firstWhere((b) => b!.key == key,
+            orElse: () => null);
+
+    // 1. Farm-UID je Eintrag.
+    final farmUidsByEntry = <String, List<String>>{};
+    final unresolvedOwners = <String>[];
+    for (final entry in entries) {
+      if (entry.uid.isEmpty) continue;
+      switch (entry.ralType) {
+        case 'farm':
+          farmUidsByEntry[entry.uid] = [entry.uid];
+          break;
+        case 'field':
+          final farmUid = _farmUidOfField(entry.object);
+          if (farmUid != null) farmUidsByEntry[entry.uid] = [farmUid];
+          break;
+        case 'human':
+          unresolvedOwners.add(entry.uid);
+          break;
+      }
+    }
+
+    // Der Farmer kennt seine Farm nicht - nur die Farm verweist auf ihn.
+    final farmObjects = <String, Map<String, dynamic>>{
+      for (final e in entries)
+        if (e.ralType == 'farm') e.uid: e.object,
+    };
+    if (unresolvedOwners.isNotEmpty) {
+      final farms = await _fetchFarmsByOwner(unresolvedOwners);
+      for (final farm in farms) {
+        final farmUid = _QcBundle.uidOf(farm);
+        final ownerUid = _ownerUidOfFarm(farm);
+        if (farmUid.isEmpty || ownerUid == null) continue;
+        farmObjects.putIfAbsent(farmUid, () => farm);
+        (farmUidsByEntry[ownerUid] ??= []).add(farmUid);
+      }
+    }
+
+    // 2. Farmen, für die es noch kein Bündel gibt.
+    final newFarmUids = <String>{
+      for (final uids in farmUidsByEntry.values)
+        for (final uid in uids)
+          if (bundleFor(uid) == null) uid,
+    };
+    final missingFarms =
+        newFarmUids.where((uid) => !farmObjects.containsKey(uid)).toList();
+    farmObjects.addAll(await _fetchObjects(missingFarms));
+
+    final foundFarmUids =
+        newFarmUids.where((uid) => farmObjects.containsKey(uid)).toList();
+    final entryObjects = {for (final e in entries) e.uid: e.object};
+
+    // 3. Farmer und offene Felder der neuen Farmen - je ein Sammelabruf.
+    final ownerUids = <String>{
+      for (final uid in foundFarmUids)
+        if (_ownerUidOfFarm(farmObjects[uid]!) case final owner?) owner,
+    };
+    final farmers = await _fetchObjects(
+        ownerUids.where((uid) => !entryObjects.containsKey(uid)).toList());
+    farmers.addAll({
+      for (final uid in ownerUids)
+        if (entryObjects[uid] != null) uid: entryObjects[uid]!,
+    });
+    final fieldsByFarm = await _fetchPendingFieldsOfFarms(foundFarmUids);
+
+    for (final farmUid in foundFarmUids) {
+      final farm = farmObjects[farmUid]!;
+      final bundle = _QcBundle(
+        key: farmUid,
+        farm: farm,
+        farmer: farmers[_ownerUidOfFarm(farm)],
+      );
+      bundle.fields.addAll(fieldsByFarm[farmUid] ?? const []);
+      created[farmUid] = bundle;
+    }
+
+    // 4. Einträge in ihre Bündel einhängen; ohne auffindbare Farm bekommt das
+    // Objekt ein eigenes Bündel, damit es nicht aus der Warteschlange fällt.
+    for (final entry in entries) {
+      if (entry.uid.isEmpty) continue;
+      final farmUids = farmUidsByEntry[entry.uid] ?? const <String>[];
+      final targets =
+          farmUids.map(bundleFor).whereType<_QcBundle>().toList();
+
+      if (targets.isEmpty) {
+        final orphan = bundleFor(entry.uid) ??
+            (created[entry.uid] = _QcBundle(key: entry.uid));
+        if (entry.ralType == 'field') {
+          if (!orphan.contains(entry.uid)) orphan.fields.add(entry.object);
+        } else if (entry.ralType == 'human') {
+          orphan.farmer = entry.object;
+        } else {
+          orphan.farm = entry.object;
+        }
+        orphan.absorbEntry(entry);
+        continue;
+      }
+
+      for (final bundle in targets) {
+        if (entry.ralType == 'field' && !bundle.contains(entry.uid)) {
+          bundle.fields.add(entry.object);
+        }
+        if (entry.ralType == 'human' && bundle.farmer == null) {
+          bundle.farmer = entry.object;
+        }
+        bundle.absorbEntry(entry);
+      }
+    }
+
+    return created.values.toList();
+  }
+
+  String? _farmUidOfField(Map<String, dynamic> field) {
+    final container =
+        field['currentGeolocation']?['container']?['UID']?.toString();
+    if (container != null && container.isNotEmpty && container != 'unknown') {
+      return container;
+    }
+    final links = field['linkedObjectRef'];
+    if (links is List) {
+      for (final link in links) {
+        if (link is Map && link['RALType'] == 'farm') {
+          final uid = link['UID']?.toString();
+          if (uid != null && uid.isNotEmpty) return uid;
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _ownerUidOfFarm(Map<String, dynamic> farm) {
+    final links = farm['linkedObjectRef'];
+    if (links is! List) return null;
+    for (final link in links) {
+      if (link is Map && link['role'] == 'owner') {
+        final uid = link['UID']?.toString();
+        if (uid != null && uid.isNotEmpty) return uid;
+      }
+    }
+    return null;
+  }
+
+  /// Farmen, die einen der Farmer als Eigentümer verknüpfen - in Zehnerbündeln
+  /// (Grenze von `arrayContainsAny`).
+  Future<List<Map<String, dynamic>>> _fetchFarmsByOwner(
+      List<String> ownerUids) async {
+    final result = <Map<String, dynamic>>[];
+    for (int i = 0; i < ownerUids.length; i += 10) {
+      final chunk = ownerUids.sublist(i, math.min(i + 10, ownerUids.length));
+      try {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where('linkedObjectRef',
+                arrayContainsAny: [
+                  for (final uid in chunk)
+                    {'RALType': 'human', 'UID': uid, 'role': 'owner'},
+                ])
+            .get();
+        for (final doc in snapshot.docs) {
+          if (doc.data()['template']?['RALType'] == 'farm') {
+            result.add(doc.data());
+          }
+        }
+      } catch (e) {
+        debugPrint('QC: could not resolve farms of farmers: $e');
+      }
+    }
+    return result;
+  }
+
+  /// Alle offenen Felder der Farmen, nach Farm-UID gruppiert.
+  Future<Map<String, List<Map<String, dynamic>>>> _fetchPendingFieldsOfFarms(
+      List<String> farmUids) async {
+    final result = <String, List<Map<String, dynamic>>>{};
+    for (int i = 0; i < farmUids.length; i += 10) {
+      final chunk = farmUids.sublist(i, math.min(i + 10, farmUids.length));
+      try {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('TFC_objects')
+            .where('currentGeolocation.container.UID', whereIn: chunk)
+            .get();
+        for (final doc in snapshot.docs) {
+          final obj = doc.data();
+          if (obj['template']?['RALType'] != 'field') continue;
+          if (!_QcBundle.isPending(obj)) continue;
+          final farmUid = _farmUidOfField(obj);
+          if (farmUid != null) (result[farmUid] ??= []).add(obj);
+        }
+      } catch (e) {
+        // Ohne diese Abfrage fehlen nur die Felder, die noch nicht über die
+        // Seitenabfrage hereingekommen sind - die übrigen hängt Schritt 4 an.
+        debugPrint('QC: could not load fields of farms: $e');
       }
     }
     return result;
@@ -652,32 +1006,33 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   Map<String, ({String name, String email, String label})>
       get _availableRegistrars {
     final map = <String, ({String name, String email, String label})>{};
-    for (final entry in _pendingRegistrations) {
-      if (entry.registrarUid.isEmpty) continue;
-      map[entry.registrarUid] = (
-        name: entry.registrarName,
-        email: entry.registrarEmail,
-        label: entry.registrarLabel,
+    for (final bundle in _bundles) {
+      if (bundle.registrarUid.isEmpty) continue;
+      map[bundle.registrarUid] = (
+        name: bundle.registrarName,
+        email: bundle.registrarEmail,
+        label: bundle.registrarLabel,
       );
     }
     return map;
   }
 
-  List<_QcEntry> get _filteredRegistrations {
+  List<_QcBundle> get _filteredBundles {
     final query = _searchQuery.trim().toLowerCase();
 
-    final result = _pendingRegistrations.where((entry) {
-      if (_filterType != 'all' && entry.ralType != _filterType) return false;
+    final result = _bundles.where((bundle) {
       if (_registrarFilter != 'all' &&
-          entry.registrarUid != _registrarFilter) {
+          bundle.registrarUid != _registrarFilter) {
         return false;
       }
-      if (query.isNotEmpty && !entry.searchIndex.contains(query)) return false;
+      if (query.isNotEmpty && !bundle.searchIndex.contains(query)) {
+        return false;
+      }
       return true;
     }).toList();
 
     // Undated entries sort last in both directions - "unknown" is not "oldest".
-    int byDate(_QcEntry a, _QcEntry b, {required bool descending}) {
+    int byDate(_QcBundle a, _QcBundle b, {required bool descending}) {
       if (a.registeredAt == null && b.registeredAt == null) return 0;
       if (a.registeredAt == null) return 1;
       if (b.registeredAt == null) return -1;
@@ -708,159 +1063,154 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         result.sort(
             (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         break;
-      case _QcSort.type:
-        result.sort((a, b) {
-          final cmp = a.ralType.compareTo(b.ralType);
-          return cmp != 0 ? cmp : byDate(a, b, descending: true);
-        });
-        break;
     }
     return result;
   }
 
-  Future<void> _approveRegistration(Map<String, dynamic> object) async {
-    final l10n = AppLocalizations.of(context)!;
+  /// Die Prüfpunkte eines Bündels: je offenem Objekt ein Punkt pro verknüpftem
+  /// Foto, bei Feldern zusätzlich die Freigabe der Polygongeometrie.
+  List<_QcCheck> _requiredChecks(_QcBundle bundle) {
+    final checks = <_QcCheck>[];
+    for (final obj in bundle.pendingMembers) {
+      final ralType = obj['template']?['RALType']?.toString() ?? '';
+      for (final role in _qcPhotoRoles[ralType] ?? const <String>[]) {
+        if (_hasLinkedPhoto(obj, role)) {
+          checks.add(_QcCheck(object: obj, check: role));
+        }
+      }
+      if (ralType == 'field') {
+        checks.add(_QcCheck(object: obj, check: _qcPolygonCheck));
+      }
+    }
+    return checks;
+  }
 
-    // Zeige Bestätigungs-Dialog
-    final ralType = object['template']?['RALType'];
+  bool _hasLinkedPhoto(Map<String, dynamic> obj, String role) {
+    final links = obj['linkedObjectRef'];
+    if (links is! List) return false;
+    return links.any((link) =>
+        link is Map && link['RALType'] == 'image' && link['role'] == role);
+  }
+
+  bool _isChecked(_QcBundle bundle, _QcCheck check) =>
+      _checks[bundle.key]?.containsKey(check.id) ?? false;
+
+  void _setChecked(_QcBundle bundle, _QcCheck check, bool value) {
+    setState(() {
+      final checks = _checks.putIfAbsent(bundle.key, () => {});
+      if (value) {
+        checks[check.id] = DateTime.now().toUtc();
+      } else {
+        checks.remove(check.id);
+      }
+    });
+  }
+
+  /// Entscheidet ein Bündel als Ganzes und schreibt die Entscheidung samt
+  /// Checkliste als einen signierten QC-Job.
+  Future<void> _decideBundle(_QcBundle bundle, {required bool approve}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final checks = _requiredChecks(bundle);
+    if (approve && !checks.every((c) => _isChecked(bundle, c))) return;
+
     final notes = await showDialog<String>(
       context: context,
       builder: (context) => _ApprovalDialog(
-        isApproval: true,
-        objectType: ralType,
+        isApproval: approve,
+        objectType: bundle.pendingFields.isNotEmpty ? 'field' : 'farm',
       ),
     );
-
     if (notes == null) return; // Abgebrochen
 
     _setBusy(l10n.qcSavingDecision);
 
     try {
-      String approvalNotes = notes;
+      final newState = approve ? 'active' : 'qcRejected';
+      final noteKey = approve ? 'approvalNotes' : 'rejectionReason';
+      final jobNotes = <String>[if (notes.isNotEmpty) notes];
+      final outputs = <Map<String, dynamic>>[];
 
-      // Für Field-Objekte: Asset Registry Registrierung durchführen
-      final ralType = object['template']?['RALType'];
-      if (ralType == 'field') {
-        // Separate step: this call goes to an external registry and is the
-        // slowest part of an approval.
-        _setBusy(l10n.qcRegisteringInAssetRegistry);
-        final geoIdResult = await _registerFieldInAssetRegistry(object);
-        if (geoIdResult['geoId'] != null) {
-          // Füge GeoID zu alternateIDs hinzu
-          object['identity']['alternateIDs'] =
-              object['identity']['alternateIDs'] ?? [];
-          object['identity']['alternateIDs'].add({
-            'UID': geoIdResult['geoId'],
-            'issuedBy': 'Asset Registry',
-          });
-        } else if (geoIdResult['error'] != null) {
-          // API-Fehler: Füge Fehlermeldung zu approvalNotes hinzu
-          final errorNote = l10n.assetRegistryRegistrationFailed(
-              geoIdResult['error'] ?? 'Unknown error');
-          approvalNotes =
-              approvalNotes.isEmpty ? errorNote : '$notes\n$errorNote';
+      for (final member in bundle.pendingMembers) {
+        final uid = _QcBundle.uidOf(member);
+        // Auf der aktuellen Fassung aufsetzen, nicht auf der Kopie der Karte:
+        // eine Polygonkorrektur hat inzwischen etwa die Gesamtfläche der Farm
+        // geändert, und die würde sonst wieder überschrieben.
+        final current = await getCurrentObjectVersion(uid);
+        Map<String, dynamic> updated =
+            deepCopyMap(current.isNotEmpty ? current : member);
+        String objectNotes = notes;
+
+        if (approve && updated['template']?['RALType'] == 'field') {
+          // Separate step: this call goes to an external registry and is the
+          // slowest part of an approval.
+          _setBusy(l10n.qcRegisteringInAssetRegistry);
+          final geoIdResult = await _registerFieldInAssetRegistry(updated);
+          if (geoIdResult['geoId'] != null) {
+            final identity = updated['identity'] as Map;
+            identity['alternateIDs'] = [
+              ...(identity['alternateIDs'] as List? ?? const []),
+              {'UID': geoIdResult['geoId'], 'issuedBy': 'Asset Registry'},
+            ];
+          } else if (geoIdResult['error'] != null) {
+            final errorNote = l10n.assetRegistryRegistrationFailed(
+                geoIdResult['error'] ?? 'Unknown error');
+            objectNotes =
+                objectNotes.isEmpty ? errorNote : '$objectNotes\n$errorNote';
+            jobNotes.add('${updated['identity']?['name'] ?? uid}: $errorNote');
+          }
+          _setBusy(l10n.qcSavingDecision);
         }
+
+        updated['objectState'] = newState;
+        updated = setSpecificPropertyJSON(updated, noteKey, objectNotes, 'String');
+        outputs.add(updated);
       }
 
-      // Erstelle changeObjectData Methode
+      // Die verknüpften Fotos teilen das Schicksal ihres Objekts und gehen mit
+      // in denselben Job.
+      _setBusy(l10n.qcUpdatingPhotos);
+      outputs.addAll(await _linkedImagesWithState(outputs, newState));
 
-      // Output: Neues Objekt mit geändertem Status
-      Map<String, dynamic> updatedObject = Map<String, dynamic>.from(object);
-      updatedObject['objectState'] = 'active';
-      setSpecificPropertyJSON(
-          updatedObject, "approvalNotes", approvalNotes, "String");
+      final ticked = _checks[bundle.key] ?? const <String, DateTime>{};
+      final checklist = [
+        for (final check in checks)
+          {
+            'objectUID': check.objectUid,
+            'objectType': check.objectType,
+            'check': check.check,
+            'checked': ticked.containsKey(check.id),
+            'checkedAt': ticked[check.id]?.toIso8601String() ?? '',
+          },
+      ];
+
+      _setBusy(l10n.qcSavingDecision);
       // Push only. The QC screen reads its data straight from Firestore and is
       // used online, so pulling the whole cloud state back down afterwards adds
       // nothing but wait time before the UI is usable again.
-      _setBusy(l10n.qcSavingDecision);
-      await changeObjectData(updatedObject, syncFromCloud: false);
-
-      // Aktualisiere Status der verknüpften image-Objekte
-      _setBusy(l10n.qcUpdatingPhotos);
-      await _updateLinkedImageStatus(
-        object,
-        'active',
-        'qc_approval',
-        approvalNotes.isNotEmpty ? approvalNotes : null,
+      await performQualityControl(
+        newObjectVersions: outputs,
+        decision: approve ? 'approved' : 'rejected',
+        notes: jobNotes.join('\n'),
+        checklist: checklist,
+        subjectUID: bundle.key,
+        syncFromCloud: false,
       );
 
-      // UI aktualisieren
       repaintContainerList.value = true;
-      _removeEntryLocally(object);
+      _removeBundleLocally(bundle, outputs);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.registrationApproved),
-            backgroundColor: Colors.green,
+            content: Text(approve
+                ? l10n.registrationApproved
+                : l10n.registrationRejected),
+            backgroundColor: approve ? Colors.green : Colors.orange,
           ),
         );
       }
     } catch (e) {
-      debugPrint('Error approving registration: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      _setBusy(null);
-    }
-  }
-
-  Future<void> _rejectRegistration(Map<String, dynamic> object) async {
-    final l10n = AppLocalizations.of(context)!;
-
-    // Zeige Ablehnungs-Dialog
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (context) => _ApprovalDialog(isApproval: false),
-    );
-
-    if (reason == null) return; // Abgebrochen
-
-    _setBusy(l10n.qcSavingDecision);
-
-    try {
-      // Erstelle changeObjectData Methode
-
-      Map<String, dynamic> updatedObject = Map<String, dynamic>.from(object);
-      updatedObject['objectState'] = 'qcRejected';
-      setSpecificPropertyJSON(
-          updatedObject, 'rejectionReason', reason, 'String');
-
-      // Speichern in Firestore
-      updatedObject =
-          jsonFullDoubleToInt(sortJsonAlphabetically(updatedObject));
-
-      // Push only - see the note in _approveRegistration.
-      await changeObjectData(updatedObject, syncFromCloud: false);
-
-      // Aktualisiere Status der verknüpften image-Objekte
-      _setBusy(l10n.qcUpdatingPhotos);
-      await _updateLinkedImageStatus(
-        object,
-        'qcRejected',
-        'qc_rejection',
-        reason.isNotEmpty ? reason : null,
-      );
-
-      repaintContainerList.value = true;
-      _removeEntryLocally(object);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.registrationRejected),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error rejecting registration: $e');
+      debugPrint('Error deciding QC bundle ${bundle.key}: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1042,7 +1392,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           if (_dateOrderUnavailable) _buildDateOrderWarning(l10n),
           _buildSearchField(l10n),
           _buildSortAndRegistrarRow(l10n),
-          _buildTypeChips(l10n),
+          const SizedBox(height: 8),
           _buildResultCount(l10n),
 
           // Liste bzw. Übersichtskarte
@@ -1103,7 +1453,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   Widget _buildList(AppLocalizations l10n) {
-    final entries = _filteredRegistrations;
+    final entries = _filteredBundles;
 
     if (entries.isEmpty && _hasMore) {
       // Der Filter greift nur auf das bereits Geladene. Solange noch Seiten
@@ -1131,8 +1481,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     if (entries.isEmpty) {
       // Distinguish "nothing to review" from "your filter hides everything" -
       // otherwise an active filter looks like an empty queue.
-      final hasActiveFilter = _filterType != 'all' ||
-          _registrarFilter != 'all' ||
+      final hasActiveFilter = _registrarFilter != 'all' ||
           _searchQuery.trim().isNotEmpty;
       return Center(
         child: Column(
@@ -1163,7 +1512,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       itemCount: entries.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) => index == entries.length
           ? _buildLoadMoreFooter(l10n)
-          : _buildRegistrationCard(entries[index]),
+          : _buildBundleCard(entries[index]),
     );
   }
 
@@ -1253,39 +1602,53 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
-  /// Polygone für die Übersichtskarte - aus denselben Einträgen, die die Liste
-  /// zeigt, damit Suche und Filter auf beide Ansichten wirken. Objekte ohne
-  /// verwertbare Boundaries (Farmen, Farmer, abgebrochene Aufnahmen) fallen
-  /// hier heraus.
+  /// Polygone für die Übersichtskarte - aus denselben Bündeln, die die Liste
+  /// zeigt, damit Suche und Filter auf beide Ansichten wirken. Felder ohne
+  /// verwertbare Boundaries (abgebrochene Aufnahmen) fallen hier heraus.
   List<QcMapPolygon> get _mapPolygons {
     final result = <QcMapPolygon>[];
-    for (final entry in _filteredRegistrations) {
-      if (entry.uid.isEmpty) continue; // PolygonId muss eindeutig sein
-      final points = _getBoundariesFromObject(entry.object);
-      if (points == null || points.length < 3) continue;
+    final seen = <String>{}; // PolygonId muss eindeutig sein
+    for (final bundle in _filteredBundles) {
+      for (final field in bundle.pendingFields) {
+        final uid = _QcBundle.uidOf(field);
+        if (uid.isEmpty || !seen.add(uid)) continue;
+        final points = _getBoundariesFromObject(field);
+        if (points == null || points.length < 3) continue;
 
-      final area = getSpecificPropertyfromJSON(entry.object, 'area');
-      result.add(QcMapPolygon(
-        uid: entry.uid,
-        name: entry.name,
-        points: points,
-        accuracies: _getBoundaryAccuracies(entry.object),
-        registrarName: entry.registrarName,
-        areaHa: (area is num) ? area.toDouble() : null,
-      ));
+        final area = getSpecificPropertyfromJSON(field, 'area');
+        result.add(QcMapPolygon(
+          uid: uid,
+          name: field['identity']?['name']?.toString() ?? bundle.name,
+          points: points,
+          accuracies: _getBoundaryAccuracies(field),
+          registrarName: bundle.registrarName,
+          areaHa: (area is num) ? area.toDouble() : null,
+        ));
+      }
     }
     return result;
   }
 
-  /// Auswahl auf der Übersichtskarte: Eckdaten des Feldes plus derselbe
-  /// Freigabe-Flow wie in der Liste.
+  /// Springt aus der Übersichtskarte zur Prüfung des Bündels in der Liste.
+  void _openBundleReview(_QcBundle bundle) {
+    setState(() {
+      _showMap = false;
+      _focusBundleKey = bundle.key;
+      _searchQuery = bundle.key;
+      _searchController.text = bundle.key;
+    });
+  }
+
+  /// Auswahl auf der Übersichtskarte: Eckdaten des Feldes. Entschieden wird
+  /// nicht hier, sondern in der Karte der Farm - nur dort ist die Checkliste.
   void _showPolygonSheet(QcMapPolygon polygon) {
     final l10n = AppLocalizations.of(context)!;
-    final matches = _pendingRegistrations.where((e) => e.uid == polygon.uid);
-    if (matches.isEmpty) return;
+    final bundles = _bundles.where((b) => b.contains(polygon.uid));
+    if (bundles.isEmpty) return;
 
-    final entry = matches.first;
-    final obj = entry.object;
+    final bundle = bundles.first;
+    final obj =
+        bundle.fields.firstWhere((f) => _QcBundle.uidOf(f) == polygon.uid);
     final worst = polygon.worstAccuracyValue;
 
     showModalBottomSheet<void>(
@@ -1301,19 +1664,21 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              entry.name,
+              polygon.name,
               style: Theme.of(context)
                   .textTheme
                   .titleLarge
                   ?.copyWith(color: Colors.black),
             ),
             const SizedBox(height: 12),
-            _buildCardMeta(Icons.person_outline, entry.registrarName),
+            _buildCardMeta(Icons.agriculture, bundle.name),
+            const SizedBox(height: 4),
+            _buildCardMeta(Icons.person_outline, bundle.registrarName),
             const SizedBox(height: 4),
             _buildCardMeta(
               Icons.event,
-              entry.registeredAt != null
-                  ? _formatRegistrationDate(entry.registeredAt!)
+              bundle.registeredAt != null
+                  ? _formatRegistrationDate(bundle.registeredAt!)
                   : '-',
             ),
             if (polygon.areaHa != null) ...[
@@ -1369,26 +1734,13 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                   icon: const Icon(Icons.fullscreen),
                   label: Text(l10n.mapView),
                 ),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _rejectRegistration(obj);
-                  },
-                  icon: const Icon(Icons.close),
-                  label: Text(l10n.rejectRegistration),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                ),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    _approveRegistration(obj);
+                    _openBundleReview(bundle);
                   },
-                  icon: const Icon(Icons.check),
-                  label: Text(l10n.approveRegistration),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: Text(l10n.qcOpenReview),
                 ),
               ],
             ),
@@ -1400,7 +1752,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
   void _resetFilters() {
     setState(() {
-      _filterType = 'all';
+      _focusBundleKey = null;
       _registrarFilter = 'all';
       _searchQuery = '';
       _searchController.clear();
@@ -1471,10 +1823,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 DropdownMenuItem(
                   value: _QcSort.name,
                   child: Text(l10n.sortByNameAsc),
-                ),
-                DropdownMenuItem(
-                  value: _QcSort.type,
-                  child: Text(l10n.sortByType),
                 ),
               ],
               onChanged: (value) {
@@ -1575,55 +1923,16 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
-  Widget _buildTypeChips(AppLocalizations l10n) {
-    int countOf(String type) =>
-        _pendingRegistrations.where((e) => e.ralType == type).length;
-
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            FilterChip(
-              label: Text('${l10n.all} (${_pendingRegistrations.length})'),
-              selected: _filterType == 'all',
-              onSelected: (selected) => setState(() => _filterType = 'all'),
-            ),
-            const SizedBox(width: 8),
-            FilterChip(
-              label: Text('${l10n.farms} (${countOf('farm')})'),
-              selected: _filterType == 'farm',
-              onSelected: (selected) => setState(() => _filterType = 'farm'),
-            ),
-            const SizedBox(width: 8),
-            FilterChip(
-              label: Text('${l10n.farmers} (${countOf('human')})'),
-              selected: _filterType == 'human',
-              onSelected: (selected) => setState(() => _filterType = 'human'),
-            ),
-            const SizedBox(width: 8),
-            FilterChip(
-              label: Text('${l10n.fields} (${countOf('field')})'),
-              selected: _filterType == 'field',
-              onSelected: (selected) => setState(() => _filterType = 'field'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildResultCount(AppLocalizations l10n) {
     if (_isLoading || _pendingRegistrations.isEmpty) {
       return const SizedBox.shrink();
     }
-    final shown = _filteredRegistrations.length;
+    final shown = _filteredBundles.length;
     final loaded = _pendingRegistrations.length;
     final total = _totalPending;
 
     final parts = <String>[
-      if (shown != loaded) l10n.qcResultCount(shown, loaded),
+      if (shown != _bundles.length) l10n.qcResultCount(shown, _bundles.length),
       // Wie viel der Warteschlange überhaupt schon im Zugriff ist.
       if (total != null && loaded < total) l10n.qcLoadedOfTotal(loaded, total),
     ];
@@ -1662,51 +1971,37 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return DateFormat.yMd(locale).add_Hm().format(local);
   }
 
-  Widget _buildRegistrationCard(_QcEntry entry) {
-    final obj = entry.object;
+  /// Eine Farm mit Farmer und offenen Feldern als eine Prüfeinheit: Details,
+  /// Fotos und Karten wie bisher, dazu je Objekt die Prüfpunkte. Freigeben
+  /// lässt sich erst, wenn alle Punkte abgehakt sind.
+  Widget _buildBundleCard(_QcBundle bundle) {
     final l10n = AppLocalizations.of(context)!;
-    final ralType = entry.ralType;
-    final name = entry.name;
-
-    IconData icon;
-    Color color;
-    String subtitle = '';
-
-    switch (ralType) {
-      case 'farm':
-        icon = Icons.agriculture;
-        color = Colors.green;
-        subtitle = l10n.farmDetails;
-        break;
-      case 'human':
-        icon = Icons.person;
-        color = Colors.blue;
-        subtitle = l10n.farmerDetails;
-        break;
-      case 'field':
-        icon = Icons.map;
-        color = Colors.orange;
-        final area = getSpecificPropertyfromJSON(obj, 'area');
-        final areaValue = (area is num) ? area.toDouble() : 0.0;
-        subtitle = '${l10n.fieldArea}: ${areaValue.toStringAsFixed(2)} ha';
-        break;
-      default:
-        icon = Icons.help_outline;
-        color = Colors.grey;
-    }
+    final checks = _requiredChecks(bundle);
+    final done = checks.where((c) => _isChecked(bundle, c)).length;
+    final complete = done == checks.length;
+    final pendingFields = bundle.pendingFields;
 
     return Card(
+      key: ValueKey('qc-bundle-${bundle.key}'),
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: color,
-          child: Icon(icon, color: Colors.white),
+        initiallyExpanded: bundle.key == _focusBundleKey,
+        // Aufgeklappte Abschnitte behalten ihre geladenen Fotos und Karten,
+        // auch wenn die Karte zwischendurch zuklappt.
+        maintainState: true,
+        leading: const CircleAvatar(
+          backgroundColor: Colors.green,
+          child: Icon(Icons.agriculture, color: Colors.white),
         ),
-        title: Text(name, style: const TextStyle(color: Colors.black)),
+        title: Text(bundle.name, style: const TextStyle(color: Colors.black)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(subtitle, style: const TextStyle(color: Colors.black87)),
+            Text(
+              '${l10n.farmer}: ${bundle.farmerName}  ·  '
+              '${l10n.qcFieldCount(pendingFields.length)}',
+              style: const TextStyle(color: Colors.black87),
+            ),
             const SizedBox(height: 2),
             // Date and registrar directly on the card: they are the two things
             // a reviewer scans the queue by.
@@ -1716,11 +2011,15 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               children: [
                 _buildCardMeta(
                   Icons.event,
-                  entry.registeredAt != null
-                      ? _formatRegistrationDate(entry.registeredAt!)
+                  bundle.registeredAt != null
+                      ? _formatRegistrationDate(bundle.registeredAt!)
                       : '-',
                 ),
-                _buildCardMeta(Icons.person_outline, entry.registrarName),
+                _buildCardMeta(Icons.person_outline, bundle.registrarName),
+                _buildCardMeta(
+                  complete ? Icons.check_circle_outline : Icons.checklist,
+                  l10n.qcChecklistProgress(done, checks.length),
+                ),
               ],
             ),
           ],
@@ -1729,112 +2028,53 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Layout: Details links, Map rechts (wenn Geodaten vorhanden)
-                _hasGeoData(obj)
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: _buildObjectDetails(obj),
-                          ),
-                          const SizedBox(width: 16),
-                          _buildMiniMapWidget(obj),
-                        ],
-                      )
-                    : _buildObjectDetails(obj),
+                if (bundle.farm == null)
+                  _buildHintLine(Icons.link_off, l10n.qcNoLinkedFarm),
+                if (bundle.farmer != null)
+                  _buildMemberSection(
+                    bundle,
+                    bundle.farmer!,
+                    checks,
+                    icon: Icons.person,
+                    color: Colors.blue,
+                    title: '${l10n.farmer}: ${bundle.farmerName}',
+                  ),
+                if (bundle.farm != null)
+                  _buildMemberSection(
+                    bundle,
+                    bundle.farm!,
+                    checks,
+                    icon: Icons.agriculture,
+                    color: Colors.green,
+                    title:
+                        '${l10n.farm}: ${bundle.farm!['identity']?['name'] ?? '-'}',
+                  ),
+                for (final field in pendingFields)
+                  _buildMemberSection(
+                    bundle,
+                    field,
+                    checks,
+                    icon: Icons.map,
+                    color: Colors.orange,
+                    title:
+                        '${l10n.field}: ${field['identity']?['name'] ?? '-'}',
+                  ),
                 const Divider(height: 24),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (ralType == 'field') ...[
-                      TextButton.icon(
-                        onPressed: () {
-                          final l10n = AppLocalizations.of(context)!;
-                          final boundariesRaw =
-                              getSpecificPropertyfromJSON(obj, 'boundaries');
-                          final area = getSpecificPropertyfromJSON(obj, 'area')
-                                  ?.toString() ??
-                              '';
-                          String? geoId;
-                          final altIds =
-                              obj['identity']?['alternateIDs'] as List?;
-                          if (altIds != null) {
-                            for (final a in altIds) {
-                              if (a['issuedBy'] == 'Asset Registry') {
-                                geoId = a['UID'] as String?;
-                                break;
-                              }
-                            }
-                          }
-                          FieldDownloadHelper.downloadGeoJSON(
-                            context,
-                            name:
-                                obj['identity']?['name'] as String? ?? 'field',
-                            boundariesJson: boundariesRaw?.toString(),
-                            l10n: l10n,
-                            area: area,
-                            geoId: geoId,
-                          );
-                        },
-                        icon: const Icon(Icons.download, size: 16),
-                        label: const Text('GeoJSON',
-                            style: TextStyle(fontSize: 12)),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.green[700],
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      TextButton.icon(
-                        onPressed: () {
-                          final l10n = AppLocalizations.of(context)!;
-                          final boundariesRaw =
-                              getSpecificPropertyfromJSON(obj, 'boundaries');
-                          final area = getSpecificPropertyfromJSON(obj, 'area')
-                                  ?.toString() ??
-                              '';
-                          String? geoId;
-                          final altIds =
-                              obj['identity']?['alternateIDs'] as List?;
-                          if (altIds != null) {
-                            for (final a in altIds) {
-                              if (a['issuedBy'] == 'Asset Registry') {
-                                geoId = a['UID'] as String?;
-                                break;
-                              }
-                            }
-                          }
-                          FieldDownloadHelper.downloadKML(
-                            context,
-                            name:
-                                obj['identity']?['name'] as String? ?? 'Field',
-                            boundariesJson: boundariesRaw?.toString(),
-                            l10n: l10n,
-                            area: area,
-                            geoId: geoId,
-                          );
-                        },
-                        icon: const Icon(Icons.map_outlined, size: 16),
-                        label:
-                            const Text('KML', style: TextStyle(fontSize: 12)),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.orange[700],
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
+                    Expanded(
+                      child: complete
+                          ? const SizedBox.shrink()
+                          : Text(
+                              l10n.qcChecklistIncomplete,
+                              style: TextStyle(
+                                  color: Colors.grey[700], fontSize: 12),
+                            ),
+                    ),
                     TextButton.icon(
-                      onPressed: () => _rejectRegistration(obj),
+                      onPressed: () => _decideBundle(bundle, approve: false),
                       icon: const Icon(Icons.close),
                       label: Text(l10n.rejectRegistration),
                       style: TextButton.styleFrom(
@@ -1843,7 +2083,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
-                      onPressed: () => _approveRegistration(obj),
+                      onPressed: complete
+                          ? () => _decideBundle(bundle, approve: true)
+                          : null,
                       icon: const Icon(Icons.check),
                       label: Text(l10n.approveRegistration),
                       style: ElevatedButton.styleFrom(
@@ -1855,6 +2097,233 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Abschnitt für ein Objekt des Bündels: Details (mit Karte, falls Geodaten
+  /// vorhanden) und darunter seine Prüfpunkte.
+  Widget _buildMemberSection(
+    _QcBundle bundle,
+    Map<String, dynamic> obj,
+    List<_QcCheck> checks, {
+    required IconData icon,
+    required Color color,
+    required String title,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final uid = _QcBundle.uidOf(obj);
+    final ralType = obj['template']?['RALType']?.toString() ?? '';
+    final pending = _QcBundle.isPending(obj);
+    final ownChecks = checks.where((c) => c.objectUid == uid).toList();
+    final expectsPhotos = (_qcPhotoRoles[ralType] ?? const []).isNotEmpty;
+    final hasPhotoCheck = ownChecks.any((c) => c.isPhoto);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+              ),
+              _buildStateChip(obj, l10n),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!pending) _buildHintLine(Icons.info_outline, l10n.qcNotPartOfReview),
+          _hasGeoData(obj)
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: _buildObjectDetails(obj)),
+                    const SizedBox(width: 16),
+                    _buildMiniMapWidget(obj),
+                  ],
+                )
+              : _buildObjectDetails(obj),
+          if (ralType == 'field') _buildFieldDownloadButtons(obj),
+          if (pending && expectsPhotos && !hasPhotoCheck)
+            _buildHintLine(Icons.no_photography_outlined,
+                l10n.qcNoPhotoDocumentation),
+          if (ownChecks.isNotEmpty) ...[
+            const Divider(height: 16),
+            for (final check in ownChecks) _buildCheckTile(bundle, check),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStateChip(Map<String, dynamic> obj, AppLocalizations l10n) {
+    final (String label, Color color) = switch (obj['objectState']) {
+      'qcPending' => (l10n.qcPending, Colors.orange),
+      'active' => (l10n.qcApproved, Colors.green),
+      'qcRejected' => (l10n.qcRejected, Colors.red),
+      final other => (other?.toString() ?? '-', Colors.grey),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontSize: 12)),
+    );
+  }
+
+  Widget _buildHintLine(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.orange[800]),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: Colors.orange[900], fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _checkLabel(_QcCheck check, AppLocalizations l10n) {
+    switch (check.check) {
+      case 'nationalIDPhoto':
+        return l10n.qcCheckNationalId;
+      case 'consentFormPhoto':
+        return l10n.qcCheckConsentForm;
+      case 'consentFormPhoto2':
+        return l10n.qcCheckConsentForm2;
+      case 'fieldRegistrationPhoto':
+        return l10n.qcCheckFieldPhoto;
+      case _qcPolygonCheck:
+        return l10n.qcCheckPolygon;
+    }
+    return check.check;
+  }
+
+  /// Ein Prüfpunkt. Foto-Punkte lassen sich nur abhaken, wenn das Foto in der
+  /// Cloud liegt - "Foto ist da" lässt sich sonst nicht bestätigen.
+  Widget _buildCheckTile(_QcBundle bundle, _QcCheck check) {
+    final l10n = AppLocalizations.of(context)!;
+
+    Widget tile({required bool enabled, String? hint}) => CheckboxListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: _isChecked(bundle, check),
+          onChanged:
+              enabled ? (v) => _setChecked(bundle, check, v ?? false) : null,
+          title: Text(
+            _checkLabel(check, l10n),
+            style: const TextStyle(color: Colors.black87, fontSize: 13),
+          ),
+          subtitle: hint == null
+              ? null
+              : Text(hint,
+                  style: TextStyle(color: Colors.orange[900], fontSize: 12)),
+        );
+
+    if (!check.isPhoto) return tile(enabled: true);
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _photoFuture(check.object, check.check),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return tile(enabled: false);
+        }
+        final data = snapshot.data;
+        final available = data != null &&
+            data['notUploaded'] != true &&
+            (data['url']?.toString() ?? '').isNotEmpty;
+        return tile(
+          enabled: available,
+          hint: available ? null : l10n.qcCheckPhotoUnavailable,
+        );
+      },
+    );
+  }
+
+  /// Foto-Abfrage je Objekt und Rolle, einmal je Bildschirm-Sitzung.
+  Future<Map<String, dynamic>?> _photoFuture(
+          Map<String, dynamic> obj, String role) =>
+      _photoFutures.putIfAbsent('${_QcBundle.uidOf(obj)}|$role',
+          () => _getImageURLFromLinkedObject(obj, role));
+
+  /// GeoID aus der Asset Registry, falls das Feld schon eine hat.
+  String? _assetRegistryGeoId(Map<String, dynamic> obj) {
+    final altIds = obj['identity']?['alternateIDs'];
+    if (altIds is! List) return null;
+    for (final a in altIds) {
+      if (a is Map && a['issuedBy'] == 'Asset Registry') {
+        return a['UID'] as String?;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildFieldDownloadButtons(Map<String, dynamic> obj) {
+    final l10n = AppLocalizations.of(context)!;
+    final boundariesRaw = getSpecificPropertyfromJSON(obj, 'boundaries');
+    final area = getSpecificPropertyfromJSON(obj, 'area')?.toString() ?? '';
+    final name = obj['identity']?['name'] as String?;
+
+    ButtonStyle style(Color? color) => TextButton.styleFrom(
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        );
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        spacing: 4,
+        children: [
+          TextButton.icon(
+            onPressed: () => FieldDownloadHelper.downloadGeoJSON(
+              context,
+              name: name ?? 'field',
+              boundariesJson: boundariesRaw?.toString(),
+              l10n: l10n,
+              area: area,
+              geoId: _assetRegistryGeoId(obj),
+            ),
+            icon: const Icon(Icons.download, size: 16),
+            label: const Text('GeoJSON', style: TextStyle(fontSize: 12)),
+            style: style(Colors.green[700]),
+          ),
+          TextButton.icon(
+            onPressed: () => FieldDownloadHelper.downloadKML(
+              context,
+              name: name ?? 'Field',
+              boundariesJson: boundariesRaw?.toString(),
+              l10n: l10n,
+              area: area,
+              geoId: _assetRegistryGeoId(obj),
+            ),
+            icon: const Icon(Icons.map_outlined, size: 16),
+            label: const Text('KML', style: TextStyle(fontSize: 12)),
+            style: style(Colors.orange[700]),
           ),
         ],
       ),
@@ -1922,8 +2391,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       details.add(
           _buildLinkedPhoto(obj, 'consentFormPhoto2', l10n.consentFormPhoto2));
 
-      // Eigentümer der Farm - wird asynchron geladen
-      details.add(_buildOwnerRow(obj, l10n));
     } else if (ralType == 'field') {
       final area = getSpecificPropertyfromJSON(obj, 'area');
       final areaValue = (area is num) ? area.toDouble() : 0.0;
@@ -2147,89 +2614,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
-  /// Lädt den Namen und UID des Farm-Eigentümers aus linkedObjectRef
-  Future<Map<String, String>> _getOwnerInfo(
-      Map<String, dynamic> farmObj) async {
-    try {
-      // Hole linkedObjectRef
-      final linkedObjectRef = farmObj['linkedObjectRef'];
-      if (linkedObjectRef == null ||
-          linkedObjectRef is! List ||
-          linkedObjectRef.isEmpty) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      // Finde Eintrag mit rolle = "owner"
-      Map<String, dynamic>? ownerRef;
-      for (var link in linkedObjectRef) {
-        if (link is Map && link['role'] == 'owner') {
-          ownerRef = Map<String, dynamic>.from(link);
-          break;
-        }
-      }
-
-      if (ownerRef == null || !ownerRef.containsKey('UID')) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      final ownerUID = ownerRef['UID'];
-      if (ownerUID == null || ownerUID.toString().isEmpty) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      // Lade Eigentümer-Objekt aus TFC_objects
-      final ownerDoc = await FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .doc(ownerUID.toString())
-          .get();
-
-      if (!ownerDoc.exists) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      final ownerData = ownerDoc.data();
-      if (ownerData == null) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      // Extrahiere identity -> name
-      final identity = ownerData['identity'];
-      if (identity == null || identity is! Map) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      final name = identity['name'];
-      if (name == null || name.toString().isEmpty) {
-        return {'name': '-', 'uid': ''};
-      }
-
-      return {'name': name.toString(), 'uid': ownerUID.toString()};
-    } catch (e) {
-      debugPrint('Error getting owner info: $e');
-      return {'name': '-', 'uid': ''};
-    }
-  }
-
-  /// Widget für "Eigentümer" Zeile mit FutureBuilder
-  Widget _buildOwnerRow(Map<String, dynamic> obj, AppLocalizations l10n) {
-    return FutureBuilder<Map<String, String>>(
-      future: _getOwnerInfo(obj),
-      builder: (context, snapshot) {
-        final info = snapshot.data ?? {'name': '...', 'uid': ''};
-        final ownerName = info['name'] ?? '...';
-        final ownerUID = info['uid'] ?? '';
-
-        return _buildDetailRow(
-          l10n.owner,
-          ownerName,
-          onTap: ownerUID.isNotEmpty && ownerName != '-' && ownerName != '...'
-              ? () => _showObjectDetailsDialog(ownerUID)
-              : null,
-        );
-      },
-    );
-  }
-
   Widget _buildDetailRow(String label, String value, {VoidCallback? onTap}) {
     final l10n = AppLocalizations.of(context)!;
     final isUID = label == 'UID';
@@ -2315,7 +2699,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   Widget _buildLinkedPhoto(
       Map<String, dynamic> obj, String role, String label) {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: _getImageURLFromLinkedObject(obj, role),
+      future: _photoFuture(obj, role),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -2878,6 +3262,13 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             for (final entry in _pendingRegistrations)
               entry.uid == uid ? entry.withObject(updated) : entry,
           ];
+          for (final bundle in _bundles) {
+            if (!bundle.contains(uid)) continue;
+            bundle.replaceObject(updated);
+            // Die Freigabe galt der alten Geometrie - die neue muss der Prüfer
+            // erneut bestätigen.
+            _checks[bundle.key]?.remove('$uid|$_qcPolygonCheck');
+          }
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3093,79 +3484,43 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
-  /// Ändert den objectState aller verknüpften image-Objekte
-  /// [parentObject] - Das Eltern-Objekt (Farmer, Farm, Field)
-  /// [newState] - Der neue Status (z.B. 'active', 'qcRejected')
-  /// [changeType] - Art der Änderung (z.B. 'qc_approval', 'qc_rejection')
-  /// [notes] - Optionale Notizen
-  Future<void> _updateLinkedImageStatus(
-    Map<String, dynamic> parentObject,
+  /// Neue Fassungen aller image-Objekte, die an [parents] hängen, mit dem
+  /// Zustand [newState] - für den QC-Job, der sie zusammen mit ihren
+  /// Eltern-Objekten schreibt.
+  ///
+  /// Ein fehlendes Foto bricht die Entscheidung nicht ab: ob die Fotos da sind,
+  /// hat der Prüfer über die Checkliste bestätigt.
+  Future<List<Map<String, dynamic>>> _linkedImagesWithState(
+    List<Map<String, dynamic>> parents,
     String newState,
-    String changeType,
-    String? notes,
   ) async {
-    try {
-      final linkedObjectRef = parentObject['linkedObjectRef'];
-      if (linkedObjectRef == null || linkedObjectRef is! List) {
-        return;
+    final imageUids = <String>{};
+    for (final parent in parents) {
+      final links = parent['linkedObjectRef'];
+      if (links is! List) continue;
+      for (final link in links) {
+        if (link is! Map || link['RALType'] != 'image') continue;
+        final uid = link['UID']?.toString();
+        if (uid != null && uid.isNotEmpty) imageUids.add(uid);
       }
+    }
 
-      // Finde alle image-Objekte
-      final imageRefs =
-          linkedObjectRef.where((ref) => ref['RALType'] == 'image').toList();
-
-      if (imageRefs.isEmpty) {
-        debugPrint('No linked image objects found');
-        return;
-      }
-
-      debugPrint('Updating ${imageRefs.length} linked image object(s)');
-
-      // Aktualisiere jedes image-Objekt
-      for (final imageRef in imageRefs) {
-        final imageUID = imageRef['UID']?.toString();
-        if (imageUID == null || imageUID.isEmpty) continue;
-
-        try {
-          // Lade image-Objekt aus Firestore
-          final imageDoc = await FirebaseFirestore.instance
-              .collection('TFC_objects')
-              .doc(imageUID)
-              .get();
-
-          if (!imageDoc.exists) {
-            debugPrint('Image object not found: $imageUID');
-            continue;
-          }
-
-          final imageObj = Map<String, dynamic>.from(imageDoc.data()!);
-          final currentState = imageObj['objectState'] ?? 'unknown';
-
-          debugPrint(
-              'Updating image $imageUID from $currentState to $newState');
-
-          // Output: Neues image-Objekt mit geändertem Status
-          Map<String, dynamic> updatedImage =
-              Map<String, dynamic>.from(imageObj);
-          updatedImage['objectState'] = newState;
-          updatedImage =
-              jsonFullDoubleToInt(sortJsonAlphabetically(updatedImage));
-
-          // Push only - this runs once per linked photo, so a full pull each
-          // time would multiply the wait after every QC decision.
-          await changeObjectData(updatedImage, syncFromCloud: false);
-
-          debugPrint('Image $imageUID updated successfully');
-        } catch (e) {
-          debugPrint('Error updating image $imageUID: $e');
-          // Fahre mit nächstem Bild fort
+    final images = <Map<String, dynamic>>[];
+    for (final uid in imageUids) {
+      try {
+        final current = await getCurrentObjectVersion(uid);
+        if (current.isEmpty) {
+          debugPrint('Image object not found: $uid');
           continue;
         }
+        if (current['objectState'] == newState) continue;
+        final updated = deepCopyMap(current)..['objectState'] = newState;
+        images.add(jsonFullDoubleToInt(sortJsonAlphabetically(updated)));
+      } catch (e) {
+        debugPrint('Error loading image $uid for QC job: $e');
       }
-    } catch (e) {
-      debugPrint('Error in _updateLinkedImageStatus: $e');
-      // Werfe Fehler nicht weiter, da Haupt-Objekt bereits gespeichert wurde
     }
+    return images;
   }
 
   /// Lädt downloadURL aus image-Objekt über linkedObjectRef

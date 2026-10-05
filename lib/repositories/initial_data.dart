@@ -612,6 +612,41 @@ Map<String, dynamic> initialMethodTemplateChangeObjectData = {
   "nestedMethods": [],
 };
 
+Map<String, dynamic> initialMethodTemplatePerformQualityControl = {
+  "definition": {
+    "definitionText":
+        "A quality control job in which a reviewer inspects a registration as a whole - a farm together with its farmer and fields - and decides on it. The method records the checklist the reviewer confirmed (photo documentation, polygon geometry), the decision and the notes, and carries the old and new versions of every object affected by the decision. It is digitally signed by the reviewer.",
+    "definitionURL": "",
+  },
+  "existenceStarts": null,
+  "executor": {},
+  "duration": null,
+  "identity": {
+    "UID": "",
+    "name": "",
+    "siteTag": "",
+    "alternateIDs": [],
+    "alternateNames": [],
+  },
+  "methodState": "undefined",
+  "template": {
+    "RALType": "performQualityControl",
+    "version": "1",
+    "methodStateTemplates": "generalMethodState",
+  },
+  "specificProperties": [
+    {"key": "qcDecision", "value": "", "unit": "String"},
+    {"key": "qcNotes", "value": "", "unit": "String"},
+    {"key": "qcSubjectUID", "value": "", "unit": "String"},
+    {"key": "qcChecklist", "value": [], "unit": "json"}
+  ],
+  "inputObjects": [],
+  "inputObjectsRef": [],
+  "outputObjects": [],
+  "outputObjectsRef": [],
+  "nestedMethods": [],
+};
+
 Map<String, dynamic> initialMethodTemplateChangeUserRole = {
   "definition": {
     "definitionText":
@@ -759,6 +794,7 @@ List<Map<String, dynamic>> initialTemplates = [
   initialMethodTemplateGenerateDigitalSibling,
   initialMethodTemplateChangeObjectData,
   initialMethodTemplateChangeUserRole,
+  initialMethodTemplatePerformQualityControl,
   initialObjectTemplateRoleTemplate
 ];
 

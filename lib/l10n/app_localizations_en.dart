@@ -3402,4 +3402,60 @@ class AppLocalizationsEn extends AppLocalizations {
   String resyncQueued(int count) {
     return '$count method(s) queued for upload';
   }
+
+  @override
+  String get qcOpenReview => 'Open review';
+
+  @override
+  String qcFieldCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fields to review',
+      one: '1 field to review',
+      zero: 'no fields to review',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String qcChecklistProgress(int done, int total) {
+    return '$done of $total checks';
+  }
+
+  @override
+  String get qcChecklistIncomplete => 'Tick all checks to approve the farm.';
+
+  @override
+  String get qcNoLinkedFarm => 'No linked farm found for this registration.';
+
+  @override
+  String get qcNotPartOfReview =>
+      'Already decided - shown for context only, not part of this review.';
+
+  @override
+  String get qcNoPhotoDocumentation =>
+      'No photo documentation on record (e.g. imported data).';
+
+  @override
+  String get qcCheckNationalId =>
+      'ID document checked: photo present, legible and matching the farmer\'s data';
+
+  @override
+  String get qcCheckConsentForm =>
+      'Consent form checked: photo present and document correct';
+
+  @override
+  String get qcCheckConsentForm2 => 'Consent form, second photo checked';
+
+  @override
+  String get qcCheckFieldPhoto =>
+      'Field photo checked: present and matching the field';
+
+  @override
+  String get qcCheckPolygon => 'Polygon geometry checked and approved';
+
+  @override
+  String get qcCheckPhotoUnavailable =>
+      'Photo not available - cannot be confirmed';
 }

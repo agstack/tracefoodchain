@@ -3458,4 +3458,63 @@ class AppLocalizationsEs extends AppLocalizations {
   String resyncQueued(int count) {
     return '$count método(s) en cola para subir';
   }
+
+  @override
+  String get qcOpenReview => 'Abrir revisión';
+
+  @override
+  String qcFieldCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count parcelas por revisar',
+      one: '1 parcela por revisar',
+      zero: 'ninguna parcela por revisar',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String qcChecklistProgress(int done, int total) {
+    return '$done de $total verificaciones';
+  }
+
+  @override
+  String get qcChecklistIncomplete =>
+      'Marque todas las verificaciones para aprobar la finca.';
+
+  @override
+  String get qcNoLinkedFarm =>
+      'No se encontró una finca vinculada a este registro.';
+
+  @override
+  String get qcNotPartOfReview =>
+      'Ya decidido - solo como contexto, no forma parte de esta revisión.';
+
+  @override
+  String get qcNoPhotoDocumentation =>
+      'No hay documentación fotográfica (p. ej. datos importados).';
+
+  @override
+  String get qcCheckNationalId =>
+      'Documento de identidad verificado: foto presente, legible y coincide con los datos del productor';
+
+  @override
+  String get qcCheckConsentForm =>
+      'Formulario de consentimiento verificado: foto presente y documento correcto';
+
+  @override
+  String get qcCheckConsentForm2 =>
+      'Formulario de consentimiento, segunda foto verificada';
+
+  @override
+  String get qcCheckFieldPhoto =>
+      'Foto de la parcela verificada: presente y corresponde a la parcela';
+
+  @override
+  String get qcCheckPolygon => 'Geometría del polígono verificada y aprobada';
+
+  @override
+  String get qcCheckPhotoUnavailable =>
+      'Foto no disponible - no se puede confirmar';
 }

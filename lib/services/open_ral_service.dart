@@ -895,6 +895,105 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion,
       'Object data change process using method ${getObjectMethodUID(changeObjectDataJob)} completed successfully');
 }
 
+/// Current version of an object as a change has to build on it: the local copy
+/// if there is one (it may carry changes not yet in the cloud), otherwise the
+/// cloud version. Empty if the object exists in neither.
+Future<Map<String, dynamic>> getCurrentObjectVersion(String uid) async {
+  final local = await getLocalObjectMethod(uid);
+  if (local.isNotEmpty) return local;
+
+  final connectivityResult = await (Connectivity().checkConnectivity());
+  if (connectivityResult.contains(ConnectivityResult.none)) return {};
+
+  final doc =
+      await FirebaseFirestore.instance.collection('TFC_objects').doc(uid).get();
+  if (!doc.exists || doc.data() == null) return {};
+  return deepCopyMap(doc.data()!);
+}
+
+/// Schreibt eine QC-Entscheidung als einen einzigen, signierten QC-Job.
+///
+/// Anders als [changeObjectData] trägt die Methode alle Objekte der geprüften
+/// Einheit (Farm, Farmer, Felder, verknüpfte Fotos) gemeinsam als Input (alte
+/// Fassung) und Output (neue Fassung). Dazu kommen die vom Prüfer abgehakte
+/// Checkliste, Entscheidung und Notizen - die Signatur über die gesamte Methode
+/// macht damit nachweisbar, wer was geprüft und entschieden hat.
+///
+/// [checklist]: je Prüfpunkt `objectUID`, `objectType`, `check`, `checked`
+/// und `checkedAt` (ISO-8601, leer wenn nicht abgehakt).
+Future<Map<String, dynamic>> performQualityControl({
+  required List<Map<String, dynamic>> newObjectVersions,
+  required String decision,
+  required String notes,
+  required List<Map<String, dynamic>> checklist,
+  String subjectUID = "",
+  bool syncFromCloud = true,
+}) async {
+  if (newObjectVersions.isEmpty) {
+    throw ArgumentError('A quality control job needs at least one object');
+  }
+
+  // Alte Fassungen zuerst sammeln - bevor die neuen lokal gespeichert werden.
+  final oldVersions = <Map<String, dynamic>>[];
+  for (final newVersion in newObjectVersions) {
+    final uid = getObjectMethodUID(newVersion);
+    final old = await getCurrentObjectVersion(uid);
+    if (old.isEmpty) {
+      throw Exception(
+          "The object with UID $uid could not be found in local storage or cloud!");
+    }
+    oldVersions.add(old);
+  }
+
+  for (final newVersion in newObjectVersions) {
+    await setObjectMethod(newVersion, false, false,
+        syncFromCloud: syncFromCloud);
+  }
+
+  Map<String, dynamic> qcJob = await getOpenRALTemplate("performQualityControl");
+  if (qcJob.isEmpty) {
+    // Hive-Box stammt aus einer Version ohne dieses Template.
+    qcJob = deepCopyMap(initialMethodTemplatePerformQualityControl);
+  }
+  final userDoc = await _ensureAppUserDoc();
+  if (userDoc == null) {
+    throw Exception('appUserDoc is null and could not be loaded');
+  }
+  qcJob["executor"] = userDoc;
+  qcJob["methodState"] = "finished";
+  setObjectMethodUID(qcJob, const Uuid().v4());
+
+  qcJob = setSpecificPropertyJSON(qcJob, "qcDecision", decision, "String");
+  qcJob = setSpecificPropertyJSON(qcJob, "qcNotes", notes, "String");
+  qcJob = setSpecificPropertyJSON(qcJob, "qcSubjectUID", subjectUID, "String");
+  qcJob = setSpecificPropertyJSON(qcJob, "qcChecklist", checklist, "json");
+
+  for (final old in oldVersions) {
+    addInputobject(qcJob, old, "item");
+  }
+
+  await setObjectMethod(qcJob, false, false, syncFromCloud: syncFromCloud);
+
+  for (final newVersion in newObjectVersions) {
+    addOutputobject(qcJob, newVersion, "item");
+  }
+
+  //update method history in all affected objects
+  await updateMethodHistories(qcJob);
+
+  //again add Outputobjects to generate valid representation including updated method history in the method
+  for (final newVersion in newObjectVersions) {
+    final stored = await getLocalObjectMethod(getObjectMethodUID(newVersion));
+    addOutputobject(qcJob, stored, "item");
+  }
+
+  //persist, sign and sync
+  qcJob = await setObjectMethod(qcJob, true, true, syncFromCloud: syncFromCloud);
+  debugPrint('Quality control job ${getObjectMethodUID(qcJob)} ($decision, '
+      '${newObjectVersions.length} objects) completed successfully');
+  return qcJob;
+}
+
 Map<String, dynamic> addLinkedObjectRef(
   Map<String, dynamic> object,
   Map<String, dynamic> linkedObject,

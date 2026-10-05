@@ -2284,5 +2284,20 @@
         "type": "int"
       }
     }
-  }
+  },
+  "qcOpenReview": "Open review",
+  "qcFieldCount": "{count, plural, =0{no fields to review} =1{1 field to review} other{{count} fields to review}}",
+  "@qcFieldCount": {"placeholders": {"count": {"type": "int"}}},
+  "qcChecklistProgress": "{done} of {total} checks",
+  "@qcChecklistProgress": {"placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}},
+  "qcChecklistIncomplete": "Tick all checks to approve the farm.",
+  "qcNoLinkedFarm": "No linked farm found for this registration.",
+  "qcNotPartOfReview": "Already decided - shown for context only, not part of this review.",
+  "qcNoPhotoDocumentation": "No photo documentation on record (e.g. imported data).",
+  "qcCheckNationalId": "ID document checked: photo present, legible and matching the farmer's data",
+  "qcCheckConsentForm": "Consent form checked: photo present and document correct",
+  "qcCheckConsentForm2": "Consent form, second photo checked",
+  "qcCheckFieldPhoto": "Field photo checked: present and matching the field",
+  "qcCheckPolygon": "Polygon geometry checked and approved",
+  "qcCheckPhotoUnavailable": "Photo not available - cannot be confirmed"
 }

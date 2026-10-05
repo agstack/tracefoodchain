@@ -2099,5 +2099,18 @@
   "resyncMissing": "Renvoyer {count} manquant(s)",
   "inCloud": "Dans le cloud",
   "notInCloud": "Absent du cloud",
-  "resyncQueued": "{count} méthode(s) en attente d'envoi"
+  "resyncQueued": "{count} méthode(s) en attente d'envoi",
+  "qcOpenReview": "Ouvrir la vérification",
+  "qcFieldCount": "{count, plural, =0{aucune parcelle à vérifier} =1{1 parcelle à vérifier} other{{count} parcelles à vérifier}}",
+  "qcChecklistProgress": "{done} sur {total} points de contrôle",
+  "qcChecklistIncomplete": "Cochez tous les points de contrôle pour approuver la ferme.",
+  "qcNoLinkedFarm": "Aucune ferme liée trouvée pour cet enregistrement.",
+  "qcNotPartOfReview": "Déjà décidé - affiché pour information, ne fait pas partie de cette vérification.",
+  "qcNoPhotoDocumentation": "Aucune documentation photo enregistrée (p. ex. données importées).",
+  "qcCheckNationalId": "Pièce d'identité vérifiée : photo présente, lisible et conforme aux données du producteur",
+  "qcCheckConsentForm": "Formulaire de consentement vérifié : photo présente et document correct",
+  "qcCheckConsentForm2": "Formulaire de consentement, deuxième photo vérifiée",
+  "qcCheckFieldPhoto": "Photo de la parcelle vérifiée : présente et correspondant à la parcelle",
+  "qcCheckPolygon": "Géométrie du polygone vérifiée et approuvée",
+  "qcCheckPhotoUnavailable": "Photo non disponible - impossible de confirmer"
 }

@@ -2099,5 +2099,18 @@
   "resyncMissing": "{count} fehlende erneut senden",
   "inCloud": "In der Cloud",
   "notInCloud": "Nicht in der Cloud",
-  "resyncQueued": "{count} Methode(n) zum Upload vorgemerkt"
+  "resyncQueued": "{count} Methode(n) zum Upload vorgemerkt",
+  "qcOpenReview": "Zur Prüfung",
+  "qcFieldCount": "{count, plural, =0{keine Felder zu prüfen} =1{1 Feld zu prüfen} other{{count} Felder zu prüfen}}",
+  "qcChecklistProgress": "{done} von {total} Prüfpunkten",
+  "qcChecklistIncomplete": "Zum Freigeben alle Prüfpunkte abhaken.",
+  "qcNoLinkedFarm": "Zu dieser Registrierung wurde keine verknüpfte Farm gefunden.",
+  "qcNotPartOfReview": "Bereits entschieden - nur zur Information, nicht Teil dieser Prüfung.",
+  "qcNoPhotoDocumentation": "Keine Fotodokumentation hinterlegt (z. B. importierte Daten).",
+  "qcCheckNationalId": "Ausweis geprüft: Foto vorhanden, lesbar und passend zu den Angaben des Farmers",
+  "qcCheckConsentForm": "Einverständniserklärung geprüft: Foto vorhanden und Dokument korrekt",
+  "qcCheckConsentForm2": "Einverständniserklärung, zweite Aufnahme geprüft",
+  "qcCheckFieldPhoto": "Feld-Foto geprüft: vorhanden und passend zum Feld",
+  "qcCheckPolygon": "Polygongeometrie geprüft und freigegeben",
+  "qcCheckPhotoUnavailable": "Foto nicht verfügbar - kann nicht bestätigt werden"
 }

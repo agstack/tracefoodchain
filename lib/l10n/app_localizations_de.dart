@@ -3441,4 +3441,62 @@ class AppLocalizationsDe extends AppLocalizations {
   String resyncQueued(int count) {
     return '$count Methode(n) zum Upload vorgemerkt';
   }
+
+  @override
+  String get qcOpenReview => 'Zur Prüfung';
+
+  @override
+  String qcFieldCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Felder zu prüfen',
+      one: '1 Feld zu prüfen',
+      zero: 'keine Felder zu prüfen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String qcChecklistProgress(int done, int total) {
+    return '$done von $total Prüfpunkten';
+  }
+
+  @override
+  String get qcChecklistIncomplete => 'Zum Freigeben alle Prüfpunkte abhaken.';
+
+  @override
+  String get qcNoLinkedFarm =>
+      'Zu dieser Registrierung wurde keine verknüpfte Farm gefunden.';
+
+  @override
+  String get qcNotPartOfReview =>
+      'Bereits entschieden - nur zur Information, nicht Teil dieser Prüfung.';
+
+  @override
+  String get qcNoPhotoDocumentation =>
+      'Keine Fotodokumentation hinterlegt (z. B. importierte Daten).';
+
+  @override
+  String get qcCheckNationalId =>
+      'Ausweis geprüft: Foto vorhanden, lesbar und passend zu den Angaben des Farmers';
+
+  @override
+  String get qcCheckConsentForm =>
+      'Einverständniserklärung geprüft: Foto vorhanden und Dokument korrekt';
+
+  @override
+  String get qcCheckConsentForm2 =>
+      'Einverständniserklärung, zweite Aufnahme geprüft';
+
+  @override
+  String get qcCheckFieldPhoto =>
+      'Feld-Foto geprüft: vorhanden und passend zum Feld';
+
+  @override
+  String get qcCheckPolygon => 'Polygongeometrie geprüft und freigegeben';
+
+  @override
+  String get qcCheckPhotoUnavailable =>
+      'Foto nicht verfügbar - kann nicht bestätigt werden';
 }
