@@ -2178,6 +2178,12 @@ abstract class AppLocalizations {
   /// **'Syncing with'**
   String get syncingWith;
 
+  /// No description provided for @syncCheckingLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking local data'**
+  String get syncCheckingLocalData;
+
   /// No description provided for @syncInProgress.
   ///
   /// In en, this message translates to:
@@ -6119,6 +6125,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photo not available - cannot be confirmed'**
   String get qcCheckPhotoUnavailable;
+
+  /// No description provided for @fieldRegistryMyFields.
+  ///
+  /// In en, this message translates to:
+  /// **'My fields'**
+  String get fieldRegistryMyFields;
+
+  /// No description provided for @fieldRegistryQcApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'QC approved'**
+  String get fieldRegistryQcApproved;
+
+  /// No description provided for @qcApprovedFieldsTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} QC-approved fields in total'**
+  String qcApprovedFieldsTotal(String count);
+
+  /// No description provided for @qcApprovedByYouHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Fields you approved in QC'**
+  String get qcApprovedByYouHint;
+
+  /// No description provided for @noFarmAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No farm assigned'**
+  String get noFarmAssigned;
+
+  /// No description provided for @noFarmerAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No farmer assigned'**
+  String get noFarmerAssigned;
+
+  /// No description provided for @loadingFarmAssignments.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading farm and farmer assignments...'**
+  String get loadingFarmAssignments;
+
+  /// No description provided for @trustLabelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trust & quality'**
+  String get trustLabelTitle;
+
+  /// No description provided for @trustLevelHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get trustLevelHigh;
+
+  /// No description provided for @trustLevelMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get trustLevelMedium;
+
+  /// No description provided for @trustLevelLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get trustLevelLow;
+
+  /// No description provided for @trustLevelExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'High: approved in QC, surveyed boundary, GeoID, farm and farmer. Medium: approved in QC with a boundary, but something is missing. Low: not approved in QC or no boundary.'**
+  String get trustLevelExplanation;
+
+  /// No description provided for @trustCriterionQcApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved in QC'**
+  String get trustCriterionQcApproved;
+
+  /// No description provided for @trustCriterionQcSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval documented as a signed QC record'**
+  String get trustCriterionQcSigned;
+
+  /// No description provided for @trustCriterionGeoId.
+  ///
+  /// In en, this message translates to:
+  /// **'GeoID from the Asset Registry'**
+  String get trustCriterionGeoId;
+
+  /// No description provided for @trustCriterionPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Field boundary (polygon) available'**
+  String get trustCriterionPolygon;
+
+  /// No description provided for @trustCriterionSurveyedPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Boundary surveyed, not constructed from a centre point'**
+  String get trustCriterionSurveyedPolygon;
+
+  /// No description provided for @trustCriterionArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Area specified'**
+  String get trustCriterionArea;
+
+  /// No description provided for @trustCriterionFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to a farm'**
+  String get trustCriterionFarm;
+
+  /// No description provided for @trustCriterionFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm has a farmer'**
+  String get trustCriterionFarmer;
+
+  /// No description provided for @trustCriterionPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration photo linked'**
+  String get trustCriterionPhoto;
+
+  /// No description provided for @sortByRegistrationDateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration date (newest first)'**
+  String get sortByRegistrationDateDesc;
+
+  /// No description provided for @sortByRegistrationDateAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration date (oldest first)'**
+  String get sortByRegistrationDateAsc;
+
+  /// No description provided for @sortByFarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm (A-Z)'**
+  String get sortByFarm;
+
+  /// No description provided for @sortByFarmer.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer (A-Z)'**
+  String get sortByFarmer;
+
+  /// No description provided for @sortByTrustLowFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Trust & quality (lowest first)'**
+  String get sortByTrustLowFirst;
+
+  /// No description provided for @sortByTrustHighFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Trust & quality (highest first)'**
+  String get sortByTrustHighFirst;
+
+  /// No description provided for @sortAppliesToLoadedFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the {count} loaded fields are sorted - use \"Load all\" to sort every field.'**
+  String sortAppliesToLoadedFields(String count);
 }
 
 class _AppLocalizationsDelegate

@@ -48,7 +48,7 @@ void backgroundSyncDispatcher() {
 
       // Opens localStorage plus the media/retry/staging boxes and recovers an
       // interrupted pull.
-      await initializeUserLocalStorage(user.uid);
+      await initializeUserLocalStorage(user.uid, withHashCache: false);
       await cloudSyncService.uploadPendingPhotos();
       // Push only: a full pull in the background would compete with the
       // foreground session for bandwidth on exactly the weak networks this is

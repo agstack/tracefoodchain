@@ -306,6 +306,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     // WP A2: bei pausiertem Upload gar keinen Sync-Banner zeigen - es geht
     // nichts über die Leitung, die Erfassung läuft rein lokal weiter.
+    // Used below to skip the profile-recovery sync when this startup sync
+    // already pulled successfully.
+    final DateTime startupSyncStart = DateTime.now();
+
     if (appState.isConnected && !syncSettings.isUploadPaused) {
       // Starte Synchronisierung - zeige persistentes Banner
       isSyncing.value = true;
@@ -352,6 +356,10 @@ class _SplashScreenState extends State<SplashScreen>
               onFetchingFromCloud: () {
                 syncStatusNotifier.value =
                     "${l10n?.syncingWith ?? 'Synchronizing with'} $cloudKey ↓ ...";
+              },
+              onScanProgress: (current, total) {
+                syncStatusNotifier.value =
+                    "${l10n?.syncCheckingLocalData ?? 'Checking local data'} ($current/$total)";
               },
               onDownloadProgress: (current, total) {
                 syncStatusNotifier.value =
@@ -468,7 +476,13 @@ class _SplashScreenState extends State<SplashScreen>
       //User profile does not yet exist
       await cloudLogService.info(
           'SplashScreen: User profile missing – attempting cloud sync for profile');
-      if (secureCommunicationEnabled) {
+      // A second complete sync only helps if the startup sync above did not
+      // pull - otherwise the profile is not in the cloud hash tables either,
+      // and the direct cloud query below is the remaining check.
+      final bool startupPullDone =
+          cloudSyncService.lastPullCommittedAt?.isAfter(startupSyncStart) ??
+              false;
+      if (secureCommunicationEnabled && !startupPullDone) {
         //Do we get one from cloud?
         // Upload pending photos first to avoid internal loops
         await cloudSyncService.uploadPendingPhotos();

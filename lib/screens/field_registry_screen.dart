@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +21,7 @@ import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
 import 'package:trace_foodchain_app/screens/fast_upload_screen.dart';
 import 'package:trace_foodchain_app/helpers/field_download_helper.dart';
+import 'package:trace_foodchain_app/helpers/field_trust.dart';
 
 /// Eine einfache LatLng Klasse für Koordinaten
 class LatLng {
@@ -44,6 +46,16 @@ class LatLng {
   int get hashCode => latitude.hashCode ^ longitude.hashCode;
 }
 
+enum _FieldSort {
+  dateDesc,
+  dateAsc,
+  name,
+  farm,
+  farmer,
+  trustLowFirst,
+  trustHighFirst,
+}
+
 class FieldRegistryScreen extends StatefulWidget {
   const FieldRegistryScreen({super.key});
 
@@ -61,12 +73,21 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   DateTime? selectedSpecificDate;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  _FieldSort _sortMode = _FieldSort.dateDesc;
 
   // Pagination
   static const int _pageSize = 50;
   bool _hasMoreData = false;
   bool _isLoadingMore = false;
   QueryDocumentSnapshot? _lastDocument;
+
+  // QC-Ansicht: freigegebene Felder statt der eigenen
+  bool _qcView = false;
+  int? _qcTotal;
+  static const int _qcMethodPageSize = 100;
+  bool _qcMethodsUnordered = false;
+  final Set<String> _qcSeenUids = {};
+  final Map<String, Map<String, dynamic>> _objectCache = {};
 
   // Progress tracking variables
   bool showProgressOverlay = false;
@@ -135,10 +156,13 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       _hasMoreData = false;
       registeredFields = [];
       filteredFields = [];
+      _qcSeenUids.clear();
+      _objectCache.clear();
     });
 
     final l10n = AppLocalizations.of(context)!;
     _setLoadingStatus(l10n.loadingConnectingCloud);
+    unawaited(_loadQcTotal());
 
     try {
       final result = await _fetchFieldsPage(
@@ -215,6 +239,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       _hasMoreData = false;
       registeredFields = [];
       filteredFields = [];
+      _qcSeenUids.clear();
+      _objectCache.clear();
     });
     _setLoadingStatus(l10n.loadingConnectingCloud);
     try {
@@ -235,6 +261,189 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
+  }
+
+  /// Gesamtzahl aller freigegebenen Felder, unabhängig vom Datumsfilter.
+  ///
+  /// Nur für Rollen, die alle Freigaben sehen: welche Felder ein Coordinator
+  /// freigegeben hat, steht nur an den QC-Jobs und lässt sich nicht zählen,
+  /// ohne sie alle zu laden.
+  Future<void> _loadQcTotal() async {
+    if (!_qcView ||
+        !PermissionService().hasPermission('view_all_qc_fields')) {
+      return;
+    }
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('TFC_objects')
+          .where('template.RALType', isEqualTo: 'field')
+          .where('objectState', isEqualTo: 'active')
+          .count()
+          .get();
+      if (mounted) setState(() => _qcTotal = snapshot.count);
+    } catch (e) {
+      debugPrint('QC-Gesamtzahl nicht ladbar: $e');
+    }
+  }
+
+  void _setQcView(bool qcView) {
+    if (qcView == _qcView) return;
+    setState(() {
+      _qcView = qcView;
+      _qcTotal = null;
+    });
+    _loadRegisteredFields();
+  }
+
+  Widget _buildAssignmentLine(IconData icon, String? name, String missingText) {
+    final missing = name == null;
+    final color = missing ? Colors.orange[800] : Colors.grey[800];
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(missing ? Icons.link_off : icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              name ?? missingText,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontStyle: missing ? FontStyle.italic : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  (Color, String) _trustLevelStyle(FieldTrustLevel level, AppLocalizations l10n) {
+    switch (level) {
+      case FieldTrustLevel.high:
+        return (Colors.green[700]!, l10n.trustLevelHigh);
+      case FieldTrustLevel.medium:
+        return (Colors.amber[800]!, l10n.trustLevelMedium);
+      case FieldTrustLevel.low:
+        return (Colors.red[700]!, l10n.trustLevelLow);
+    }
+  }
+
+  String _trustCriterionText(FieldTrustCriterion c, AppLocalizations l10n) {
+    switch (c) {
+      case FieldTrustCriterion.qcApproved:
+        return l10n.trustCriterionQcApproved;
+      case FieldTrustCriterion.qcSigned:
+        return l10n.trustCriterionQcSigned;
+      case FieldTrustCriterion.geoId:
+        return l10n.trustCriterionGeoId;
+      case FieldTrustCriterion.polygon:
+        return l10n.trustCriterionPolygon;
+      case FieldTrustCriterion.surveyedPolygon:
+        return l10n.trustCriterionSurveyedPolygon;
+      case FieldTrustCriterion.area:
+        return l10n.trustCriterionArea;
+      case FieldTrustCriterion.farm:
+        return l10n.trustCriterionFarm;
+      case FieldTrustCriterion.farmer:
+        return l10n.trustCriterionFarmer;
+      case FieldTrustCriterion.photo:
+        return l10n.trustCriterionPhoto;
+    }
+  }
+
+  Widget _buildTrustChip(Map<String, dynamic> field, AppLocalizations l10n) {
+    final trust = field["trust"] as FieldTrustAssessment;
+    final (color, label) = _trustLevelStyle(trust.level, l10n);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _showTrustDetails(field, l10n),
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_user, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              '${l10n.trustLabelTitle}: $label · ${trust.metCount}/${trust.total}',
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTrustDetails(Map<String, dynamic> field, AppLocalizations l10n) {
+    final trust = field["trust"] as FieldTrustAssessment;
+    final (color, label) = _trustLevelStyle(trust.level, l10n);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          '${l10n.trustLabelTitle}: $label',
+          style: TextStyle(color: color),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                field["name"] as String? ?? l10n.unnamedField,
+                style: const TextStyle(
+                    color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              for (final entry in trust.met.entries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        entry.value ? Icons.check_circle : Icons.cancel,
+                        size: 18,
+                        color: entry.value ? Colors.green[700] : Colors.red[400],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _trustCriterionText(entry.key, l10n),
+                          style: const TextStyle(color: Colors.black87),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.trustLevelExplanation,
+                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Gibt den Datumsbereich (fromDate, toDate) für den aktuellen Filter zurück.
@@ -262,7 +471,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     }
   }
 
-  /// Filtert [registeredFields] nach dem Suchbegriff und setzt [filteredFields].
+  /// Filtert [registeredFields] nach dem Suchbegriff, sortiert und setzt
+  /// [filteredFields].
+  ///
+  /// Sortiert wird die ganze geladene Liste, nicht seitenweise - sonst stünde
+  /// nach "Mehr laden" ein neueres Feld unter einem älteren der ersten Seite.
   void _applySearchFilter() {
     if (_searchQuery.isNotEmpty) {
       filteredFields = registeredFields.where((field) {
@@ -272,7 +485,60 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     } else {
       filteredFields = List.from(registeredFields);
     }
+    filteredFields.sort(_compareFields);
   }
+
+  int _compareFields(Map<String, dynamic> a, Map<String, dynamic> b) {
+    // Fehlende Werte stehen in jeder Richtung am Ende.
+    int nullsLast<T extends Comparable>(T? x, T? y, {bool desc = false}) {
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return desc ? y.compareTo(x) : x.compareTo(y);
+    }
+
+    String? text(Map<String, dynamic> f, String key) {
+      final value = (f[key] as String?)?.trim().toLowerCase();
+      return value == null || value.isEmpty || value == '-' ? null : value;
+    }
+
+    int? trustRank(Map<String, dynamic> f) {
+      final trust = f["trust"] as FieldTrustAssessment?;
+      if (trust == null) return null;
+      // Stufe zuerst, innerhalb der Stufe die Zahl erfüllter Prüfpunkte.
+      final level = switch (trust.level) {
+        FieldTrustLevel.high => 2,
+        FieldTrustLevel.medium => 1,
+        FieldTrustLevel.low => 0,
+      };
+      return level * 100 + trust.metCount;
+    }
+
+    final byDateDesc = nullsLast<DateTime>(
+        a["registrationDate"], b["registrationDate"],
+        desc: true);
+
+    final primary = switch (_sortMode) {
+      _FieldSort.dateDesc => byDateDesc,
+      _FieldSort.dateAsc => nullsLast<DateTime>(
+          a["registrationDate"], b["registrationDate"]),
+      _FieldSort.name => nullsLast(text(a, "name"), text(b, "name")),
+      _FieldSort.farm => nullsLast(text(a, "farmName"), text(b, "farmName")),
+      _FieldSort.farmer =>
+        nullsLast(text(a, "farmerName"), text(b, "farmerName")),
+      _FieldSort.trustLowFirst => nullsLast(trustRank(a), trustRank(b)),
+      _FieldSort.trustHighFirst =>
+        nullsLast(trustRank(a), trustRank(b), desc: true),
+    };
+    // Bei Gleichstand das neueste Feld zuerst.
+    return primary != 0 ? primary : byDateDesc;
+  }
+
+  /// Liefert die Abfrage selbst schon diese Reihenfolge? Dann ist die
+  /// geladene Teilmenge auch global richtig sortiert.
+  bool get _sortMatchesServerOrder =>
+      _sortMode == _FieldSort.dateDesc &&
+      !(_qcView && !PermissionService().hasPermission('view_all_qc_fields'));
 
   /// Lädt eine Seite Felder aus Firestore.
   /// Gibt (felder, letztesDokument, gibtWeitere) zurück.
@@ -290,85 +556,30 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     try {
       final permissionService = PermissionService();
       final isSuperAdmin = permissionService.isSuperAdmin();
-      final (fromDate, toDate) = _getDateRangeForFilter();
 
-      if (isSuperAdmin) {
-        debugPrint(
-            'SUPERADMIN: Lade Felder (limit=$limit, fromDate=$fromDate)');
-      }
-
-      Query query;
-      if (isSuperAdmin) {
-        query = FirebaseFirestore.instance
-            .collection('TFC_objects')
-            .where('template.RALType', isEqualTo: 'field');
+      List<Map<String, dynamic>> objects;
+      if (_qcView && !permissionService.hasPermission('view_all_qc_fields')) {
+        (objects, lastDocument, hasMore) = await _fetchOwnQcFieldObjects(
+            limit: limit, startAfterDoc: startAfterDoc);
       } else {
-        final currentUserUID = appUserDoc?["identity"]["UID"];
-        if (currentUserUID == null) throw Exception('User not authenticated');
-        query = FirebaseFirestore.instance
-            .collection('TFC_objects')
-            .where('currentOwners', arrayContains: {'UID': currentUserUID});
+        (objects, lastDocument, hasMore) = await _fetchFieldObjects(
+            isSuperAdmin: isSuperAdmin,
+            limit: limit,
+            startAfterDoc: startAfterDoc);
       }
 
-      if (fromDate != null) {
-        query = query.where('existenceStarts',
-            isGreaterThanOrEqualTo: fromDate.toIso8601String());
-      }
-      if (toDate != null) {
-        query = query.where('existenceStarts',
-            isLessThan: toDate.toIso8601String());
-      }
-      query = query.orderBy('existenceStarts', descending: true);
+      onStatus(l10n.loadingProcessingFields(objects.length.toString()));
 
-      final effectiveLimit = limit != null ? limit + 1 : null;
-      if (effectiveLimit != null) {
-        query = query.limit(effectiveLimit);
-      }
-      if (startAfterDoc != null) {
-        query = query.startAfterDocument(startAfterDoc);
-      }
-
-      QuerySnapshot querySnapshot;
-      try {
-        querySnapshot = await query.get();
-      } catch (e) {
-        // Fallback ohne orderBy falls composite index fehlt
-        debugPrint('Firestore-Query mit orderBy fehlgeschlagen, Fallback: $e');
-        Query fallback = isSuperAdmin
-            ? FirebaseFirestore.instance
-                .collection('TFC_objects')
-                .where('template.RALType', isEqualTo: 'field')
-            : FirebaseFirestore.instance.collection('TFC_objects').where(
-                'currentOwners',
-                arrayContains: {'UID': appUserDoc?["identity"]["UID"] ?? ''});
-        if (effectiveLimit != null) fallback = fallback.limit(effectiveLimit);
-        querySnapshot = await fallback.get();
-      }
-
-      final docs = querySnapshot.docs;
-
-      List<QueryDocumentSnapshot> docsToProcess;
-      if (limit != null && docs.length > limit) {
-        hasMore = true;
-        docsToProcess = docs.take(limit).toList();
-      } else {
-        hasMore = false;
-        docsToProcess = docs;
-      }
-      if (docsToProcess.isNotEmpty) {
-        lastDocument = docsToProcess.last;
-      }
-
-      onStatus(l10n.loadingProcessingFields(docsToProcess.length.toString()));
-
-      for (final doc in docsToProcess) {
-        final fieldData = doc.data() as Map<String, dynamic>;
+      for (final fieldData in objects) {
         try {
           final ralType = fieldData['template']?["RALType"];
           if (ralType != "field") continue;
 
           final objectState = fieldData["objectState"];
-          if (objectState == "qcPending" || objectState == "qcRejected") {
+          if (_qcView) {
+            if (objectState != 'active') continue;
+          } else if (objectState == "qcPending" ||
+              objectState == "qcRejected") {
             continue;
           }
 
@@ -379,61 +590,14 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             if (isTestmode && !fieldData.containsKey("isTestmode")) continue;
           }
 
-          try {
-            final String fieldName =
-                fieldData["identity"]?["name"] ?? "Unnamed Field";
-            final String fieldUID = fieldData["identity"]?["UID"] ?? "";
-
-            String geoId = "";
-            try {
-              if (fieldData["identity"]?["alternateIDs"] != null) {
-                for (final altId in fieldData["identity"]["alternateIDs"]) {
-                  if (altId["issuedBy"] == "Asset Registry") {
-                    geoId = altId["UID"];
-                    break;
-                  }
-                }
-              }
-            } catch (e) {
-              debugPrint("ERROR extracting geoID: $e");
-            }
-
-            String area = "";
-            try {
-              final areaValue = getSpecificPropertyfromJSON(fieldData, "area");
-              area = areaValue?.toString() ?? "";
-            } catch (e) {
-              debugPrint("ERROR extracting area: $e");
-            }
-
-            String boundaries = "";
-            try {
-              final boundariesValue =
-                  getSpecificPropertyfromJSON(fieldData, "boundaries");
-              boundaries = boundariesValue?.toString() ?? "";
-            } catch (e) {
-              debugPrint("ERROR extracting boundaries: $e");
-            }
-
-            final methodHistoryRef = fieldData["methodHistoryRef"] ?? [];
-            final existenceStarts = fieldData["existenceStarts"];
-
-            fields.add({
-              "name": fieldName,
-              "uid": fieldUID,
-              "geoId": geoId,
-              "area": area,
-              "boundaries": boundaries,
-              "methodHistoryRef": methodHistoryRef,
-              "existenceStarts": existenceStarts,
-            });
-          } catch (e) {
-            debugPrint("❌ ERROR extracting field data: $e");
-          }
+          fields.add(_fieldEntryFrom(fieldData));
         } catch (e) {
-          debugPrint("❌ CRITICAL ERROR processing field ${doc.id}: $e");
+          debugPrint("❌ CRITICAL ERROR processing field: $e");
         }
       }
+
+      onStatus(l10n.loadingFarmAssignments);
+      await _attachFarmsAndTrust(fields);
 
       debugPrint('Felder verarbeitet: ${fields.length}');
       final totalCount = fields.length;
@@ -444,11 +608,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             (i + 1).toString(), totalCount.toString(), fieldName));
 
         DateTime? registrationDate;
-        final existenceStartsStr = field["existenceStarts"];
-        if (existenceStartsStr != null &&
-            existenceStartsStr is String &&
-            existenceStartsStr.isNotEmpty) {
-          registrationDate = DateTime.tryParse(existenceStartsStr);
+        final existenceStarts = field["existenceStarts"];
+        if (existenceStarts is Timestamp) {
+          registrationDate = existenceStarts.toDate();
+        } else if (existenceStarts is String && existenceStarts.isNotEmpty) {
+          registrationDate = DateTime.tryParse(existenceStarts);
         }
         if (registrationDate == null) {
           registrationDate =
@@ -456,22 +620,337 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         }
         field["registrationDate"] = registrationDate;
       }
-
-      // Sortiere nur wenn nicht schon von Firestore geordnet
-      // (Fallback-Query liefert u.U. ungeordnete Ergebnisse)
-      fields.sort((a, b) {
-        final dateA = a["registrationDate"] as DateTime?;
-        final dateB = b["registrationDate"] as DateTime?;
-        if (dateA == null && dateB == null) return 0;
-        if (dateA == null) return 1;
-        if (dateB == null) return -1;
-        return dateB.compareTo(dateA);
-      });
+      // Sortiert wird über die ganze geladene Liste in _applySearchFilter.
     } catch (e) {
       debugPrint('Fehler in _fetchFieldsPage: $e');
     }
 
     return (fields, lastDocument, hasMore);
+  }
+
+  /// Feldobjekte über TFC_objects: die eigenen, als SUPERADMIN alle - und in
+  /// der QC-Ansicht alle freigegebenen.
+  Future<(List<Map<String, dynamic>>, QueryDocumentSnapshot?, bool)>
+      _fetchFieldObjects({
+    required bool isSuperAdmin,
+    int? limit,
+    QueryDocumentSnapshot? startAfterDoc,
+  }) async {
+    final (fromDate, toDate) = _getDateRangeForFilter();
+    final allFields = isSuperAdmin || _qcView;
+
+    if (isSuperAdmin) {
+      debugPrint('SUPERADMIN: Lade Felder (limit=$limit, fromDate=$fromDate)');
+    }
+
+    Query baseQuery() {
+      Query query = FirebaseFirestore.instance.collection('TFC_objects');
+      if (allFields) {
+        query = query.where('template.RALType', isEqualTo: 'field');
+        if (_qcView) query = query.where('objectState', isEqualTo: 'active');
+      } else {
+        final currentUserUID = appUserDoc?["identity"]["UID"];
+        if (currentUserUID == null) throw Exception('User not authenticated');
+        query = query
+            .where('currentOwners', arrayContains: {'UID': currentUserUID});
+      }
+      return query;
+    }
+
+    Query query = baseQuery();
+    if (fromDate != null) {
+      query = query.where('existenceStarts',
+          isGreaterThanOrEqualTo: fromDate.toIso8601String());
+    }
+    if (toDate != null) {
+      query = query.where('existenceStarts',
+          isLessThan: toDate.toIso8601String());
+    }
+    query = query.orderBy('existenceStarts', descending: true);
+
+    final effectiveLimit = limit != null ? limit + 1 : null;
+    if (effectiveLimit != null) {
+      query = query.limit(effectiveLimit);
+    }
+    if (startAfterDoc != null) {
+      query = query.startAfterDocument(startAfterDoc);
+    }
+
+    QuerySnapshot querySnapshot;
+    try {
+      querySnapshot = await query.get();
+    } catch (e) {
+      // Fallback ohne orderBy falls composite index fehlt
+      debugPrint('Firestore-Query mit orderBy fehlgeschlagen, Fallback: $e');
+      Query fallback = baseQuery();
+      if (effectiveLimit != null) fallback = fallback.limit(effectiveLimit);
+      querySnapshot = await fallback.get();
+    }
+
+    final docs = querySnapshot.docs;
+    final hasMore = limit != null && docs.length > limit;
+    final docsToProcess = hasMore ? docs.take(limit).toList() : docs;
+
+    return (
+      [for (final doc in docsToProcess) doc.data() as Map<String, dynamic>],
+      docsToProcess.isNotEmpty ? docsToProcess.last : null,
+      hasMore,
+    );
+  }
+
+  /// QC-Ansicht eines registrarCoordinators: die Felder, die er selbst
+  /// freigegeben hat.
+  ///
+  /// Am Feld steht nicht, wer es geprüft hat - das weiß nur der QC-Job.
+  /// Geblättert wird deshalb über die eigenen Methoden, neueste zuerst; der
+  /// Cursor ist das letzte Methodendokument. Weil eine Methodenseite auch
+  /// Abgelehntes, Farmen und Farmer enthält, wird wie im QC-Screen
+  /// weitergesucht, bis eine Seite Felder zusammenkommt.
+  Future<(List<Map<String, dynamic>>, QueryDocumentSnapshot?, bool)>
+      _fetchOwnQcFieldObjects({
+    int? limit,
+    QueryDocumentSnapshot? startAfterDoc,
+  }) async {
+    final currentUserUID = appUserDoc?["identity"]["UID"];
+    if (currentUserUID == null) throw Exception('User not authenticated');
+    final (fromDate, toDate) = _getDateRangeForFilter();
+
+    final objects = <Map<String, dynamic>>[];
+    QueryDocumentSnapshot? cursor = startAfterDoc;
+    bool exhausted = false;
+    int rounds = 0;
+
+    while (!exhausted &&
+        (limit == null || (objects.length < limit && rounds < 5))) {
+      rounds++;
+      final snapshot = await _ownQcMethodsPage(currentUserUID, cursor);
+      if (snapshot.docs.length < _qcMethodPageSize) exhausted = true;
+      if (snapshot.docs.isNotEmpty) cursor = snapshot.docs.last;
+
+      final newUids = <String>[];
+      for (final doc in snapshot.docs) {
+        final method = doc.data() as Map<String, dynamic>;
+        if (!_isInDateRange(method['existenceStarts'], fromDate, toDate)) {
+          continue;
+        }
+        for (final uid in _approvedFieldUids(method)) {
+          if (_qcSeenUids.add(uid)) newUids.add(uid);
+        }
+      }
+
+      final fetched = await _fetchObjectsByUid(newUids);
+      objects.addAll(fetched.values.where((obj) =>
+          obj['template']?['RALType'] == 'field' &&
+          obj['objectState'] == 'active'));
+    }
+
+    return (objects, cursor, !exhausted);
+  }
+
+  /// Eine Seite eigener Methoden, die eine Freigabe sein können.
+  ///
+  /// Die Datumsfilterung passiert im Client: existenceStarts steht an älteren
+  /// Methoden als Timestamp, an neueren als String - ein Bereichsfilter in der
+  /// Abfrage träfe nur eine der beiden Sorten.
+  Future<QuerySnapshot> _ownQcMethodsPage(
+      String executorUID, QueryDocumentSnapshot? cursor) async {
+    final query = FirebaseFirestore.instance
+        .collection('TFC_methods')
+        .where('executor.identity.UID', isEqualTo: executorUID);
+
+    if (!_qcMethodsUnordered) {
+      try {
+        Query ordered = query
+            .where('template.RALType',
+                whereIn: const ['performQualityControl', 'changeObjectData'])
+            .orderBy('existenceStarts', descending: true)
+            .limit(_qcMethodPageSize);
+        if (cursor != null) ordered = ordered.startAfterDocument(cursor);
+        return await ordered.get();
+      } catch (e) {
+        // Fehlt der zusammengesetzte Index, geht es ohne Datumsreihenfolge
+        // weiter. Ein Cursor aus der sortierten Abfrage passt dann nicht mehr.
+        debugPrint('QC-Methoden-Query ohne Index, Fallback: $e');
+        _qcMethodsUnordered = true;
+        if (cursor != null) return _ownQcMethodsPage(executorUID, null);
+      }
+    }
+
+    Query unordered =
+        query.orderBy(FieldPath.documentId).limit(_qcMethodPageSize);
+    if (cursor != null) unordered = unordered.startAfterDocument(cursor);
+    return unordered.get();
+  }
+
+  bool _isInDateRange(dynamic value, DateTime? fromDate, DateTime? toDate) {
+    if (fromDate == null && toDate == null) return true;
+    final date = value is Timestamp
+        ? value.toDate()
+        : value is DateTime
+            ? value
+            : DateTime.tryParse(value?.toString() ?? '');
+    if (date == null) return false;
+    if (fromDate != null && date.isBefore(fromDate)) return false;
+    if (toDate != null && !date.isBefore(toDate)) return false;
+    return true;
+  }
+
+  /// UIDs der Felder, die eine Methode freigegeben hat.
+  ///
+  /// performQualityControl trägt die Entscheidung selbst. Freigaben aus der
+  /// Zeit davor liefen als changeObjectData; dort zählt nur der Übergang aus
+  /// 'qcPending' nach 'active' - sonst wäre jede Polygonkorrektur eine.
+  List<String> _approvedFieldUids(Map<String, dynamic> method) {
+    final ralType = method['template']?['RALType'];
+    final outputs = [
+      ...(method['outputObjects'] as List? ?? const []),
+      ...(method['outputObjectsRef'] as List? ?? const []),
+    ].whereType<Map>().toList();
+
+    String? uidOf(Map obj) =>
+        (obj['identity']?['UID'] ?? obj['UID'])?.toString();
+
+    if (ralType == 'performQualityControl') {
+      if (getSpecificPropertyfromJSON(method, 'qcDecision') != 'approved') {
+        return const [];
+      }
+      // Referenzen tragen den Typ nicht immer - aussortiert wird nach dem
+      // Laden über das Objekt selbst.
+      return [
+        for (final out in outputs)
+          if ((out['template']?['RALType'] ?? out['RALType'] ?? 'field') ==
+              'field')
+            if (uidOf(out) case final uid?) uid,
+      ];
+    }
+
+    if (ralType == 'changeObjectData') {
+      final inputs = (method['inputObjects'] as List? ?? const [])
+          .whereType<Map>()
+          .toList();
+      final wasPending = inputs.isEmpty ||
+          inputs.any((input) => input['objectState'] == 'qcPending');
+      if (!wasPending) return const [];
+      return [
+        for (final out in outputs)
+          if (out['template']?['RALType'] == 'field' &&
+              out['objectState'] == 'active')
+            if (uidOf(out) case final uid?) uid,
+      ];
+    }
+    return const [];
+  }
+
+  /// Objekte zu UIDs, je 30 in einem Abruf; schon Geladenes kommt aus dem
+  /// Zwischenspeicher dieser Ansicht.
+  Future<Map<String, Map<String, dynamic>>> _fetchObjectsByUid(
+      Iterable<String> uids) async {
+    final result = <String, Map<String, dynamic>>{};
+    final missing = <String>[];
+    for (final uid in uids.toSet()) {
+      final cached = _objectCache[uid];
+      if (cached != null) {
+        result[uid] = cached;
+      } else {
+        missing.add(uid);
+      }
+    }
+
+    final chunks = <List<String>>[];
+    for (int i = 0; i < missing.length; i += 30) {
+      chunks.add(missing.sublist(i, math.min(i + 30, missing.length)));
+    }
+    final snapshots = await Future.wait(chunks.map((chunk) => FirebaseFirestore
+        .instance
+        .collection('TFC_objects')
+        .where(FieldPath.documentId, whereIn: chunk)
+        .get()));
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        _objectCache[doc.id] = doc.data();
+        result[doc.id] = doc.data();
+      }
+    }
+    return result;
+  }
+
+  Map<String, dynamic> _fieldEntryFrom(Map<String, dynamic> fieldData) {
+    String geoId = "";
+    try {
+      for (final altId in fieldData["identity"]?["alternateIDs"] ?? []) {
+        if (altId["issuedBy"] == "Asset Registry") {
+          geoId = altId["UID"];
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint("ERROR extracting geoID: $e");
+    }
+
+    String area = "";
+    try {
+      area = getSpecificPropertyfromJSON(fieldData, "area")?.toString() ?? "";
+    } catch (e) {
+      debugPrint("ERROR extracting area: $e");
+    }
+
+    String boundaries = "";
+    try {
+      boundaries =
+          getSpecificPropertyfromJSON(fieldData, "boundaries")?.toString() ??
+              "";
+    } catch (e) {
+      debugPrint("ERROR extracting boundaries: $e");
+    }
+
+    return {
+      "name": fieldData["identity"]?["name"] ?? "Unnamed Field",
+      "uid": fieldData["identity"]?["UID"] ?? "",
+      "geoId": geoId,
+      "area": area,
+      "boundaries": boundaries,
+      "methodHistoryRef": fieldData["methodHistoryRef"] ?? [],
+      "existenceStarts": fieldData["existenceStarts"],
+      "object": fieldData,
+    };
+  }
+
+  /// Hängt an jedes Feld Farm, Farmer und das Vertrauenslabel - je Seite ein
+  /// Sammelabruf für die Farmen und einer für die Farmer.
+  Future<void> _attachFarmsAndTrust(List<Map<String, dynamic>> fields) async {
+    Map<String, Map<String, dynamic>> farms = {};
+    Map<String, Map<String, dynamic>> farmers = {};
+    try {
+      farms = await _fetchObjectsByUid([
+        for (final field in fields)
+          if (farmUidOfField(field["object"]) case final uid?) uid,
+      ]);
+      farmers = await _fetchObjectsByUid([
+        for (final farm in farms.values)
+          if (ownerUidOfFarm(farm) case final uid?) uid,
+      ]);
+    } catch (e) {
+      debugPrint('Farm-/Farmer-Zuordnung nicht ladbar: $e');
+    }
+
+    for (final field in fields) {
+      final farmUid = farmUidOfField(field["object"]);
+      final farm = farmUid != null ? farms[farmUid] : null;
+      final ownerUid = farm != null ? ownerUidOfFarm(farm) : null;
+      final farmer = ownerUid != null ? farmers[ownerUid] : null;
+      field["farmName"] = _displayName(farm);
+      field["farmerName"] = _displayName(farmer);
+      field["trust"] =
+          assessFieldTrust(field["object"], farm: farm, farmer: farmer);
+    }
+  }
+
+  /// Name eines Objekts; null, wenn es fehlt. Ein namenloses, aber
+  /// vorhandenes Objekt ergibt '-'.
+  String? _displayName(Map<String, dynamic>? obj) {
+    if (obj == null) return null;
+    final name = obj['identity']?['name']?.toString().trim() ?? '';
+    return name.isNotEmpty ? name : '-';
   }
 
   /// Ermittelt das Registrierungsdatum durch das Suchen der generateDigitalSibling Methode
@@ -1518,8 +1997,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           ],
         ),
         actions: [
-          // Datum-Filter Dropdown
-          if (!isLoading && registeredFields.isNotEmpty)
+          // Datum-Filter Dropdown - auch bei leerer Liste, sonst kommt man
+          // aus einem Zeitraum ohne Treffer nicht mehr heraus
+          if (!isLoading)
             PopupMenuButton<String>(
               initialValue: selectedDateFilter,
               onSelected: (value) async {
@@ -1594,6 +2074,53 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
               //     ),
               //   ),
               if (isRegistering) const LinearProgressIndicator(),
+              if (PermissionService().hasPermission('view_qc_fields'))
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<bool>(
+                          segments: [
+                            ButtonSegment(
+                              value: false,
+                              icon: const Icon(Icons.person),
+                              label: Text(l10n.fieldRegistryMyFields),
+                            ),
+                            ButtonSegment(
+                              value: true,
+                              icon: const Icon(Icons.verified),
+                              label: Text(l10n.fieldRegistryQcApproved),
+                            ),
+                          ],
+                          selected: {_qcView},
+                          onSelectionChanged: isLoading
+                              ? null
+                              : (selection) => _setQcView(selection.first),
+                        ),
+                      ),
+                      if (_qcView)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            PermissionService()
+                                    .hasPermission('view_all_qc_fields')
+                                ? (_qcTotal != null
+                                    ? l10n.qcApprovedFieldsTotal(
+                                        _qcTotal.toString())
+                                    : '')
+                                : l10n.qcApprovedByYouHint,
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               if (!isLoading && registeredFields.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -1616,6 +2143,57 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 10),
                     ),
+                  ),
+                ),
+              if (!isLoading && registeredFields.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: DropdownButtonFormField<_FieldSort>(
+                    initialValue: _sortMode,
+                    isDense: true,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.sortBy,
+                      prefixIcon: const Icon(Icons.sort, size: 20),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: [
+                      for (final (mode, label) in [
+                        (
+                          _FieldSort.dateDesc,
+                          l10n.sortByRegistrationDateDesc
+                        ),
+                        (_FieldSort.dateAsc, l10n.sortByRegistrationDateAsc),
+                        (_FieldSort.name, l10n.sortByNameAsc),
+                        (_FieldSort.farm, l10n.sortByFarm),
+                        (_FieldSort.farmer, l10n.sortByFarmer),
+                        (_FieldSort.trustLowFirst, l10n.sortByTrustLowFirst),
+                        (_FieldSort.trustHighFirst, l10n.sortByTrustHighFirst),
+                      ])
+                        DropdownMenuItem(
+                          value: mode,
+                          child: Text(label, overflow: TextOverflow.ellipsis),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _sortMode = value;
+                        _applySearchFilter();
+                      });
+                    },
+                  ),
+                ),
+              if (!isLoading && _hasMoreData && !_sortMatchesServerOrder)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: Text(
+                    l10n.sortAppliesToLoadedFields(
+                        registeredFields.length.toString()),
+                    style: TextStyle(color: Colors.orange[800], fontSize: 12),
                   ),
                 ),
               Expanded(
@@ -1702,6 +2280,14 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                                         if (field["area"]?.isNotEmpty == true)
                                           Text(
                                               '${l10n.area}: ${field["area"]} ha'),
+                                        _buildAssignmentLine(
+                                            Icons.agriculture,
+                                            field["farmName"] as String?,
+                                            l10n.noFarmAssigned),
+                                        _buildAssignmentLine(
+                                            Icons.person,
+                                            field["farmerName"] as String?,
+                                            l10n.noFarmerAssigned),
                                         if (field["registrationDate"] != null)
                                           Container(
                                             margin:
@@ -1739,6 +2325,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                                               ],
                                             ),
                                           ),
+                                        if (field["trust"] != null)
+                                          _buildTrustChip(field, l10n),
                                       ],
                                     ),
                                     trailing: const Icon(Icons.more_vert),

@@ -19,7 +19,6 @@ import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/services/media_outbox_service.dart';
-import 'package:trace_foodchain_app/services/sync_settings_service.dart';
 import 'package:uuid/uuid.dart';
 
 var uuid = const Uuid();
@@ -102,6 +101,15 @@ Future<Map<String, dynamic>> getLocalObjectMethod(
     String objectMethodUID) async {
   Map<String, dynamic> doc2 = {};
   try {
+    // Documents are stored under their UID (see setObjectMethod), so the
+    // direct lookup is the normal case. The scan below only remains as a
+    // fallback for documents stored under another key.
+    final direct = localStorage!.get(objectMethodUID);
+    if (direct != null &&
+        direct['identity'] != null &&
+        direct['identity']["UID"] == objectMethodUID) {
+      return deepCopyMap(direct);
+    }
     for (var doc in localStorage!.values) {
       if (doc['identity'] != null &&
           doc['identity']["UID"] == objectMethodUID) {
@@ -258,22 +266,15 @@ Future<Map<String, dynamic>> setObjectMethod(
   //Local storage
   await localStorage!.put(getObjectMethodUID(objectMethod), objectMethod);
 
-  // sync with cloud if tagged for this and device is connected to the internet
-  // WP A2: while the user has paused uploads we stay purely local - the item
-  // keeps its needsSync flag and goes out on the next resumed run.
-  var connectivityResult = await (Connectivity().checkConnectivity());
-  if (objectMethod["needsSync"] != null) {
-    if ((objectMethod["needsSync"] == true) &&
-        (!connectivityResult.contains(ConnectivityResult.none))) {
-      if (syncSettings.isUploadPaused) {
-        debugPrint(
-            'setObjectMethod: sync suppressed (uploadPaused) for ${getObjectMethodUID(objectMethod)}');
-      } else {
-        await cloudSyncService.uploadPendingPhotos();
-        await cloudSyncService.syncMethods('tracefoodchain.org',
-            syncFromCloud: syncFromCloud);
-      }
-    }
+  // Upload if tagged for this. The upload runs in the background (debounced,
+  // push only) instead of blocking the caller until a complete sync cycle -
+  // pull included - has finished. Connectivity and the upload pause are
+  // checked when it runs; offline the item keeps its needsSync flag and goes
+  // out with the next sync run.
+  // [syncFromCloud] is no longer used here: the pull is left to the periodic
+  // timer, the connectivity trigger and "sync now".
+  if (objectMethod["needsSync"] == true) {
+    cloudSyncService.scheduleSaveTriggeredSync();
   }
   return objectMethod;
 }

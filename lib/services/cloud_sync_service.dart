@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -13,11 +14,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
-import 'package:trace_foodchain_app/helpers/json_full_double_to_int.dart';
-import 'package:trace_foodchain_app/helpers/sort_json_alphabetically.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/screens/home_screen.dart';
 import 'package:trace_foodchain_app/services/get_device_id.dart';
+import 'package:trace_foodchain_app/services/hash_cache_service.dart';
 import 'package:trace_foodchain_app/services/media_outbox_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/sync_outbox_service.dart';
@@ -339,7 +339,19 @@ class CloudSyncService {
   // WP A3: a trigger that arrives while a sync runs is coalesced into exactly
   // one follow-up run instead of being dropped.
   bool _rerunRequested = false;
+  // True when one of the coalesced triggers asked for a pull - a push-only run
+  // (save trigger) must not swallow the pull of a timer that arrived meanwhile.
+  bool _rerunWithPull = false;
   bool _isUploadingPhotos = false; // Flag to prevent parallel photo uploads
+
+  /// Saves within this window are coalesced into one upload run.
+  static const Duration _saveSyncDebounce = Duration(seconds: 2);
+  Timer? _saveSyncTimer;
+
+  /// When the last pull was committed into the local storage (null: not yet
+  /// in this app session). Unlike the return value of [syncMethods] this is
+  /// set even when single pushes of the same cycle failed.
+  DateTime? lastPullCommittedAt;
 
   /// WP B2: page size for the pull.
   ///
@@ -928,6 +940,7 @@ class CloudSyncService {
       {Function(int current, int total)? onProgress,
       Function(int current, int total)? onDownloadProgress,
       VoidCallback? onFetchingFromCloud,
+      Function(int current, int total)? onScanProgress,
       bool syncFromCloud = true,
       bool force = false,
       bool ignorePause = false}) async {
@@ -958,6 +971,7 @@ class CloudSyncService {
       // WP A3: an external trigger arriving during a run is not dropped - it is
       // remembered and produces exactly one follow-up run.
       _rerunRequested = true;
+      _rerunWithPull = _rerunWithPull || syncFromCloud;
       debugPrint('Sync already in progress, scheduling exactly one follow-up');
       return false;
     }
@@ -973,6 +987,7 @@ class CloudSyncService {
           onProgress: onProgress,
           onDownloadProgress: onDownloadProgress,
           onFetchingFromCloud: onFetchingFromCloud,
+          onScanProgress: onScanProgress,
           syncFromCloud: syncFromCloud,
           force: force,
           ignorePause: ignorePause,
@@ -986,21 +1001,51 @@ class CloudSyncService {
     }
 
     if (_rerunRequested) {
+      final bool rerunWithPull = _rerunWithPull;
       _rerunRequested = false;
+      _rerunWithPull = false;
       debugPrint('[SYNC] running the coalesced follow-up sync');
       unawaited(syncMethods(domain,
           onProgress: onProgress,
           onDownloadProgress: onDownloadProgress,
           onFetchingFromCloud: onFetchingFromCloud,
-          syncFromCloud: syncFromCloud));
+          onScanProgress: onScanProgress,
+          syncFromCloud: rerunWithPull));
     }
     return success;
+  }
+
+  /// Schedules the upload after a local save without blocking the caller.
+  ///
+  /// One business action saves several documents in a row, and every save used
+  /// to await a complete sync cycle (photos, push and pull) before the UI could
+  /// continue. Saves within [_saveSyncDebounce] are now coalesced into one
+  /// push-only run; the pull is left to the periodic timer, the connectivity
+  /// trigger and "sync now".
+  void scheduleSaveTriggeredSync() {
+    // A save from within a running cycle does not need another run - the
+    // cycle handles its own writes (see syncMethods).
+    if (_isInsideSyncCycle) return;
+    _saveSyncTimer?.cancel();
+    _saveSyncTimer = Timer(_saveSyncDebounce, () async {
+      _saveSyncTimer = null;
+      try {
+        if (syncSettings.isUploadPaused) return;
+        final connectivity = await Connectivity().checkConnectivity();
+        if (connectivity.contains(ConnectivityResult.none)) return;
+        await uploadPendingPhotos();
+        await syncMethods('tracefoodchain.org', syncFromCloud: false);
+      } catch (e) {
+        debugPrint('[SYNC] save-triggered sync failed: $e');
+      }
+    });
   }
 
   Future<bool> _runSyncCycle(String domain,
       {Function(int current, int total)? onProgress,
       Function(int current, int total)? onDownloadProgress,
       VoidCallback? onFetchingFromCloud,
+      Function(int current, int total)? onScanProgress,
       bool syncFromCloud = true,
       bool force = false,
       bool ignorePause = false}) async {
@@ -1017,6 +1062,12 @@ class CloudSyncService {
     int deferredCount = 0;
     int pulledCount = 0;
     int conflictCount = 0;
+    // Phase durations for the finished log - to compare sync runs before and
+    // after changes (-1: phase did not run).
+    final Stopwatch cycleWatch = Stopwatch()..start();
+    int scanMs = -1;
+    int pushMs = -1;
+    int pullMs = -1;
     cloudLogService.info('syncMethods: start', data: {'domain': domain});
     final databaseHelper = DatabaseHelper();
     try {
@@ -1026,10 +1077,33 @@ class CloudSyncService {
         "objectHashTable": [],
         "methodHashTable": [],
       };
-      for (var doc in localStorage!.values) {
+      // The hashes are only needed for the pull - a push-only run (save
+      // trigger, background task) skips hashing the whole database.
+      final bool buildHashes = syncFromCloud;
+      // Snapshot: the loop yields to the event loop below, other code may
+      // write to the box meanwhile.
+      final localDocs = localStorage!.values.toList();
+      final int scanTotal = localDocs.length;
+      int scanned = 0;
+      debugPrint('[SYNC] scan: checking $scanTotal local documents'
+          '${buildHashes ? " (incl. hashes for the pull)" : ""}');
+      onScanProgress?.call(0, scanTotal);
+      for (var doc in localDocs) {
+        scanned++;
+        if (scanned % 50 == 0 || scanned == scanTotal) {
+          onScanProgress?.call(scanned, scanTotal);
+          if (scanned % 500 == 0 || scanned == scanTotal) {
+            debugPrint('[SYNC] scan: $scanned/$scanTotal'
+                ' (${cycleWatch.elapsedMilliseconds} ms)');
+          }
+          // Let the UI paint the progress - on the web everything runs on one
+          // thread, a long loop would freeze the screen.
+          await Future.delayed(Duration.zero);
+        }
         final doc2 = Map<String, dynamic>.from(doc);
         if (doc2["methodHistoryRef"] != null) {
           //This is an object
+          if (!buildHashes) continue;
           if (doc2["needsSync"] != null) {
             doc2.remove(
                 "needsSync"); //!need to avoid needsSync being in the Hash!
@@ -1037,8 +1111,8 @@ class CloudSyncService {
             // setObjectMethod(doc2, false, false);
           }
 
-          final String hash = generateStableHash(doc2);
           final String uid = getObjectMethodUID(doc2);
+          final String hash = hashCache.hashFor(uid, doc, doc2);
 
           deviceHashes["objectHashTable"].add({"UID": uid, "hash": hash});
         } else {
@@ -1050,7 +1124,7 @@ class CloudSyncService {
             //Sync anyway after getting a digital signature
             final doc3 = await setObjectMethod(doc2, true, false);
             methodsToSyncToCloud.add(doc3);
-            hash = generateStableHash(doc3);
+            if (buildHashes) hash = generateStableHash(doc3);
           } else {
             //Handle standard methods (sync upwards if they need a sync)
             if (doc2["needsSync"] != null) {
@@ -1058,13 +1132,17 @@ class CloudSyncService {
                   "needsSync"); //!need to avoid needsSync being in the Hash!
               methodsToSyncToCloud.add(doc2);
             }
-            hash = generateStableHash(doc2);
+            if (buildHashes) hash = hashCache.hashFor(uid, doc, doc2);
           }
 
           if (hash != "")
             deviceHashes["methodHashTable"].add({"UID": uid, "hash": hash});
         }
       }
+      if (buildHashes) await hashCache.flush(localStorage!);
+      scanMs = cycleWatch.elapsedMilliseconds;
+      debugPrint('[SYNC] scan done in $scanMs ms:'
+          ' ${methodsToSyncToCloud.length} method(s) to push');
       // WP A3: items that failed recently wait out their backoff window. They
       // stay flagged `needsSync` and still contribute their hash, so nothing is
       // lost - the push is merely deferred.
@@ -1273,6 +1351,7 @@ class CloudSyncService {
       // (syncFromCloud: false, e.g. the landscape web app), where they used to
       // stay set forever and inflate the "waiting items" counter.
       await _clearSyncFlagsForConfirmed(confirmedUids);
+      pushMs = cycleWatch.elapsedMilliseconds - scanMs;
 
       //2. Get all objects and methods from the cloud that are not on the device or need to be updated
       if (!syncFromCloud) {
@@ -1308,7 +1387,11 @@ class CloudSyncService {
           pageSize: paginate ? _pullPageSize : null,
         );
         debugPrint('[SYNC] pull page $page returned,'
-            ' isEmpty=${cloudData.isEmpty}');
+            ' isEmpty=${cloudData.isEmpty},'
+            ' ${(cloudData["ralObjects"] as List?)?.length ?? 0} objects,'
+            ' ${(cloudData["ralMethods"] as List?)?.length ?? 0} methods,'
+            ' hasMore=${cloudData["hasMore"]}'
+            ' (${cycleWatch.elapsedMilliseconds} ms)');
 
         // The paginated endpoint is new. If it fails before delivering
         // anything, fall back to the endpoint that has been in production all
@@ -1405,13 +1488,20 @@ class CloudSyncService {
 
       // Marker + commit: everything before this point is discardable.
       await syncOutbox.markStagingComplete();
+      debugPrint('[SYNC] pull: committing $stagedCount staged documents'
+          ' (${cycleWatch.elapsedMilliseconds} ms)');
       final committed = await syncOutbox.commitStagingInto(localStorage!);
       pulledCount = committed;
+      lastPullCommittedAt = DateTime.now();
 
       // Self-repair: anything the cloud does not know about gets queued for
       // another push. This is the automatic counterpart to the manual
       // "check & resync" in the history screen.
+      debugPrint('[SYNC] pull: committed, checking ${notFoundInCloud.length}'
+          ' document(s) missing in the cloud'
+          ' (${cycleWatch.elapsedMilliseconds} ms)');
       await _reflagMissingInCloud(notFoundInCloud);
+      pullMs = cycleWatch.elapsedMilliseconds - scanMs - pushMs;
       debugPrint('[SYNC] pull phase committed $committed documents atomically'
           ' (${paginate ? "${page + 1} page(s)" : "single response"})');
 
@@ -1437,7 +1527,8 @@ class CloudSyncService {
       _refreshPendingCount();
       debugPrint('[SYNC] summary: pushed=$pushedCount failed=$failedCount '
           'deferred=$deferredCount pulled=$pulledCount '
-          'conflicts=$conflictCount');
+          'conflicts=$conflictCount totalMs=${cycleWatch.elapsedMilliseconds}'
+          ' scanMs=$scanMs pushMs=$pushMs pullMs=$pullMs');
       cloudLogService.info('syncMethods: finished', data: {
         'domain': domain,
         'success': '$cycleSuccess',
@@ -1446,6 +1537,12 @@ class CloudSyncService {
         'deferred': '$deferredCount',
         'pulled': '$pulledCount',
         'conflicts': '$conflictCount',
+        'withPull': '$syncFromCloud',
+        'localDocs': '${localStorage?.length ?? 0}',
+        'totalMs': '${cycleWatch.elapsedMilliseconds}',
+        'scanMs': '$scanMs',
+        'pushMs': '$pushMs',
+        'pullMs': '$pullMs',
       });
     }
   }
@@ -1585,32 +1682,43 @@ class CloudSyncService {
 
 ///Returns the SHA-256 hash of a Utf8 encoded JSON string as a hex string
 ///Can be converted to bytes with utf8.encode(hashString)
+/// Hash of a document, compared against the hash tables of the cloud.
+///
+/// The JSON that is hashed must stay byte-identical to what the cloud computes
+/// (createHashFromJson) - see test/generate_stable_hash_test.dart, which
+/// checks this implementation against the previous one.
+///
+/// Single pass without copies: the previous implementation went through
+/// deepCopyMap (a JSON encode + decode) on every nesting level, twice. That
+/// cost several seconds per sync for a few thousand documents and blocks the
+/// UI on the web, where everything runs on one thread.
 String generateStableHash(Map<String, dynamic> docData) {
-  Map<String, dynamic> valueMap = deepCopyMap(docData);
+  //Replace Datetime and GeoPoint with JSON objects
+  final valueMap = convertToJson(docData);
 
-  valueMap =
-      convertToJson(valueMap); //Replace Datetime and GeoPoint with JSON objects
+  final jsonString = jsonEncode(_normalizeForHash(valueMap));
 
-  //Avoid json string with double like 1000.0 -> because on some platforms doubles are stringified without the .0
-  valueMap = jsonFullDoubleToInt(valueMap);
+  return sha256.convert(utf8.encode(jsonString)).toString();
+}
 
-  //Sort alphabetically to ensure getting the same hash for the same data
-  valueMap = sortJsonAlphabetically(valueMap);
-
-  final jsonString = jsonEncode(valueMap);
-  // if (valueMap.keys.contains("methodHistoryRef")) {
-  //
-  // }
-  final String uid = getObjectMethodUID(docData);
-
-  //
-
-  final bytes = utf8.encode(jsonString);
-
-  //
-  // }");
-
-  final hashStr = sha256.convert(bytes).toString();
-
-  return hashStr;
+/// Sorts map keys alphabetically (to get the same hash for the same data) and
+/// converts doubles like 1000.0 to int (some platforms stringify doubles
+/// without the .0).
+dynamic _normalizeForHash(dynamic value) {
+  if (value is Map) {
+    final Map<String, dynamic> byKey = {
+      for (final entry in value.entries) entry.key.toString(): entry.value,
+    };
+    final keys = byKey.keys.toList()..sort();
+    return <String, dynamic>{
+      for (final key in keys) key: _normalizeForHash(byKey[key]),
+    };
+  }
+  if (value is List) {
+    return value.map(_normalizeForHash).toList();
+  }
+  if (value is double && value.toString().endsWith(".0")) {
+    return value.toInt();
+  }
+  return value;
 }

@@ -27,6 +27,9 @@ class PermissionService {
       'Farmer'
     ],
     'export_fields': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    // QC-geprüfte Felder: Coordinators sehen nur ihre eigenen Freigaben
+    'view_qc_fields': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    'view_all_qc_fields': ['SUPERADMIN', 'tfcAdmin'],
 
     // System Settings
     'system_settings': ['SUPERADMIN'],

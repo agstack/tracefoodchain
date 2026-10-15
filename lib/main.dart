@@ -27,6 +27,7 @@ import 'package:trace_foodchain_app/screens/registrar_screen.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/services/background_sync_service.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
+import 'package:trace_foodchain_app/services/hash_cache_service.dart';
 import 'package:trace_foodchain_app/services/cloud_log_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
@@ -494,7 +495,12 @@ void main() async {
 }
 
 // Neue Funktion zum Initialisieren des User-spezifischen LocalStorage
-Future<void> initializeUserLocalStorage(String userId) async {
+///
+/// [withHashCache]: false for the background isolate (Workmanager). It only
+/// pushes, needs no hashes, and must not write the cache box of the
+/// foreground isolate.
+Future<void> initializeUserLocalStorage(String userId,
+    {bool withHashCache = true}) async {
   final boxName = 'localStorage_$userId';
 
   // Prüfe ob Box bereits für diesen User geöffnet ist
@@ -503,6 +509,7 @@ Future<void> initializeUserLocalStorage(String userId) async {
     localStorage = Hive.box<Map<dynamic, dynamic>>(boxName);
     // Die Sync-Outboxen teilen den Lebenszyklus von localStorage (WP A1/A3/A4)
     await openUserSyncBoxes(userId);
+    if (withHashCache) await hashCache.open(userId, localStorage!);
     debugPrint('localStorage for $userId already open, reusing existing box');
     return;
   }
@@ -519,6 +526,8 @@ Future<void> initializeUserLocalStorage(String userId) async {
 
   // Media-Outbox (WP A1) sowie Retry-/Staging-Boxen (WP A3/A4) öffnen
   await openUserSyncBoxes(userId);
+  // Hash-Cache vor dem ersten Schreibzugriff öffnen, damit er jede Änderung sieht
+  if (withHashCache) await hashCache.open(userId, localStorage!);
 
   // WP A4: einen abgebrochenen Pull entweder komplett übernehmen oder verwerfen -
   // niemals einen halb aktualisierten Zustand stehen lassen.
@@ -534,6 +543,7 @@ Future<void> closeUserLocalStorage() async {
   // Sync-Outboxen zusammen mit localStorage schließen, damit keine Medien oder
   // Retry-Zustände eines Users in die Session des nächsten überlaufen.
   await closeUserSyncBoxes();
+  await hashCache.close();
   syncSettings.pendingItemCount.value = 0;
 
   if (localStorage != null && localStorage!.isOpen) {

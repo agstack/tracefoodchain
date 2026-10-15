@@ -1117,6 +1117,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get syncingWith => 'Synchronisiere mit';
 
   @override
+  String get syncCheckingLocalData => 'Prüfe lokale Daten';
+
+  @override
   String get syncInProgress => 'Synchronisierung läuft...';
 
   @override
@@ -3499,4 +3502,95 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get qcCheckPhotoUnavailable =>
       'Foto nicht verfügbar - kann nicht bestätigt werden';
+
+  @override
+  String get fieldRegistryMyFields => 'Meine Felder';
+
+  @override
+  String get fieldRegistryQcApproved => 'QC-geprüft';
+
+  @override
+  String qcApprovedFieldsTotal(String count) {
+    return '$count QC-geprüfte Felder insgesamt';
+  }
+
+  @override
+  String get qcApprovedByYouHint => 'Von dir in der QC freigegebene Felder';
+
+  @override
+  String get noFarmAssigned => 'Keine Farm zugeordnet';
+
+  @override
+  String get noFarmerAssigned => 'Kein Farmer zugeordnet';
+
+  @override
+  String get loadingFarmAssignments => 'Lade Farm- und Farmer-Zuordnungen...';
+
+  @override
+  String get trustLabelTitle => 'Vertrauen & Qualität';
+
+  @override
+  String get trustLevelHigh => 'Hoch';
+
+  @override
+  String get trustLevelMedium => 'Mittel';
+
+  @override
+  String get trustLevelLow => 'Niedrig';
+
+  @override
+  String get trustLevelExplanation =>
+      'Hoch: in der QC freigegeben, vermessene Grenze, GeoID, Farm und Farmer. Mittel: in der QC freigegeben und mit Grenze, aber etwas fehlt. Niedrig: nicht in der QC freigegeben oder ohne Grenze.';
+
+  @override
+  String get trustCriterionQcApproved => 'In der QC freigegeben';
+
+  @override
+  String get trustCriterionQcSigned =>
+      'Freigabe als signierter QC-Nachweis dokumentiert';
+
+  @override
+  String get trustCriterionGeoId => 'GeoID aus der Asset Registry';
+
+  @override
+  String get trustCriterionPolygon => 'Feldgrenze (Polygon) vorhanden';
+
+  @override
+  String get trustCriterionSurveyedPolygon =>
+      'Grenze vermessen, nicht aus einem Mittelpunkt konstruiert';
+
+  @override
+  String get trustCriterionArea => 'Fläche angegeben';
+
+  @override
+  String get trustCriterionFarm => 'Einer Farm zugeordnet';
+
+  @override
+  String get trustCriterionFarmer => 'Farm hat einen Farmer';
+
+  @override
+  String get trustCriterionPhoto => 'Registrierungsfoto verknüpft';
+
+  @override
+  String get sortByRegistrationDateDesc => 'Registrierdatum (neueste zuerst)';
+
+  @override
+  String get sortByRegistrationDateAsc => 'Registrierdatum (älteste zuerst)';
+
+  @override
+  String get sortByFarm => 'Farm (A-Z)';
+
+  @override
+  String get sortByFarmer => 'Farmer (A-Z)';
+
+  @override
+  String get sortByTrustLowFirst => 'Vertrauen & Qualität (niedrigste zuerst)';
+
+  @override
+  String get sortByTrustHighFirst => 'Vertrauen & Qualität (höchste zuerst)';
+
+  @override
+  String sortAppliesToLoadedFields(String count) {
+    return 'Sortiert sind nur die $count geladenen Felder – für alle Felder „Alle laden“ nutzen.';
+  }
 }

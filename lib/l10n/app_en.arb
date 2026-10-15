@@ -442,6 +442,7 @@
   "nologoutpossible": "Logout only possible when connected to the internet",
   "manuallySyncingWith": "Manually syncing with",
   "syncingWith": "Syncing with",
+  "syncCheckingLocalData": "Checking local data",
   "syncInProgress": "Synchronization in progress...",
   "newKeypairNeeded": "No private key found - generating new keypair...",
   "failedToInitializeKeyManagement": "WARNING: Failed to initialize key management!",
@@ -2299,5 +2300,47 @@
   "qcCheckConsentForm2": "Consent form, second photo checked",
   "qcCheckFieldPhoto": "Field photo checked: present and matching the field",
   "qcCheckPolygon": "Polygon geometry checked and approved",
-  "qcCheckPhotoUnavailable": "Photo not available - cannot be confirmed"
+  "qcCheckPhotoUnavailable": "Photo not available - cannot be confirmed",
+  "fieldRegistryMyFields": "My fields",
+  "fieldRegistryQcApproved": "QC approved",
+  "qcApprovedFieldsTotal": "{count} QC-approved fields in total",
+  "@qcApprovedFieldsTotal": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "qcApprovedByYouHint": "Fields you approved in QC",
+  "noFarmAssigned": "No farm assigned",
+  "noFarmerAssigned": "No farmer assigned",
+  "loadingFarmAssignments": "Loading farm and farmer assignments...",
+  "trustLabelTitle": "Trust & quality",
+  "trustLevelHigh": "High",
+  "trustLevelMedium": "Medium",
+  "trustLevelLow": "Low",
+  "trustLevelExplanation": "High: approved in QC, surveyed boundary, GeoID, farm and farmer. Medium: approved in QC with a boundary, but something is missing. Low: not approved in QC or no boundary.",
+  "trustCriterionQcApproved": "Approved in QC",
+  "trustCriterionQcSigned": "Approval documented as a signed QC record",
+  "trustCriterionGeoId": "GeoID from the Asset Registry",
+  "trustCriterionPolygon": "Field boundary (polygon) available",
+  "trustCriterionSurveyedPolygon": "Boundary surveyed, not constructed from a centre point",
+  "trustCriterionArea": "Area specified",
+  "trustCriterionFarm": "Assigned to a farm",
+  "trustCriterionFarmer": "Farm has a farmer",
+  "trustCriterionPhoto": "Registration photo linked",
+  "sortByRegistrationDateDesc": "Registration date (newest first)",
+  "sortByRegistrationDateAsc": "Registration date (oldest first)",
+  "sortByFarm": "Farm (A-Z)",
+  "sortByFarmer": "Farmer (A-Z)",
+  "sortByTrustLowFirst": "Trust & quality (lowest first)",
+  "sortByTrustHighFirst": "Trust & quality (highest first)",
+  "sortAppliesToLoadedFields": "Only the {count} loaded fields are sorted - use \"Load all\" to sort every field.",
+  "@sortAppliesToLoadedFields": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  }
 }

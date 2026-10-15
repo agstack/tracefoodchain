@@ -1107,6 +1107,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncingWith => 'Syncing with';
 
   @override
+  String get syncCheckingLocalData => 'Checking local data';
+
+  @override
   String get syncInProgress => 'Synchronization in progress...';
 
   @override
@@ -3458,4 +3461,95 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get qcCheckPhotoUnavailable =>
       'Photo not available - cannot be confirmed';
+
+  @override
+  String get fieldRegistryMyFields => 'My fields';
+
+  @override
+  String get fieldRegistryQcApproved => 'QC approved';
+
+  @override
+  String qcApprovedFieldsTotal(String count) {
+    return '$count QC-approved fields in total';
+  }
+
+  @override
+  String get qcApprovedByYouHint => 'Fields you approved in QC';
+
+  @override
+  String get noFarmAssigned => 'No farm assigned';
+
+  @override
+  String get noFarmerAssigned => 'No farmer assigned';
+
+  @override
+  String get loadingFarmAssignments => 'Loading farm and farmer assignments...';
+
+  @override
+  String get trustLabelTitle => 'Trust & quality';
+
+  @override
+  String get trustLevelHigh => 'High';
+
+  @override
+  String get trustLevelMedium => 'Medium';
+
+  @override
+  String get trustLevelLow => 'Low';
+
+  @override
+  String get trustLevelExplanation =>
+      'High: approved in QC, surveyed boundary, GeoID, farm and farmer. Medium: approved in QC with a boundary, but something is missing. Low: not approved in QC or no boundary.';
+
+  @override
+  String get trustCriterionQcApproved => 'Approved in QC';
+
+  @override
+  String get trustCriterionQcSigned =>
+      'Approval documented as a signed QC record';
+
+  @override
+  String get trustCriterionGeoId => 'GeoID from the Asset Registry';
+
+  @override
+  String get trustCriterionPolygon => 'Field boundary (polygon) available';
+
+  @override
+  String get trustCriterionSurveyedPolygon =>
+      'Boundary surveyed, not constructed from a centre point';
+
+  @override
+  String get trustCriterionArea => 'Area specified';
+
+  @override
+  String get trustCriterionFarm => 'Assigned to a farm';
+
+  @override
+  String get trustCriterionFarmer => 'Farm has a farmer';
+
+  @override
+  String get trustCriterionPhoto => 'Registration photo linked';
+
+  @override
+  String get sortByRegistrationDateDesc => 'Registration date (newest first)';
+
+  @override
+  String get sortByRegistrationDateAsc => 'Registration date (oldest first)';
+
+  @override
+  String get sortByFarm => 'Farm (A-Z)';
+
+  @override
+  String get sortByFarmer => 'Farmer (A-Z)';
+
+  @override
+  String get sortByTrustLowFirst => 'Trust & quality (lowest first)';
+
+  @override
+  String get sortByTrustHighFirst => 'Trust & quality (highest first)';
+
+  @override
+  String sortAppliesToLoadedFields(String count) {
+    return 'Only the $count loaded fields are sorted - use \"Load all\" to sort every field.';
+  }
 }
