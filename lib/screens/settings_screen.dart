@@ -7,6 +7,7 @@ import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/providers/app_state.dart';
 import '../l10n/app_localizations.dart';
 // import 'package:trace_foodchain_app/screens/geo_ids_view.dart';
+import 'package:trace_foodchain_app/screens/country_management_screen.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/screens/field_registry_screen.dart';
 import 'package:trace_foodchain_app/screens/user_management_screen.dart';
@@ -189,6 +190,21 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const RegistrarQCScreen(),
+                  ),
+                );
+              },
+            ),
+          // Länder-Konfiguration (nur SUPERADMIN)
+          if (PermissionService().hasPermission('manage_countries'))
+            ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: const Icon(Icons.public),
+              title: Text(l10n.countryManagement),
+              subtitle: Text(l10n.countryManagementSubtitle),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const CountryManagementScreen(),
                   ),
                 );
               },

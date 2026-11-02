@@ -265,22 +265,31 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
   /// Gesamtzahl aller freigegebenen Felder, unabhängig vom Datumsfilter.
   ///
-  /// Nur für Rollen, die alle Freigaben sehen: welche Felder ein Coordinator
-  /// freigegeben hat, steht nur an den QC-Jobs und lässt sich nicht zählen,
-  /// ohne sie alle zu laden.
+  /// Nur für Rollen, die alle Freigaben sehen. Gezählt wird wie in der Liste
+  /// über die freigebenden QC-Jobs - `objectState == 'active'` allein trifft
+  /// auch Felder, die nie durch die QC gegangen sind. Dafür müssen alle
+  /// QC-Jobs und die freigegebenen Felder geladen werden; die Felder landen
+  /// im Zwischenspeicher und kosten die Liste danach nichts mehr.
   Future<void> _loadQcTotal() async {
     if (!_qcView ||
         !PermissionService().hasPermission('view_all_qc_fields')) {
       return;
     }
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .where('template.RALType', isEqualTo: 'field')
-          .where('objectState', isEqualTo: 'active')
-          .count()
-          .get();
-      if (mounted) setState(() => _qcTotal = snapshot.count);
+      final uids = <String>{};
+      QueryDocumentSnapshot? cursor;
+      bool exhausted = false;
+      while (!exhausted) {
+        final snapshot = await _qcMethodsPage(null, cursor);
+        if (snapshot.docs.length < _qcMethodPageSize) exhausted = true;
+        if (snapshot.docs.isNotEmpty) cursor = snapshot.docs.last;
+        for (final doc in snapshot.docs) {
+          uids.addAll(_approvedFieldUids(doc.data() as Map<String, dynamic>));
+        }
+      }
+      final objects = await _fetchObjectsByUid(uids);
+      final total = objects.values.where(_isListedField).length;
+      if (mounted && _qcView) setState(() => _qcTotal = total);
     } catch (e) {
       debugPrint('QC-Gesamtzahl nicht ladbar: $e');
     }
@@ -536,9 +545,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
   /// Liefert die Abfrage selbst schon diese Reihenfolge? Dann ist die
   /// geladene Teilmenge auch global richtig sortiert.
+  /// Die QC-Ansicht blättert über die QC-Jobs, nicht über die Felder.
   bool get _sortMatchesServerOrder =>
-      _sortMode == _FieldSort.dateDesc &&
-      !(_qcView && !PermissionService().hasPermission('view_all_qc_fields'));
+      _sortMode == _FieldSort.dateDesc && !_qcView;
 
   /// Lädt eine Seite Felder aus Firestore.
   /// Gibt (felder, letztesDokument, gibtWeitere) zurück.
@@ -558,9 +567,21 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       final isSuperAdmin = permissionService.isSuperAdmin();
 
       List<Map<String, dynamic>> objects;
-      if (_qcView && !permissionService.hasPermission('view_all_qc_fields')) {
-        (objects, lastDocument, hasMore) = await _fetchOwnQcFieldObjects(
-            limit: limit, startAfterDoc: startAfterDoc);
+      if (_qcView) {
+        // Alle Freigaben sehen nur Rollen mit view_all_qc_fields, ein
+        // registrarCoordinator nur seine eigenen.
+        final executorUID =
+            permissionService.hasPermission('view_all_qc_fields')
+                ? null
+                : appUserDoc?["identity"]["UID"] as String?;
+        if (executorUID == null &&
+            !permissionService.hasPermission('view_all_qc_fields')) {
+          throw Exception('User not authenticated');
+        }
+        (objects, lastDocument, hasMore) = await _fetchQcApprovedFieldObjects(
+            executorUID: executorUID,
+            limit: limit,
+            startAfterDoc: startAfterDoc);
       } else {
         (objects, lastDocument, hasMore) = await _fetchFieldObjects(
             isSuperAdmin: isSuperAdmin,
@@ -572,24 +593,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
       for (final fieldData in objects) {
         try {
-          final ralType = fieldData['template']?["RALType"];
-          if (ralType != "field") continue;
-
-          final objectState = fieldData["objectState"];
-          if (_qcView) {
-            if (objectState != 'active') continue;
-          } else if (objectState == "qcPending" ||
-              objectState == "qcRejected") {
-            continue;
-          }
-
-          if (!isSuperAdmin) {
-            final isFieldTestmode = fieldData.containsKey("isTestmode") &&
-                fieldData["isTestmode"] == true;
-            if (!isTestmode && isFieldTestmode) continue;
-            if (isTestmode && !fieldData.containsKey("isTestmode")) continue;
-          }
-
+          if (!_isListedField(fieldData)) continue;
           fields.add(_fieldEntryFrom(fieldData));
         } catch (e) {
           debugPrint("❌ CRITICAL ERROR processing field: $e");
@@ -628,8 +632,30 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     return (fields, lastDocument, hasMore);
   }
 
-  /// Feldobjekte über TFC_objects: die eigenen, als SUPERADMIN alle - und in
-  /// der QC-Ansicht alle freigegebenen.
+  /// Gehört ein geladenes Objekt in die aktuelle Liste?
+  ///
+  /// Die QC-Ansicht verlangt zusätzlich zur Freigabe durch einen QC-Job den
+  /// Zustand 'active' - das Feld kann danach noch geändert worden sein.
+  bool _isListedField(Map<String, dynamic> fieldData) {
+    if (fieldData['template']?["RALType"] != "field") return false;
+
+    final objectState = fieldData["objectState"];
+    if (_qcView) {
+      if (objectState != 'active') return false;
+    } else if (objectState == "qcPending" || objectState == "qcRejected") {
+      return false;
+    }
+
+    if (!PermissionService().isSuperAdmin()) {
+      final isFieldTestmode = fieldData.containsKey("isTestmode") &&
+          fieldData["isTestmode"] == true;
+      if (!isTestmode && isFieldTestmode) return false;
+      if (isTestmode && !fieldData.containsKey("isTestmode")) return false;
+    }
+    return true;
+  }
+
+  /// Feldobjekte über TFC_objects: die eigenen, als SUPERADMIN alle.
   Future<(List<Map<String, dynamic>>, QueryDocumentSnapshot?, bool)>
       _fetchFieldObjects({
     required bool isSuperAdmin,
@@ -637,7 +663,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     QueryDocumentSnapshot? startAfterDoc,
   }) async {
     final (fromDate, toDate) = _getDateRangeForFilter();
-    final allFields = isSuperAdmin || _qcView;
 
     if (isSuperAdmin) {
       debugPrint('SUPERADMIN: Lade Felder (limit=$limit, fromDate=$fromDate)');
@@ -645,9 +670,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
     Query baseQuery() {
       Query query = FirebaseFirestore.instance.collection('TFC_objects');
-      if (allFields) {
+      if (isSuperAdmin) {
         query = query.where('template.RALType', isEqualTo: 'field');
-        if (_qcView) query = query.where('objectState', isEqualTo: 'active');
       } else {
         final currentUserUID = appUserDoc?["identity"]["UID"];
         if (currentUserUID == null) throw Exception('User not authenticated');
@@ -698,21 +722,20 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     );
   }
 
-  /// QC-Ansicht eines registrarCoordinators: die Felder, die er selbst
-  /// freigegeben hat.
+  /// QC-Ansicht: die Felder, die ein QC-Job freigegeben hat - mit
+  /// [executorUID] nur die Freigaben dieses Prüfers, sonst alle.
   ///
-  /// Am Feld steht nicht, wer es geprüft hat - das weiß nur der QC-Job.
-  /// Geblättert wird deshalb über die eigenen Methoden, neueste zuerst; der
-  /// Cursor ist das letzte Methodendokument. Weil eine Methodenseite auch
+  /// Am Feld steht nicht, ob und von wem es geprüft wurde - das weiß nur der
+  /// QC-Job. Geblättert wird deshalb über die QC-Jobs, neueste zuerst; der
+  /// Cursor ist das letzte Methodendokument. Weil eine Seite auch
   /// Abgelehntes, Farmen und Farmer enthält, wird wie im QC-Screen
   /// weitergesucht, bis eine Seite Felder zusammenkommt.
   Future<(List<Map<String, dynamic>>, QueryDocumentSnapshot?, bool)>
-      _fetchOwnQcFieldObjects({
+      _fetchQcApprovedFieldObjects({
+    String? executorUID,
     int? limit,
     QueryDocumentSnapshot? startAfterDoc,
   }) async {
-    final currentUserUID = appUserDoc?["identity"]["UID"];
-    if (currentUserUID == null) throw Exception('User not authenticated');
     final (fromDate, toDate) = _getDateRangeForFilter();
 
     final objects = <Map<String, dynamic>>[];
@@ -723,7 +746,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     while (!exhausted &&
         (limit == null || (objects.length < limit && rounds < 5))) {
       rounds++;
-      final snapshot = await _ownQcMethodsPage(currentUserUID, cursor);
+      final snapshot = await _qcMethodsPage(executorUID, cursor);
       if (snapshot.docs.length < _qcMethodPageSize) exhausted = true;
       if (snapshot.docs.isNotEmpty) cursor = snapshot.docs.last;
 
@@ -739,30 +762,29 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       }
 
       final fetched = await _fetchObjectsByUid(newUids);
-      objects.addAll(fetched.values.where((obj) =>
-          obj['template']?['RALType'] == 'field' &&
-          obj['objectState'] == 'active'));
+      objects.addAll(fetched.values.where(_isListedField));
     }
 
     return (objects, cursor, !exhausted);
   }
 
-  /// Eine Seite eigener Methoden, die eine Freigabe sein können.
+  /// Eine Seite QC-Jobs - mit [executorUID] nur die dieses Prüfers.
   ///
   /// Die Datumsfilterung passiert im Client: existenceStarts steht an älteren
   /// Methoden als Timestamp, an neueren als String - ein Bereichsfilter in der
   /// Abfrage träfe nur eine der beiden Sorten.
-  Future<QuerySnapshot> _ownQcMethodsPage(
-      String executorUID, QueryDocumentSnapshot? cursor) async {
-    final query = FirebaseFirestore.instance
+  Future<QuerySnapshot> _qcMethodsPage(
+      String? executorUID, QueryDocumentSnapshot? cursor) async {
+    Query query = FirebaseFirestore.instance
         .collection('TFC_methods')
-        .where('executor.identity.UID', isEqualTo: executorUID);
+        .where('template.RALType', isEqualTo: 'performQualityControl');
+    if (executorUID != null) {
+      query = query.where('executor.identity.UID', isEqualTo: executorUID);
+    }
 
     if (!_qcMethodsUnordered) {
       try {
         Query ordered = query
-            .where('template.RALType',
-                whereIn: const ['performQualityControl', 'changeObjectData'])
             .orderBy('existenceStarts', descending: true)
             .limit(_qcMethodPageSize);
         if (cursor != null) ordered = ordered.startAfterDocument(cursor);
@@ -772,7 +794,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         // weiter. Ein Cursor aus der sortierten Abfrage passt dann nicht mehr.
         debugPrint('QC-Methoden-Query ohne Index, Fallback: $e');
         _qcMethodsUnordered = true;
-        if (cursor != null) return _ownQcMethodsPage(executorUID, null);
+        if (cursor != null) return _qcMethodsPage(executorUID, null);
       }
     }
 
@@ -795,13 +817,18 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     return true;
   }
 
-  /// UIDs der Felder, die eine Methode freigegeben hat.
+  /// UIDs der Felder, die ein QC-Job freigegeben hat.
   ///
-  /// performQualityControl trägt die Entscheidung selbst. Freigaben aus der
-  /// Zeit davor liefen als changeObjectData; dort zählt nur der Übergang aus
-  /// 'qcPending' nach 'active' - sonst wäre jede Polygonkorrektur eine.
+  /// Als geprüft gilt nur, was ein performQualityControl-Job mit
+  /// qcDecision 'approved' ausgibt. Freigaben aus der Zeit davor liefen als
+  /// changeObjectData ohne Entscheidung und Checkliste und zählen nicht.
   List<String> _approvedFieldUids(Map<String, dynamic> method) {
-    final ralType = method['template']?['RALType'];
+    if (method['template']?['RALType'] != 'performQualityControl') {
+      return const [];
+    }
+    if (getSpecificPropertyfromJSON(method, 'qcDecision') != 'approved') {
+      return const [];
+    }
     final outputs = [
       ...(method['outputObjects'] as List? ?? const []),
       ...(method['outputObjectsRef'] as List? ?? const []),
@@ -810,35 +837,14 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     String? uidOf(Map obj) =>
         (obj['identity']?['UID'] ?? obj['UID'])?.toString();
 
-    if (ralType == 'performQualityControl') {
-      if (getSpecificPropertyfromJSON(method, 'qcDecision') != 'approved') {
-        return const [];
-      }
-      // Referenzen tragen den Typ nicht immer - aussortiert wird nach dem
-      // Laden über das Objekt selbst.
-      return [
-        for (final out in outputs)
-          if ((out['template']?['RALType'] ?? out['RALType'] ?? 'field') ==
-              'field')
-            if (uidOf(out) case final uid?) uid,
-      ];
-    }
-
-    if (ralType == 'changeObjectData') {
-      final inputs = (method['inputObjects'] as List? ?? const [])
-          .whereType<Map>()
-          .toList();
-      final wasPending = inputs.isEmpty ||
-          inputs.any((input) => input['objectState'] == 'qcPending');
-      if (!wasPending) return const [];
-      return [
-        for (final out in outputs)
-          if (out['template']?['RALType'] == 'field' &&
-              out['objectState'] == 'active')
-            if (uidOf(out) case final uid?) uid,
-      ];
-    }
-    return const [];
+    // Referenzen tragen den Typ nicht immer - aussortiert wird nach dem
+    // Laden über das Objekt selbst.
+    return [
+      for (final out in outputs)
+        if ((out['template']?['RALType'] ?? out['RALType'] ?? 'field') ==
+            'field')
+          if (uidOf(out) case final uid?) uid,
+    ];
   }
 
   /// Objekte zu UIDs, je 30 in einem Abruf; schon Geladenes kommt aus dem

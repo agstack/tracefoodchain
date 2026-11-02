@@ -16,6 +16,7 @@ import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/helpers/json_full_double_to_int.dart';
 import 'package:trace_foodchain_app/helpers/sort_json_alphabetically.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/models/user_scope.dart';
 import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/services/media_outbox_service.dart';
@@ -1210,10 +1211,27 @@ class OpenRALService {
         throw Exception('User UID is missing');
       }
 
-      await FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .doc(uid)
-          .set(userObject, SetOptions(merge: true));
+      final docRef =
+          FirebaseFirestore.instance.collection('TFC_objects').doc(uid);
+
+      // Gebiet und Team setzen Koordinatoren von anderen Geräten aus. merge
+      // ersetzt specificProperties als Ganzes - ohne diesen Schritt würde
+      // eine veraltete lokale Kopie die Zuweisung wieder löschen.
+      final cloudDoc = await docRef.get();
+      if (cloudDoc.exists) {
+        for (final (key, unit) in [
+          (UserScope.propertyKey, 'json'),
+          (UserScope.coordinatorKey, 'String'),
+        ]) {
+          final cloudValue = UserScope.rawProperty(cloudDoc.data()!, key);
+          if (cloudValue != null) {
+            userObject =
+                setSpecificPropertyJSON(userObject, key, cloudValue, unit);
+          }
+        }
+      }
+
+      await docRef.set(userObject, SetOptions(merge: true));
 
       debugPrint('User object synced to cloud successfully');
     } catch (e) {

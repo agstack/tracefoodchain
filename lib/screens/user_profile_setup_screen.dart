@@ -130,6 +130,7 @@ class _UserProfileSetupScreenState extends State<UserProfileSetupScreen> {
           .where((role) =>
               role != RoleManagementService.NO_ROLE &&
               role != 'tfcAdmin' &&
+              role != 'countryCoordinator' &&
               role != 'registrarCoordinator' &&
               role != 'SUPERADMIN')
           .toList();

@@ -682,6 +682,43 @@ Map<String, dynamic> initialMethodTemplateChangeUserRole = {
   "nestedMethods": [],
 };
 
+Map<String, dynamic> initialMethodTemplateChangeUserAssignment = {
+  "definition": {
+    "definitionText":
+        "A method to change the territory a user is responsible for (countries and regions) and the coordinator whose team a registrar belongs to.",
+    "definitionURL": "",
+  },
+  "existenceStarts": null,
+  "executor": {},
+  "duration": null,
+  "identity": {
+    "UID": "",
+    "name": "",
+    "siteTag": "",
+    "alternateIDs": [],
+    "alternateNames": [],
+  },
+  "methodState": "undefined",
+  "template": {
+    "RALType": "changeUserAssignment",
+    "version": "1",
+    "methodStateTemplates": "generalMethodState",
+  },
+  "specificProperties": [
+    {"key": "oldScope", "value": [], "unit": "json"},
+    {"key": "newScope", "value": [], "unit": "json"},
+    {"key": "oldCoordinatorUID", "value": "", "unit": "String"},
+    {"key": "newCoordinatorUID", "value": "", "unit": "String"},
+    {"key": "assignmentChangeReason", "value": "", "unit": "String"},
+    {"key": "adminUID", "value": "", "unit": "String"}
+  ],
+  "inputObjects": [],
+  "inputObjectsRef": [],
+  "outputObjects": [],
+  "outputObjectsRef": [],
+  "nestedMethods": [],
+};
+
 Map<String, dynamic> initialObjectTemplateRoleTemplate = {
   "identity": {
     "UID": "",
@@ -794,6 +831,7 @@ List<Map<String, dynamic>> initialTemplates = [
   initialMethodTemplateGenerateDigitalSibling,
   initialMethodTemplateChangeObjectData,
   initialMethodTemplateChangeUserRole,
+  initialMethodTemplateChangeUserAssignment,
   initialMethodTemplatePerformQualityControl,
   initialObjectTemplateRoleTemplate
 ];

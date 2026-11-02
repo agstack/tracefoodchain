@@ -9,30 +9,59 @@ class PermissionService {
   /// Standard Permissions für verschiedene Funktionen
   static const Map<String, List<String>> featurePermissions = {
     // User Management Permissions
-    'user_management': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
-    'view_users': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
-    'manage_roles': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    'user_management': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
+    'view_users': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
+    'manage_roles': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
 
     // Field Registry Permissions
     'field_registry': [
       'SUPERADMIN',
       'tfcAdmin',
+      'countryCoordinator',
       'registrarCoordinator',
       'Farmer'
     ],
     'create_fields': [
       'SUPERADMIN',
       'tfcAdmin',
+      'countryCoordinator',
       'registrarCoordinator',
       'Farmer'
     ],
-    'export_fields': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    'export_fields': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
     // QC-geprüfte Felder: Coordinators sehen nur ihre eigenen Freigaben
-    'view_qc_fields': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    'view_qc_fields': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
     'view_all_qc_fields': ['SUPERADMIN', 'tfcAdmin'],
 
     // System Settings
     'system_settings': ['SUPERADMIN'],
+    // Länder-Konfiguration der Registrierung (Einheiten, Regionen, ...)
+    'manage_countries': ['SUPERADMIN'],
     'view_audit_logs': ['SUPERADMIN', 'tfcAdmin'],
     'backup_data': ['SUPERADMIN'],
 
@@ -53,13 +82,23 @@ class PermissionService {
       'Processor',
       'Importer'
     ],
-    'approve_trades': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    'approve_trades': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
 
     // QC Review
-    'qc_review': ['SUPERADMIN', 'registrarCoordinator'],
+    'qc_review': ['SUPERADMIN', 'countryCoordinator', 'registrarCoordinator'],
 
     // Data Management
-    'export_data': ['SUPERADMIN', 'tfcAdmin', 'registrarCoordinator'],
+    'export_data': [
+      'SUPERADMIN',
+      'tfcAdmin',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
     'import_data': ['SUPERADMIN', 'tfcAdmin'],
     'delete_data': ['SUPERADMIN'],
   };

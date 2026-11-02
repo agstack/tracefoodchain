@@ -3625,4 +3625,225 @@ class AppLocalizationsFr extends AppLocalizations {
   String sortAppliesToLoadedFields(String count) {
     return 'Seuls les $count champs chargés sont triés - utilisez « Tout charger » pour trier tous les champs.';
   }
+
+  @override
+  String get countryManagement => 'Pays';
+
+  @override
+  String get countryManagementSubtitle =>
+      'Configurer les pays pour l\'enregistrement des exploitations';
+
+  @override
+  String get addCountry => 'Ajouter un pays';
+
+  @override
+  String get editCountry => 'Modifier le pays';
+
+  @override
+  String get countryReload => 'Recharger depuis le cloud';
+
+  @override
+  String get countryCode => 'Code ISO';
+
+  @override
+  String get countryName => 'Nom';
+
+  @override
+  String get countryActive => 'Actif';
+
+  @override
+  String get countryInactive => 'Inactif';
+
+  @override
+  String get countryActiveHint =>
+      'Seuls les pays actifs peuvent être attribués aux utilisateurs.';
+
+  @override
+  String get countryBuiltInNotSaved =>
+      'Valeur par défaut de l\'app, pas encore enregistrée dans le cloud';
+
+  @override
+  String get countryLegacyNames => 'Anciennes orthographes';
+
+  @override
+  String get countryLegacyNamesHelp =>
+      'Séparées par des virgules. Les enregistrements qui stockent le pays sous l\'un de ces noms comptent toujours pour ce pays.';
+
+  @override
+  String get countryAreaUnits => 'Unités de surface';
+
+  @override
+  String get countryAreaUnitName => 'Nom';
+
+  @override
+  String get countryAreaUnitSymbol => 'Symbole';
+
+  @override
+  String get countryAreaUnitFactor => 'Hectares par unité';
+
+  @override
+  String get countryAddAreaUnit => 'Ajouter une unité';
+
+  @override
+  String get countryDefaultAreaUnit => 'Unité par défaut';
+
+  @override
+  String get countryRegionsSection => 'Régions';
+
+  @override
+  String countryRegionLevelLabel(int level) {
+    return 'Nom du niveau $level';
+  }
+
+  @override
+  String get countryRegionLevelHelp =>
+      'Dans la langue locale, p. ex. Departamento, Municipio, Aldea';
+
+  @override
+  String get countryRegionList => 'Régions (une par ligne)';
+
+  @override
+  String get countryRegionListHelp =>
+      'Niveau administratif supérieur, p. ex. les départements ou comtés.';
+
+  @override
+  String countryRegionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count régions',
+      one: '1 région',
+      zero: 'aucune région',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get countryIntegrations => 'Vérifications et registres';
+
+  @override
+  String get countryWhispCode => 'Code national WHISP';
+
+  @override
+  String get countryWhispCodeHelp =>
+      'Deux lettres minuscules, p. ex. hn. Laisser vide si WHISP n\'a pas de données nationales pour ce pays.';
+
+  @override
+  String get countryProducerRegistry =>
+      'Rapprochement avec le registre des producteurs';
+
+  @override
+  String get countryProducerRegistryNone => 'Aucun';
+
+  @override
+  String get countryProducerRegistryIhcafe => 'IHCafé (Honduras)';
+
+  @override
+  String get countrySaved => 'Pays enregistré';
+
+  @override
+  String countrySaveFailed(String error) {
+    return 'Impossible d\'enregistrer le pays : $error';
+  }
+
+  @override
+  String get countryOnlineOnly =>
+      'Les pays ne peuvent être modifiés qu\'en ligne.';
+
+  @override
+  String get countryNoPermission =>
+      'Seul un super administrateur peut gérer les pays.';
+
+  @override
+  String get countryLoadFailed =>
+      'Cloud injoignable. Affichage des pays enregistrés sur cet appareil.';
+
+  @override
+  String get countryFieldRequired => 'Obligatoire';
+
+  @override
+  String get countryInvalidFactor => 'Saisissez un nombre supérieur à 0';
+
+  @override
+  String get countryDuplicateSymbol => 'Symbole utilisé deux fois';
+
+  @override
+  String get countryAtLeastOneUnit => 'Ajoutez au moins une unité de surface.';
+
+  @override
+  String get countryInvalidWhispCode => 'Utilisez deux lettres minuscules';
+
+  @override
+  String get roleCountryCoordinator => 'Coordinateur pays';
+
+  @override
+  String get scopeTitle => 'Territoire';
+
+  @override
+  String get scopeWholeCountry => 'Tout le pays';
+
+  @override
+  String get scopeWholeCountryHint =>
+      'Aucune région sélectionnée signifie tout le pays.';
+
+  @override
+  String get scopeSelectRegion => 'Sélectionnez au moins une région';
+
+  @override
+  String get scopeNoCountries =>
+      'Aucun pays disponible. Un super administrateur doit d\'abord activer des pays.';
+
+  @override
+  String get scopeTeam => 'Équipe';
+
+  @override
+  String get scopeNoTeam => 'Aucune équipe';
+
+  @override
+  String get scopeOwnTeam => 'Propre équipe';
+
+  @override
+  String get scopeInMyTeam => 'Dans mon équipe';
+
+  @override
+  String get scopeAddToMyTeam => 'Ajouter à mon équipe';
+
+  @override
+  String get scopeAddedToTeam => 'Ajouté à votre équipe';
+
+  @override
+  String get scopeRequired => 'Attribuez au moins un pays.';
+
+  @override
+  String scopeCountryInactive(String country) {
+    return 'Le pays $country n\'est pas actif.';
+  }
+
+  @override
+  String get scopeOutsideOwn =>
+      'Un territoire ne peut être attribué qu\'à l\'intérieur de votre propre territoire.';
+
+  @override
+  String get scopeOnlyOwnTeam =>
+      'Les enregistreurs ne peuvent être ajoutés qu\'à votre propre équipe.';
+
+  @override
+  String get scopeCoordinatorMismatch =>
+      'Le territoire du coordinateur doit inclure ce territoire.';
+
+  @override
+  String get manageUserNotAuthorized =>
+      'Votre rôle ne permet pas de gérer les utilisateurs.';
+
+  @override
+  String get manageUserCannotManageSelf =>
+      'Votre propre rôle ne peut pas être modifié ici.';
+
+  @override
+  String get manageUserOutsideTerritory =>
+      'Cet utilisateur est en dehors de votre territoire.';
+
+  @override
+  String get manageUserOtherTeam =>
+      'Cet enregistreur fait partie de l\'équipe d\'un autre coordinateur.';
 }

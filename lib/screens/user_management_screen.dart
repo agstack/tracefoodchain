@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
 import '../l10n/app_localizations.dart';
+import 'package:trace_foodchain_app/models/user_scope.dart';
 import 'package:trace_foodchain_app/services/role_management_service.dart';
+import 'package:trace_foodchain_app/widgets/user_scope_editor.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
 import 'package:trace_foodchain_app/helpers/role_debug_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -163,51 +165,122 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       return;
     }
 
-    String selectedRole = availableRoles.first;
+    // Die bisherige Rolle vorauswählen - so lässt sich auch nur das Gebiet
+    // ändern.
+    String selectedRole = availableRoles.contains(user['role'])
+        ? user['role'] as String
+        : availableRoles.first;
     String reason = '';
 
-    final result = await showDialog<Map<String, String>>(
+    final myUID = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final ownScope = _roleService.currentUserScope();
+    UserScope scope = user['scope'] as UserScope? ?? UserScope.empty;
+    String coordinatorUID = user['coordinatorUID'] as String? ?? '';
+    // Ein Registrar Coordinator holt neue Registrare direkt ins eigene Team.
+    if (currentUserRole == 'registrarCoordinator' && coordinatorUID.isEmpty) {
+      coordinatorUID = myUID;
+    }
+    final coordinators = <String, String>{
+      for (final u in _users)
+        if (u['role'] == 'registrarCoordinator')
+          u['uid'] as String: u['name'].toString(),
+    };
+    // Den bisherigen Koordinator immer anbieten, auch wenn er nicht in der
+    // Liste steht - sonst würde Speichern das Team stillschweigend leeren.
+    if (coordinatorUID.isNotEmpty && !coordinators.containsKey(coordinatorUID)) {
+      coordinators[coordinatorUID] = _userName(coordinatorUID);
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final scoped =
+                RoleManagementService.scopedRoles.contains(selectedRole);
             return AlertDialog(
               title: Text('${l10n.assignRole} - ${user['name']}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                      '${l10n.currentRole}: ${_getLocalizedRole(user['role'])}'),
-                  const SizedBox(height: 16),
-                  Text(l10n.newRole),
-                  DropdownButton<String>(
-                    value: selectedRole,
-                    isExpanded: true,
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedRole = newValue!;
-                      });
-                    },
-                    items: availableRoles
-                        .map<DropdownMenuItem<String>>((String role) {
-                      return DropdownMenuItem<String>(
-                        value: role,
-                        child: Text(_getLocalizedRole(role)),
-                      );
-                    }).toList(),
+              content: SizedBox(
+                width: 480,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          '${l10n.currentRole}: ${_getLocalizedRole(user['role'])}'),
+                      const SizedBox(height: 16),
+                      Text(l10n.newRole),
+                      DropdownButton<String>(
+                        value: selectedRole,
+                        isExpanded: true,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedRole = newValue!;
+                          });
+                        },
+                        items: availableRoles
+                            .map<DropdownMenuItem<String>>((String role) {
+                          return DropdownMenuItem<String>(
+                            value: role,
+                            child: Text(_getLocalizedRole(role)),
+                          );
+                        }).toList(),
+                      ),
+                      if (scoped) ...[
+                        const SizedBox(height: 16),
+                        Text(l10n.scopeTitle,
+                            style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        UserScopeEditor(
+                          initial: scope,
+                          allowed: ownScope,
+                          onChanged: (value) => scope = value,
+                        ),
+                      ],
+                      if (selectedRole == 'registrar') ...[
+                        const SizedBox(height: 8),
+                        if (currentUserRole == 'registrarCoordinator')
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(l10n.scopeInMyTeam),
+                            value: coordinatorUID == myUID,
+                            onChanged: (v) => setState(() =>
+                                coordinatorUID = v == true ? myUID : ''),
+                          )
+                        else
+                          DropdownButton<String>(
+                            value: coordinatorUID,
+                            isExpanded: true,
+                            onChanged: (v) =>
+                                setState(() => coordinatorUID = v ?? ''),
+                            items: [
+                              DropdownMenuItem(
+                                value: '',
+                                child: Text(
+                                    '${l10n.scopeTeam}: ${l10n.scopeNoTeam}'),
+                              ),
+                              for (final c in coordinators.entries)
+                                DropdownMenuItem(
+                                  value: c.key,
+                                  child: Text('${l10n.scopeTeam}: ${c.value}'),
+                                ),
+                            ],
+                          ),
+                      ],
+                      const SizedBox(height: 16),
+                      Text(l10n.reason),
+                      TextField(
+                        onChanged: (value) => reason = value,
+                        decoration: InputDecoration(
+                          hintText: l10n.enterReasonForRoleChange,
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(l10n.reason),
-                  TextField(
-                    onChanged: (value) => reason = value,
-                    decoration: InputDecoration(
-                      hintText: l10n.enterReasonForRoleChange,
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 2,
-                  ),
-                ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -216,9 +289,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    final isScoped = RoleManagementService.scopedRoles
+                        .contains(selectedRole);
                     Navigator.of(context).pop({
                       'role': selectedRole,
                       'reason': reason,
+                      'scope': isScoped ? scope : null,
+                      'coordinatorUID':
+                          selectedRole == 'registrar' ? coordinatorUID : null,
                     });
                   },
                   child: Text(l10n.assignRole),
@@ -231,13 +309,38 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
 
     if (result != null) {
-      await _assignRole(user['uid'], result['role']!, result['reason']!);
+      await _assignRole(
+        user['uid'],
+        result['role'] as String,
+        result['reason'] as String,
+        scope: result['scope'] as UserScope?,
+        coordinatorUID: result['coordinatorUID'] as String?,
+      );
+    }
+  }
+
+  /// Holt einen Registrar ins eigene Team
+  Future<void> _addToMyTeam(String userUID) async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _roleService.addToMyTeam(targetUserUID: userUID, l10n: l10n);
+      messenger.showSnackBar(SnackBar(
+        content: Text(l10n.scopeAddedToTeam),
+        backgroundColor: Colors.green,
+      ));
+      _loadUsers();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('${l10n.errorAssigningRole}: $e'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
   /// Weist User neue Rolle zu
-  Future<void> _assignRole(
-      String userUID, String newRole, String reason) async {
+  Future<void> _assignRole(String userUID, String newRole, String reason,
+      {UserScope? scope, String? coordinatorUID}) async {
     final l10n = AppLocalizations.of(context)!;
 
     try {
@@ -255,6 +358,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         newRole: newRole,
         reason: reason,
         l10n: l10n,
+        scope: scope,
+        coordinatorUID: coordinatorUID,
       );
 
       Navigator.of(context).pop(); // Schließe Loading-Dialog
@@ -598,6 +703,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if ((user['scope'] as UserScope?)?.isEmpty == false)
+                  Text(
+                    '${l10n.scopeTitle}: ${(user['scope'] as UserScope).label}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                if ((user['coordinatorUID'] as String? ?? '').isNotEmpty)
+                  Text(
+                    '${l10n.scopeTeam}: ${_userName(user['coordinatorUID'])}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 // Debug-Info für Entwicklung
                 if (user['canManage'] == false)
                   Text(
@@ -618,6 +733,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   onPressed: () => _showUserDetailsDialog(user),
                   tooltip: l10n.showUserDetails,
                 ),
+                if (user['canManage'] &&
+                    user['role'] == 'registrar' &&
+                    (user['coordinatorUID'] as String? ?? '').isEmpty &&
+                    _roleService.getCurrentUserRole() ==
+                        'registrarCoordinator')
+                  IconButton(
+                    icon: const Icon(Icons.group_add),
+                    onPressed: () => _addToMyTeam(user['uid']),
+                    tooltip: l10n.scopeAddToMyTeam,
+                  ),
                 if (user['canManage'])
                   IconButton(
                     icon: const Icon(Icons.edit),
@@ -639,6 +764,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+  /// Name zu einer UID aus der geladenen Liste - der angemeldete Nutzer
+  /// selbst steht dort nicht drin.
+  String _userName(String uid) {
+    final l10n = AppLocalizations.of(context)!;
+    if (uid == FirebaseAuth.instance.currentUser?.uid) {
+      return l10n.scopeOwnTeam;
+    }
+    for (final u in _users) {
+      if (u['uid'] == uid) return u['name'].toString();
+    }
+    return uid;
+  }
+
   /// Hilfsmethode für Rollen-Farben
   Color _getRoleColor(String role) {
     switch (role) {
@@ -646,6 +784,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         return Colors.red;
       case 'tfcAdmin':
         return Colors.orange;
+      case 'countryCoordinator':
+        return Colors.indigo;
       case 'registrarCoordinator':
         return Colors.blue;
       case RoleManagementService.NO_ROLE:
@@ -668,6 +808,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         return l10n.roleSuperAdmin;
       case 'tfcAdmin':
         return l10n.roleTfcAdmin;
+      case 'countryCoordinator':
+        return l10n.roleCountryCoordinator;
       case 'registrarCoordinator':
         return l10n.roleRegistrarCoordinator;
       case 'Trader':

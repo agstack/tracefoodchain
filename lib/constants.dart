@@ -1,8 +1,8 @@
-const String APP_VERSION = 'version 1.8.0+37 (2026-10-15)';
+const String APP_VERSION = 'version 2.0.0+38 (2026-11-02)';
 
 // DEBUG ONLY: Überschreibt die Rollen-basierte Navigation für UI-Tests.
 // Gültige Werte: '' (deaktiviert), 'registrar', 'Farmer', 'Trader', 'Processor', 'Importer'
 // Nur bei kDebugMode aktiv — im Release-Build KEIN Effekt.
-// const String kDebugViewRole = 'Trader';
-const String kDebugViewRole = 'registrar';
+const String kDebugViewRole = 'Trader';
+// const String kDebugViewRole = 'registrar';
 // 'registrar'; // z.B. 'registrar' zum Testen des Registrar-UIs

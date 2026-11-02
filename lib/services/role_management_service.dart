@@ -1,7 +1,15 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'dart:async';
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:trace_foodchain_app/helpers/deep_copy_map.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/models/user_scope.dart';
+import 'package:trace_foodchain_app/repositories/initial_data.dart';
+import 'package:trace_foodchain_app/services/country_config_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -17,6 +25,7 @@ class RoleManagementService {
   static const Map<String, int> roleLevels = {
     'SUPERADMIN': 1000,
     'tfcAdmin': 500,
+    'countryCoordinator': 400,
     'registrarCoordinator': 300,
     'Trader': 100,
     'Farmer': 100,
@@ -29,6 +38,7 @@ class RoleManagementService {
   static const Map<String, List<String>> roleManagementPermissions = {
     'SUPERADMIN': [
       'tfcAdmin',
+      'countryCoordinator',
       'registrarCoordinator',
       'Trader',
       'Farmer',
@@ -37,6 +47,15 @@ class RoleManagementService {
       'registrar'
     ],
     'tfcAdmin': [
+      'countryCoordinator',
+      'registrarCoordinator',
+      'Trader',
+      'Farmer',
+      'Processor',
+      'Importer',
+      'registrar'
+    ],
+    'countryCoordinator': [
       'registrarCoordinator',
       'Trader',
       'Farmer',
@@ -52,6 +71,39 @@ class RoleManagementService {
       'registrar'
     ],
   };
+
+  /// Rollen ohne Gebietsbeschränkung.
+  static const Set<String> globalRoles = {'SUPERADMIN', 'tfcAdmin'};
+
+  /// Rollen, die ein zugewiesenes Gebiet brauchen.
+  static const Set<String> scopedRoles = {
+    'countryCoordinator',
+    'registrarCoordinator',
+    'registrar',
+  };
+
+  String? _resolveCountry(String? stored) =>
+      countryConfigService.resolve(stored)?.code;
+
+  /// Gebiet eines Nutzerobjekts - zugewiesen oder, ohne Zuweisung, das Land
+  /// aus der Adresse.
+  UserScope scopeOf(Map<String, dynamic> user) =>
+      UserScope.ofUser(user, resolveCountry: _resolveCountry);
+
+  /// Gebiet, in dem der angemeldete Nutzer verwalten darf; null heißt
+  /// unbeschränkt. Zählt nur die ausdrückliche Zuweisung, nie die Adresse.
+  UserScope? currentUserScope() {
+    if (globalRoles.contains(getCurrentUserRole())) return null;
+    if (appUserDoc == null) return UserScope.empty;
+    return UserScope.fromJson(
+        UserScope.rawProperty(appUserDoc!, UserScope.propertyKey));
+  }
+
+  /// Ob [user] im Gebiet des angemeldeten Nutzers liegt.
+  bool canSeeUser(Map<String, dynamic> user) {
+    final own = currentUserScope();
+    return own == null || own.overlaps(scopeOf(user));
+  }
 
   /// Prüft ob der aktuelle User online ist (erforderlich für Rollenverwaltung)
   Future<bool> isOnline() async {
@@ -107,7 +159,11 @@ class RoleManagementService {
         // print('✅ [RoleManagementService] User-Dokument in Cloud gefunden');
         final userData = userDoc.data()!;
         final role = getSpecificPropertyfromJSON(userData, "userRole");
-        final finalRole = (role != "" && role != "-no data found-") ? role : '';
+        // Maßgeblich ist die Rolle im Token (von manageUser gesetzt); das
+        // Nutzerobjekt kann jeder Client beschreiben. Ohne Claim - vor der
+        // Migration - zählt weiter das Nutzerobjekt.
+        final finalRole = await _roleFromToken() ??
+            ((role != "" && role != "-no data found-") ? role : '');
         // print('📋 [RoleManagementService] Cloud-Rolle: $finalRole');
 
         // Aktualisiere das lokale appUserDoc falls es nicht synchron ist
@@ -123,6 +179,7 @@ class RoleManagementService {
             appUserDoc = setSpecificPropertyJSON(
                 appUserDoc!, "userRole", finalRole, "String");
           }
+          _adoptOwnAssignment(userData);
         }
 
         return finalRole;
@@ -131,6 +188,54 @@ class RoleManagementService {
       }
     } catch (e) {
       return getCurrentUserRole(); // Fallback auf lokale Rolle
+    }
+  }
+
+  static DateTime? _tokenRefreshedAt;
+
+  /// Rolle aus den Custom Claims des eigenen Tokens, null ohne Claim.
+  ///
+  /// Das Token wird höchstens alle fünf Minuten neu geholt - eine neue Rolle
+  /// steht erst in einem frisch ausgestellten Token.
+  Future<String?> _roleFromToken() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+      final refresh = _tokenRefreshedAt == null ||
+          DateTime.now().difference(_tokenRefreshedAt!) >
+              const Duration(minutes: 5);
+      final token = await user.getIdTokenResult(refresh);
+      if (refresh) _tokenRefreshedAt = DateTime.now();
+      final role = token.claims?['tfcRole'];
+      return role is String && role.isNotEmpty ? role : null;
+    } catch (e) {
+      debugPrint('Role claim not readable: $e');
+      return null;
+    }
+  }
+
+  /// Übernimmt Gebiet und Team aus der Cloud-Fassung des eigenen
+  /// Nutzerobjekts - gesetzt werden sie von Koordinatoren auf anderen
+  /// Geräten. Die lokale Kopie wird mitgeschrieben, damit Registrare ihr
+  /// Gebiet auch ohne Netz kennen.
+  void _adoptOwnAssignment(Map<String, dynamic> cloudUser) {
+    if (appUserDoc == null) return;
+    var changed = false;
+    for (final (key, unit) in [
+      (UserScope.propertyKey, 'json'),
+      (UserScope.coordinatorKey, 'String'),
+    ]) {
+      final cloudValue = UserScope.rawProperty(cloudUser, key);
+      if (cloudValue == null) continue;
+      final localValue = UserScope.rawProperty(appUserDoc!, key);
+      if (jsonEncode(cloudValue) == jsonEncode(localValue)) continue;
+      appUserDoc = setSpecificPropertyJSON(appUserDoc!, key, cloudValue, unit);
+      changed = true;
+    }
+
+    final uid = appUserDoc!['identity']?['UID']?.toString() ?? '';
+    if (changed && uid.isNotEmpty && localStorage != null) {
+      unawaited(localStorage!.put(uid, appUserDoc!));
     }
   }
 
@@ -248,10 +353,12 @@ class RoleManagementService {
           userUID != FirebaseAuth.instance.currentUser?.uid) {
         managedUsers.add(user);
       }
-      // Andere Admins: Nur User deren Rollen sie verwalten können oder rollenlose User
+      // Andere Admins: Nur User deren Rollen sie verwalten können oder rollenlose User,
+      // und - bei Koordinatoren - nur im eigenen Gebiet
       else if (currentRole != 'SUPERADMIN') {
-        if (effectiveRole == NO_ROLE ||
-            canManageRole(currentRole, effectiveRole)) {
+        if ((effectiveRole == NO_ROLE ||
+                canManageRole(currentRole, effectiveRole)) &&
+            canSeeUser(user)) {
           managedUsers.add(user);
         }
       }
@@ -261,11 +368,16 @@ class RoleManagementService {
   }
 
   /// Ändert die Rolle eines Users über changeObjectData (mit automatischem Logging)
+  ///
+  /// [scope] und [coordinatorUID] setzen Gebiet und Team gleich mit;
+  /// null lässt den bisherigen Wert stehen.
   Future<void> changeUserRole({
     required String targetUserUID,
     required String newRole,
     required AppLocalizations l10n,
     String reason = '',
+    UserScope? scope,
+    String? coordinatorUID,
   }) async {
     // SICHERHEIT: SUPERADMIN kann niemals zugewiesen werden
     if (newRole == 'SUPERADMIN') {
@@ -323,25 +435,254 @@ class RoleManagementService {
     }
 
     try {
-      // Neue Rolle direkt in der Cloud speichern, ohne den lokalen openRAL-Sync-Pfad
-      targetUser =
-          setSpecificPropertyJSON(targetUser, "userRole", newRole, "String");
-      targetUser['userRole'] = newRole;
-
-      final docRef = FirebaseFirestore.instance
-          .collection('TFC_objects')
-          .doc(targetUserUID);
-      await docRef.set(targetUser);
+      final result = await _callManageUser(
+        targetUserUID: targetUserUID,
+        role: newRole,
+        scope: scope,
+        coordinatorUID: coordinatorUID,
+        l10n: l10n,
+      );
+      final updatedUser = await _reloadUser(targetUserUID) ?? targetUser;
 
       // Zusätzlich spezifische changeUserRole Methode für detailliertes Audit-Log
       await _createChangeUserRoleMethod(
-        targetUser: targetUser,
+        targetUser: updatedUser,
         oldRole: oldRoleStr,
         newRole: newRole,
         reason: reason,
       );
+      if (result.assignmentChanged) {
+        await _createChangeUserAssignmentMethod(
+          oldUser: targetUser,
+          newUser: updatedUser,
+          result: result,
+          reason: reason,
+        );
+      }
+    } on ManageUserRejection {
+      rethrow;
     } catch (e) {
       throw Exception(l10n.errorChangingRole(e.toString()));
+    }
+  }
+
+  /// Ändert nur Gebiet und/oder Team eines Nutzers, die Rolle bleibt.
+  /// null lässt den bisherigen Wert stehen.
+  Future<void> changeUserAssignment({
+    required String targetUserUID,
+    required AppLocalizations l10n,
+    UserScope? scope,
+    String? coordinatorUID,
+    String reason = '',
+  }) async {
+    final targetUser = await _loadManageableUser(targetUserUID, l10n);
+    await _applyAssignment(
+      targetUser: targetUser,
+      scope: scope,
+      coordinatorUID: coordinatorUID,
+      reason: reason,
+      l10n: l10n,
+    );
+  }
+
+  /// Holt einen Registrar ins eigene Team (Registrar Coordinator).
+  ///
+  /// Hat er noch kein zugewiesenes Gebiet, bekommt er den Teil des eigenen
+  /// Gebiets, der in seinem Land liegt.
+  Future<void> addToMyTeam({
+    required String targetUserUID,
+    required AppLocalizations l10n,
+  }) async {
+    final myUID = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final targetUser = await _loadManageableUser(targetUserUID, l10n);
+
+    UserScope? scope;
+    if (!UserScope.isAssigned(targetUser)) {
+      final countries = scopeOf(targetUser).countries;
+      final own = currentUserScope() ?? UserScope.empty;
+      scope = UserScope(
+          own.entries.where((e) => countries.contains(e.country)).toList());
+    }
+
+    await _applyAssignment(
+      targetUser: targetUser,
+      scope: scope,
+      coordinatorUID: myUID,
+      reason: '',
+      l10n: l10n,
+    );
+  }
+
+  /// Lädt einen Nutzer aus der Cloud und prüft, ob der angemeldete Nutzer
+  /// ihn verwalten darf (Rolle, Gebiet, Team). Nur für eine schnelle
+  /// Rückmeldung - entschieden wird in manageUser.
+  Future<Map<String, dynamic>> _loadManageableUser(
+      String targetUserUID, AppLocalizations l10n) async {
+    if (!await isOnline()) {
+      throw Exception(l10n.userManagementOnlineOnly);
+    }
+
+    final targetUser = await _reloadUser(targetUserUID);
+    if (targetUser == null) {
+      throw Exception(l10n.userNotFound);
+    }
+
+    final display = await formatUserForDisplay(targetUser, l10n: l10n);
+    if (display['canManage'] != true) {
+      throw Exception(l10n.noPermissionForCurrentRole(display['role']));
+    }
+    return targetUser;
+  }
+
+  Future<Map<String, dynamic>?> _reloadUser(String uid) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('TFC_objects')
+        .doc(uid)
+        .get(const GetOptions(source: Source.server));
+    return doc.exists ? Map<String, dynamic>.from(doc.data()!) : null;
+  }
+
+  Future<void> _applyAssignment({
+    required Map<String, dynamic> targetUser,
+    required UserScope? scope,
+    required String? coordinatorUID,
+    required String reason,
+    required AppLocalizations l10n,
+  }) async {
+    final uid = targetUser['identity']['UID'] as String;
+    final result = await _callManageUser(
+      targetUserUID: uid,
+      scope: scope,
+      coordinatorUID: coordinatorUID,
+      l10n: l10n,
+    );
+    if (!result.assignmentChanged) return;
+
+    final updatedUser = await _reloadUser(uid) ?? targetUser;
+    await _createChangeUserAssignmentMethod(
+      oldUser: targetUser,
+      newUser: updatedUser,
+      result: result,
+      reason: reason,
+    );
+  }
+
+  static const String _manageUserUrl =
+      'https://europe-west3-tracefoodchain.cloudfunctions.net/manageUser';
+
+  /// Ändert Rolle, Gebiet und/oder Team über die Cloud Function manageUser.
+  ///
+  /// Nur sie prüft verbindlich und setzt die Custom Claims; die Prüfungen in
+  /// der App dienen allein der schnellen Rückmeldung. null lässt den
+  /// bisherigen Wert stehen.
+  Future<_ManageUserResult> _callManageUser({
+    required String targetUserUID,
+    required AppLocalizations l10n,
+    String? role,
+    UserScope? scope,
+    String? coordinatorUID,
+  }) async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) {
+      throw Exception(l10n.noValidAdminRole);
+    }
+
+    final response = await http
+        .post(
+          Uri.parse(_manageUserUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'targetUid': targetUserUID,
+            if (role != null) 'role': role,
+            if (scope != null) 'scope': scope.toJson(),
+            if (coordinatorUID != null) 'coordinatorUid': coordinatorUID,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    dynamic body;
+    try {
+      body = jsonDecode(response.body);
+    } catch (_) {
+      body = null;
+    }
+
+    if (response.statusCode == 200 && body is Map && body['result'] is Map) {
+      return _ManageUserResult.fromJson(body['result'] as Map);
+    }
+    if (response.statusCode == 403 && body is Map && body['code'] is String) {
+      final details = body['details'] is Map ? body['details'] as Map : {};
+      throw ManageUserRejection(
+          _rejectionMessage(body['code'] as String, details, l10n));
+    }
+    throw Exception(
+        l10n.errorChangingRole('${response.statusCode}: ${response.body}'));
+  }
+
+  String _rejectionMessage(
+      String code, Map<dynamic, dynamic> details, AppLocalizations l10n) {
+    return switch (code) {
+      'notAuthorized' => l10n.manageUserNotAuthorized,
+      'cannotManageSelf' => l10n.manageUserCannotManageSelf,
+      'superadminImmutable' => l10n.superadminCannotBeChanged,
+      'roleNotManageable' ||
+      'invalidRole' =>
+        l10n.noPermissionForRole(details['role']?.toString() ?? ''),
+      'targetNotVisible' => l10n.manageUserOutsideTerritory,
+      'otherTeam' => l10n.manageUserOtherTeam,
+      'scopeRequired' => l10n.scopeRequired,
+      'countryInactive' =>
+        l10n.scopeCountryInactive(details['country']?.toString() ?? ''),
+      'scopeOutsideOwn' => l10n.scopeOutsideOwn,
+      'onlyOwnTeam' => l10n.scopeOnlyOwnTeam,
+      'coordinatorMismatch' => l10n.scopeCoordinatorMismatch,
+      _ => code,
+    };
+  }
+
+  /// Signierte changeUserAssignment-Methode: dokumentiert die Änderung,
+  /// statt bestehende Methoden oder Objekte stillschweigend zu verändern.
+  Future<void> _createChangeUserAssignmentMethod({
+    required Map<String, dynamic> oldUser,
+    required Map<String, dynamic> newUser,
+    required _ManageUserResult result,
+    required String reason,
+  }) async {
+    try {
+      var method = await getOpenRALTemplate("changeUserAssignment");
+      if (method.isEmpty) {
+        // Hive-Box stammt aus einer Version ohne dieses Template.
+        method = deepCopyMap(initialMethodTemplateChangeUserAssignment);
+      }
+
+      method["executor"] = appUserDoc!;
+      method["methodState"] = "finished";
+      setObjectMethodUID(method, const Uuid().v4());
+
+      method = setSpecificPropertyJSON(
+          method, "oldScope", result.oldScope.toJson(), "json");
+      method = setSpecificPropertyJSON(
+          method, "newScope", result.newScope.toJson(), "json");
+      method = setSpecificPropertyJSON(
+          method, "oldCoordinatorUID", result.oldCoordinator, "String");
+      method = setSpecificPropertyJSON(
+          method, "newCoordinatorUID", result.newCoordinator, "String");
+      method = setSpecificPropertyJSON(
+          method, "assignmentChangeReason", reason, "String");
+      method = setSpecificPropertyJSON(method, "adminUID",
+          FirebaseAuth.instance.currentUser!.uid, "String");
+
+      addInputobject(method, oldUser, "user");
+      addOutputobject(method, newUser, "user");
+
+      await updateMethodHistories(method);
+      await setObjectMethod(method, true, true, syncFromCloud: false);
+    } catch (e) {
+      // Die Änderung selbst ist gespeichert; nur der Audit-Eintrag fehlt.
+      debugPrint('changeUserAssignment: audit method not created: $e');
     }
   }
 
@@ -458,8 +799,19 @@ class RoleManagementService {
     // Andere Admins können basierend auf Rollenhierarchie verwalten
     else if (roleManagementPermissions.containsKey(resolvedCurrentUserRole)) {
       // Kann die Zielrolle verwalten ODER User hat keine Rolle
-      canManageUser = canManageRole(resolvedCurrentUserRole, targetUserRole) ||
-          targetUserRole == NO_ROLE;
+      canManageUser = (canManageRole(resolvedCurrentUserRole, targetUserRole) ||
+              targetUserRole == NO_ROLE) &&
+          canSeeUser(user);
+    }
+
+    // Registrar Coordinators verwalten keine Registrare aus fremden Teams -
+    // umhängen darf nur der Country Coordinator.
+    final coordinatorUID = UserScope.coordinatorOf(user);
+    final myUID = FirebaseAuth.instance.currentUser?.uid;
+    if (resolvedCurrentUserRole == 'registrarCoordinator' &&
+        coordinatorUID.isNotEmpty &&
+        coordinatorUID != myUID) {
+      canManageUser = false;
     }
 
     // Aber niemals sich selbst verwalten
@@ -479,6 +831,9 @@ class RoleManagementService {
           : l10n.noEmail,
       'role': targetUserRole,
       'canManage': canManageUser,
+      'scope': scopeOf(user),
+      'scopeAssigned': UserScope.isAssigned(user),
+      'coordinatorUID': coordinatorUID,
     };
   }
 
@@ -548,4 +903,46 @@ class RoleManagementService {
       throw Exception(l10n.errorUpdatingEmail(e.toString()));
     }
   }
+}
+
+/// Abgelehnte Änderung - die Meldung ist bereits übersetzt.
+class ManageUserRejection implements Exception {
+  ManageUserRejection(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Alter und neuer Stand nach manageUser.
+class _ManageUserResult {
+  const _ManageUserResult({
+    required this.oldRole,
+    required this.newRole,
+    required this.oldScope,
+    required this.newScope,
+    required this.oldCoordinator,
+    required this.newCoordinator,
+  });
+
+  factory _ManageUserResult.fromJson(Map<dynamic, dynamic> json) =>
+      _ManageUserResult(
+        oldRole: json['oldRole']?.toString() ?? '',
+        newRole: json['newRole']?.toString() ?? '',
+        oldScope: UserScope.fromJson(json['oldScope']),
+        newScope: UserScope.fromJson(json['newScope']),
+        oldCoordinator: json['oldCoordinatorUid']?.toString() ?? '',
+        newCoordinator: json['newCoordinatorUid']?.toString() ?? '',
+      );
+
+  final String oldRole;
+  final String newRole;
+  final UserScope oldScope;
+  final UserScope newScope;
+  final String oldCoordinator;
+  final String newCoordinator;
+
+  bool get assignmentChanged =>
+      oldScope != newScope || oldCoordinator != newCoordinator;
 }

@@ -6293,6 +6293,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only the {count} loaded fields are sorted - use \"Load all\" to sort every field.'**
   String sortAppliesToLoadedFields(String count);
+
+  /// No description provided for @countryManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Countries'**
+  String get countryManagement;
+
+  /// No description provided for @countryManagementSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure countries for farm registration'**
+  String get countryManagementSubtitle;
+
+  /// No description provided for @addCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add country'**
+  String get addCountry;
+
+  /// No description provided for @editCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit country'**
+  String get editCountry;
+
+  /// No description provided for @countryReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload from cloud'**
+  String get countryReload;
+
+  /// No description provided for @countryCode.
+  ///
+  /// In en, this message translates to:
+  /// **'ISO code'**
+  String get countryCode;
+
+  /// No description provided for @countryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get countryName;
+
+  /// No description provided for @countryActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get countryActive;
+
+  /// No description provided for @countryInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get countryInactive;
+
+  /// No description provided for @countryActiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only active countries can be assigned to users.'**
+  String get countryActiveHint;
+
+  /// No description provided for @countryBuiltInNotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'App default, not saved to the cloud yet'**
+  String get countryBuiltInNotSaved;
+
+  /// No description provided for @countryLegacyNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier spellings'**
+  String get countryLegacyNames;
+
+  /// No description provided for @countryLegacyNamesHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated. Registrations that store the country under one of these names still count as this country.'**
+  String get countryLegacyNamesHelp;
+
+  /// No description provided for @countryAreaUnits.
+  ///
+  /// In en, this message translates to:
+  /// **'Area units'**
+  String get countryAreaUnits;
+
+  /// No description provided for @countryAreaUnitName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get countryAreaUnitName;
+
+  /// No description provided for @countryAreaUnitSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbol'**
+  String get countryAreaUnitSymbol;
+
+  /// No description provided for @countryAreaUnitFactor.
+  ///
+  /// In en, this message translates to:
+  /// **'Hectares per unit'**
+  String get countryAreaUnitFactor;
+
+  /// No description provided for @countryAddAreaUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add unit'**
+  String get countryAddAreaUnit;
+
+  /// No description provided for @countryDefaultAreaUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Default unit'**
+  String get countryDefaultAreaUnit;
+
+  /// No description provided for @countryRegionsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Regions'**
+  String get countryRegionsSection;
+
+  /// No description provided for @countryRegionLevelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name of level {level}'**
+  String countryRegionLevelLabel(int level);
+
+  /// No description provided for @countryRegionLevelHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In the local language, e.g. Departamento, Municipio, Aldea'**
+  String get countryRegionLevelHelp;
+
+  /// No description provided for @countryRegionList.
+  ///
+  /// In en, this message translates to:
+  /// **'Regions (one per line)'**
+  String get countryRegionList;
+
+  /// No description provided for @countryRegionListHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Top administrative level, e.g. the departments or counties.'**
+  String get countryRegionListHelp;
+
+  /// No description provided for @countryRegionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no regions} =1{1 region} other{{count} regions}}'**
+  String countryRegionCount(int count);
+
+  /// No description provided for @countryIntegrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks and registers'**
+  String get countryIntegrations;
+
+  /// No description provided for @countryWhispCode.
+  ///
+  /// In en, this message translates to:
+  /// **'WHISP national code'**
+  String get countryWhispCode;
+
+  /// No description provided for @countryWhispCodeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Two lowercase letters, e.g. hn. Leave empty if WHISP has no national data for this country.'**
+  String get countryWhispCodeHelp;
+
+  /// No description provided for @countryProducerRegistry.
+  ///
+  /// In en, this message translates to:
+  /// **'Producer register matching'**
+  String get countryProducerRegistry;
+
+  /// No description provided for @countryProducerRegistryNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get countryProducerRegistryNone;
+
+  /// No description provided for @countryProducerRegistryIhcafe.
+  ///
+  /// In en, this message translates to:
+  /// **'IHCafé (Honduras)'**
+  String get countryProducerRegistryIhcafe;
+
+  /// No description provided for @countrySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Country saved'**
+  String get countrySaved;
+
+  /// No description provided for @countrySaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the country: {error}'**
+  String countrySaveFailed(String error);
+
+  /// No description provided for @countryOnlineOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Countries can only be changed while online.'**
+  String get countryOnlineOnly;
+
+  /// No description provided for @countryNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a super admin can manage countries.'**
+  String get countryNoPermission;
+
+  /// No description provided for @countryLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the cloud. Showing the countries stored on this device.'**
+  String get countryLoadFailed;
+
+  /// No description provided for @countryFieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get countryFieldRequired;
+
+  /// No description provided for @countryInvalidFactor.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number greater than 0'**
+  String get countryInvalidFactor;
+
+  /// No description provided for @countryDuplicateSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbol used twice'**
+  String get countryDuplicateSymbol;
+
+  /// No description provided for @countryAtLeastOneUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one area unit.'**
+  String get countryAtLeastOneUnit;
+
+  /// No description provided for @countryInvalidWhispCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Use two lowercase letters'**
+  String get countryInvalidWhispCode;
+
+  /// No description provided for @roleCountryCoordinator.
+  ///
+  /// In en, this message translates to:
+  /// **'Country Coordinator'**
+  String get roleCountryCoordinator;
+
+  /// No description provided for @scopeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Territory'**
+  String get scopeTitle;
+
+  /// No description provided for @scopeWholeCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole country'**
+  String get scopeWholeCountry;
+
+  /// No description provided for @scopeWholeCountryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No region selected means the whole country.'**
+  String get scopeWholeCountryHint;
+
+  /// No description provided for @scopeSelectRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one region'**
+  String get scopeSelectRegion;
+
+  /// No description provided for @scopeNoCountries.
+  ///
+  /// In en, this message translates to:
+  /// **'No countries available. A super admin must first activate countries.'**
+  String get scopeNoCountries;
+
+  /// No description provided for @scopeTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get scopeTeam;
+
+  /// No description provided for @scopeNoTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'No team'**
+  String get scopeNoTeam;
+
+  /// No description provided for @scopeOwnTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Own team'**
+  String get scopeOwnTeam;
+
+  /// No description provided for @scopeInMyTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'In my team'**
+  String get scopeInMyTeam;
+
+  /// No description provided for @scopeAddToMyTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to my team'**
+  String get scopeAddToMyTeam;
+
+  /// No description provided for @scopeAddedToTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your team'**
+  String get scopeAddedToTeam;
+
+  /// No description provided for @scopeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign at least one country.'**
+  String get scopeRequired;
+
+  /// No description provided for @scopeCountryInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Country {country} is not active.'**
+  String scopeCountryInactive(String country);
+
+  /// No description provided for @scopeOutsideOwn.
+  ///
+  /// In en, this message translates to:
+  /// **'Territory can only be assigned within your own territory.'**
+  String get scopeOutsideOwn;
+
+  /// No description provided for @scopeOnlyOwnTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrars can only be added to your own team.'**
+  String get scopeOnlyOwnTeam;
+
+  /// No description provided for @scopeCoordinatorMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The coordinator\'s territory must include this territory.'**
+  String get scopeCoordinatorMismatch;
+
+  /// No description provided for @manageUserNotAuthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Your role does not allow managing users.'**
+  String get manageUserNotAuthorized;
+
+  /// No description provided for @manageUserCannotManageSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own role cannot be changed here.'**
+  String get manageUserCannotManageSelf;
+
+  /// No description provided for @manageUserOutsideTerritory.
+  ///
+  /// In en, this message translates to:
+  /// **'This user is outside your territory.'**
+  String get manageUserOutsideTerritory;
+
+  /// No description provided for @manageUserOtherTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'This registrar belongs to another coordinator\'s team.'**
+  String get manageUserOtherTeam;
 }
 
 class _AppLocalizationsDelegate

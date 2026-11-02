@@ -1,4 +1,6 @@
 ﻿//! Generate new localisation: flutter gen-l10n
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -27,6 +29,7 @@ import 'package:trace_foodchain_app/screens/registrar_screen.dart';
 import 'package:trace_foodchain_app/screens/sign_up_screen.dart';
 import 'package:trace_foodchain_app/services/background_sync_service.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
+import 'package:trace_foodchain_app/services/country_config_service.dart';
 import 'package:trace_foodchain_app/services/hash_cache_service.dart';
 import 'package:trace_foodchain_app/services/cloud_log_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
@@ -442,6 +445,10 @@ void main() async {
     }
   }
 
+  //*Country configuration: the copy stored on the device, so registration
+  // works offline. The cloud state follows once a user is signed in.
+  await countryConfigService.init();
+
   // cloudConnectors =
   //     await getCloudConnectors(); //get available cloudConnectors to talk to clouds if available from localStorage
 
@@ -502,6 +509,10 @@ void main() async {
 Future<void> initializeUserLocalStorage(String userId,
     {bool withHashCache = true}) async {
   final boxName = 'localStorage_$userId';
+
+  // Countries need a signed-in user to be read. Foreground only: the
+  // background isolate (withHashCache false) never initialized the service.
+  if (withHashCache) unawaited(countryConfigService.refreshFromCloud());
 
   // Prüfe ob Box bereits für diesen User geöffnet ist
   if (Hive.isBoxOpen(boxName)) {

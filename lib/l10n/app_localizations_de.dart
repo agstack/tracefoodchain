@@ -3593,4 +3593,221 @@ class AppLocalizationsDe extends AppLocalizations {
   String sortAppliesToLoadedFields(String count) {
     return 'Sortiert sind nur die $count geladenen Felder – für alle Felder „Alle laden“ nutzen.';
   }
+
+  @override
+  String get countryManagement => 'Länder';
+
+  @override
+  String get countryManagementSubtitle =>
+      'Länder für die Farm-Registrierung konfigurieren';
+
+  @override
+  String get addCountry => 'Land hinzufügen';
+
+  @override
+  String get editCountry => 'Land bearbeiten';
+
+  @override
+  String get countryReload => 'Aus der Cloud neu laden';
+
+  @override
+  String get countryCode => 'ISO-Code';
+
+  @override
+  String get countryName => 'Name';
+
+  @override
+  String get countryActive => 'Aktiv';
+
+  @override
+  String get countryInactive => 'Inaktiv';
+
+  @override
+  String get countryActiveHint =>
+      'Nur aktive Länder können Nutzern zugewiesen werden.';
+
+  @override
+  String get countryBuiltInNotSaved =>
+      'App-Standard, noch nicht in der Cloud gespeichert';
+
+  @override
+  String get countryLegacyNames => 'Frühere Schreibweisen';
+
+  @override
+  String get countryLegacyNamesHelp =>
+      'Durch Komma getrennt. Registrierungen, die das Land unter einem dieser Namen speichern, zählen weiterhin zu diesem Land.';
+
+  @override
+  String get countryAreaUnits => 'Flächeneinheiten';
+
+  @override
+  String get countryAreaUnitName => 'Name';
+
+  @override
+  String get countryAreaUnitSymbol => 'Symbol';
+
+  @override
+  String get countryAreaUnitFactor => 'Hektar pro Einheit';
+
+  @override
+  String get countryAddAreaUnit => 'Einheit hinzufügen';
+
+  @override
+  String get countryDefaultAreaUnit => 'Standardeinheit';
+
+  @override
+  String get countryRegionsSection => 'Regionen';
+
+  @override
+  String countryRegionLevelLabel(int level) {
+    return 'Bezeichnung Ebene $level';
+  }
+
+  @override
+  String get countryRegionLevelHelp =>
+      'In Landessprache, z. B. Departamento, Municipio, Aldea';
+
+  @override
+  String get countryRegionList => 'Regionen (eine pro Zeile)';
+
+  @override
+  String get countryRegionListHelp =>
+      'Oberste Verwaltungsebene, z. B. die Departamentos oder Counties.';
+
+  @override
+  String countryRegionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Regionen',
+      one: '1 Region',
+      zero: 'keine Regionen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get countryIntegrations => 'Prüfungen und Register';
+
+  @override
+  String get countryWhispCode => 'WHISP-Ländercode';
+
+  @override
+  String get countryWhispCodeHelp =>
+      'Zwei Kleinbuchstaben, z. B. hn. Leer lassen, wenn WHISP für das Land keine nationalen Daten hat.';
+
+  @override
+  String get countryProducerRegistry => 'Abgleich mit Produzentenregister';
+
+  @override
+  String get countryProducerRegistryNone => 'Keiner';
+
+  @override
+  String get countryProducerRegistryIhcafe => 'IHCafé (Honduras)';
+
+  @override
+  String get countrySaved => 'Land gespeichert';
+
+  @override
+  String countrySaveFailed(String error) {
+    return 'Land konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String get countryOnlineOnly => 'Länder können nur online geändert werden.';
+
+  @override
+  String get countryNoPermission => 'Nur ein Superadmin kann Länder verwalten.';
+
+  @override
+  String get countryLoadFailed =>
+      'Cloud nicht erreichbar. Angezeigt werden die auf diesem Gerät gespeicherten Länder.';
+
+  @override
+  String get countryFieldRequired => 'Pflichtfeld';
+
+  @override
+  String get countryInvalidFactor => 'Zahl größer als 0 eingeben';
+
+  @override
+  String get countryDuplicateSymbol => 'Symbol doppelt vergeben';
+
+  @override
+  String get countryAtLeastOneUnit => 'Mindestens eine Flächeneinheit anlegen.';
+
+  @override
+  String get countryInvalidWhispCode => 'Zwei Kleinbuchstaben verwenden';
+
+  @override
+  String get roleCountryCoordinator => 'Länderkoordinator';
+
+  @override
+  String get scopeTitle => 'Gebiet';
+
+  @override
+  String get scopeWholeCountry => 'Ganzes Land';
+
+  @override
+  String get scopeWholeCountryHint =>
+      'Keine Region ausgewählt heißt: das ganze Land.';
+
+  @override
+  String get scopeSelectRegion => 'Mindestens eine Region auswählen';
+
+  @override
+  String get scopeNoCountries =>
+      'Keine Länder verfügbar. Ein Superadmin muss zuerst Länder aktivieren.';
+
+  @override
+  String get scopeTeam => 'Team';
+
+  @override
+  String get scopeNoTeam => 'Kein Team';
+
+  @override
+  String get scopeOwnTeam => 'Eigenes Team';
+
+  @override
+  String get scopeInMyTeam => 'Im eigenen Team';
+
+  @override
+  String get scopeAddToMyTeam => 'Ins eigene Team holen';
+
+  @override
+  String get scopeAddedToTeam => 'Zum eigenen Team hinzugefügt';
+
+  @override
+  String get scopeRequired => 'Mindestens ein Land zuweisen.';
+
+  @override
+  String scopeCountryInactive(String country) {
+    return 'Land $country ist nicht aktiv.';
+  }
+
+  @override
+  String get scopeOutsideOwn =>
+      'Gebiete sind nur innerhalb des eigenen Gebiets zuweisbar.';
+
+  @override
+  String get scopeOnlyOwnTeam => 'Registrare sind nur ins eigene Team holbar.';
+
+  @override
+  String get scopeCoordinatorMismatch =>
+      'Das Gebiet des Koordinators muss dieses Gebiet enthalten.';
+
+  @override
+  String get manageUserNotAuthorized =>
+      'Die eigene Rolle erlaubt keine Benutzerverwaltung.';
+
+  @override
+  String get manageUserCannotManageSelf =>
+      'Die eigene Rolle ist hier nicht änderbar.';
+
+  @override
+  String get manageUserOutsideTerritory =>
+      'Dieser Nutzer liegt außerhalb des eigenen Gebiets.';
+
+  @override
+  String get manageUserOtherTeam =>
+      'Dieser Registrar gehört zum Team eines anderen Koordinators.';
 }
