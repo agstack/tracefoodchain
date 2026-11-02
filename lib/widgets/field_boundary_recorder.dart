@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
+import '../services/country_config_service.dart';
 import '../services/gps_helper.dart';
 import '../services/open_ral_service.dart';
 import '../helpers/json_full_double_to_int.dart';
@@ -808,7 +809,16 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
         'latitude': centroid[0],
         'longitude': centroid[1],
       };
-      field['currentGeolocation']['postalAddress']['country'] = 'Honduras';
+      // Land der Farm; ohne Angabe dort das Land des Registrars.
+      final farmCountry = _selectedFarm!['currentGeolocation']
+              ?['postalAddress']?['country']
+          ?.toString();
+      final fieldCountry = countryConfigService.resolve(farmCountry) ??
+          countryConfigService.registrationCountries(appUserDoc).firstOrNull;
+      if (fieldCountry != null) {
+        field['currentGeolocation']['postalAddress']['country'] =
+            fieldCountry.code;
+      }
       debugPrint('Geolocation set');
 
       // Create image object for Field Photo

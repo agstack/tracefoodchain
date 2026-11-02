@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
-import 'package:trace_foodchain_app/main.dart' show country;
 import 'package:trace_foodchain_app/providers/app_state.dart';
 import 'package:trace_foodchain_app/services/gps_helper.dart';
 import 'package:trace_foodchain_app/services/service_functions.dart';
@@ -708,7 +707,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   ) async {
     final l10n = AppLocalizations.of(context)!;
     final appState = Provider.of<AppState>(context, listen: false);
-    final availableUnits = getAreaUnits(country);
+    final availableUnits = currentAreaUnits();
 
     // Konvertiere [lat, lon] → LatLng
     final latLngPoints = finalPoints.map((p) => LatLng(p[0], p[1])).toList();
@@ -1676,7 +1675,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Consumer<AppState>(
                         builder: (ctx, appState, _) {
-                          final units = getAreaUnits(country);
+                          final units = currentAreaUnits();
                           final currentUnit = units.firstWhere(
                             (u) =>
                                 u['symbol'] == appState.preferredAreaUnitSymbol,

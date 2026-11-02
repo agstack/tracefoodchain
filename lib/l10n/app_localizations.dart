@@ -6665,6 +6665,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This registrar belongs to another coordinator\'s team.'**
   String get manageUserOtherTeam;
+
+  /// No description provided for @qcMyTeamOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only my team'**
+  String get qcMyTeamOnly;
+
+  /// No description provided for @qcTerritoryInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrations from your territory: {territory}'**
+  String qcTerritoryInfo(String territory);
+
+  /// No description provided for @qcNoTerritory.
+  ///
+  /// In en, this message translates to:
+  /// **'No territory has been assigned to you yet. Please ask your coordinator.'**
+  String get qcNoTerritory;
 }
 
 class _AppLocalizationsDelegate

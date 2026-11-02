@@ -2203,5 +2203,8 @@
   "manageUserNotAuthorized": "Die eigene Rolle erlaubt keine Benutzerverwaltung.",
   "manageUserCannotManageSelf": "Die eigene Rolle ist hier nicht änderbar.",
   "manageUserOutsideTerritory": "Dieser Nutzer liegt außerhalb des eigenen Gebiets.",
-  "manageUserOtherTeam": "Dieser Registrar gehört zum Team eines anderen Koordinators."
+  "manageUserOtherTeam": "Dieser Registrar gehört zum Team eines anderen Koordinators.",
+  "qcMyTeamOnly": "Nur mein Team",
+  "qcTerritoryInfo": "Registrierungen aus dem eigenen Gebiet: {territory}",
+  "qcNoTerritory": "Noch kein Gebiet zugewiesen. Bitte beim zuständigen Koordinator nachfragen."
 }

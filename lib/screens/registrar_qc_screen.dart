@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -14,7 +15,11 @@ import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
+import '../models/country_config.dart';
+import '../models/user_scope.dart';
+import '../services/country_config_service.dart';
 import '../services/open_ral_service.dart';
+import '../services/role_management_service.dart';
 import '../services/asset_registry_api_service.dart';
 import '../services/user_registry_api_service.dart';
 import '../helpers/deep_copy_map.dart';
@@ -111,6 +116,26 @@ class _QcBundle {
       fields.where(isPending).toList();
 
   bool contains(String uid) => members.any((m) => uidOf(m) == uid);
+
+  static String _address(Map<String, dynamic>? obj, String key) =>
+      obj?['currentGeolocation']?['postalAddress']?[key]?.toString().trim() ??
+      '';
+
+  /// Gespeichertes Land - bevorzugt der Farm, sonst des Farmers oder eines
+  /// Feldes. Neuere Registrierungen tragen den ISO-Code, ältere den Namen.
+  String get storedCountry {
+    for (final obj in [farm, farmer, ...fields]) {
+      final c = _address(obj, 'country');
+      if (c.isNotEmpty && c != 'unknown') return c;
+    }
+    return '';
+  }
+
+  /// Oberste Verwaltungsebene (z.B. Departamento) - Felder tragen keine.
+  String get stateName {
+    final s = _address(farm, 'stateName');
+    return s.isNotEmpty ? s : _address(farmer, 'stateName');
+  }
 
   String get name {
     for (final obj in [farm, farmer, ...fields]) {
@@ -283,6 +308,20 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// Bündel, das nach einem Sprung aus der Übersichtskarte aufgeklappt wird.
   String? _focusBundleKey;
 
+  /// Gebiet des Prüfers; null heißt unbeschränkt (SUPERADMIN, tfcAdmin).
+  /// Die QC zeigt nur Registrierungen daraus. Das ist eine Ansicht, keine
+  /// Zugriffssperre - gelesen werden darf TFC_objects weiterhin.
+  final UserScope? _scope = RoleManagementService().currentUserScope();
+
+  /// Registrare im Team des angemeldeten Registrar Coordinators, er selbst
+  /// eingeschlossen. Leer für alle anderen Rollen.
+  Set<String> _teamUids = {};
+  bool _teamOnly = false;
+
+  /// Ob die Objektabfrage nach Land gefiltert werden kann. Fällt auf false,
+  /// wenn Firestore die Abfrage ablehnt - dann filtert nur noch der Client.
+  bool _serverCountryFilter = true;
+
   String _registrarFilter = 'all'; // 'all' or a registrar UID
   _QcSort _sortMode = _QcSort.dateDesc;
   String _searchQuery = '';
@@ -296,7 +335,73 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   void initState() {
     super.initState();
     _loadPendingRegistrations(fromInitState: true);
+    unawaited(_loadTeam());
   }
+
+  /// Holt das Team aus TFC_user_assignments - dort schreibt nur manageUser,
+  /// die Angabe am Nutzerobjekt könnte veraltet sein.
+  Future<void> _loadTeam() async {
+    if (RoleManagementService().getCurrentUserRole() != 'registrarCoordinator') {
+      return;
+    }
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    if (myUid == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('TFC_user_assignments')
+          .where('coordinatorUid', isEqualTo: myUid)
+          .get();
+      if (!mounted) return;
+      setState(() {
+        _teamUids = {myUid, ...snapshot.docs.map((d) => d.id)};
+        // Ohne Teammitglieder bliebe die Liste leer - dann alles zeigen.
+        _teamOnly = _teamUids.length > 1;
+      });
+    } catch (e) {
+      debugPrint('QC: could not load team: $e');
+    }
+  }
+
+  /// Gespeicherte Länderwerte im Gebiet des Prüfers, für Firestore-`whereIn`
+  /// (höchstens 30 Werte). null, wenn nicht nach Land gefiltert wird.
+  List<String>? get _scopeCountryValues {
+    final scope = _scope;
+    if (scope == null || scope.isEmpty || !_serverCountryFilter) return null;
+    final values = <String>{
+      for (final code in scope.countries)
+        ...(countryConfigService.byCode(code)?.storedValues ?? [code]),
+    }.toList();
+    return values.length <= 30 ? values : null;
+  }
+
+  /// Ob ein geladenes Objekt überhaupt im Gebiet liegen kann - nur nach Land.
+  /// Ohne lesbares Land entscheidet später das Bündel, dessen Farm es trägt.
+  bool _mayBeInScope(_QcEntry entry) {
+    final scope = _scope;
+    if (scope == null) return true;
+    final stored = _QcBundle._address(entry.object, 'country');
+    final code = countryConfigService.resolve(stored)?.code;
+    return code == null || scope.countries.contains(code);
+  }
+
+  /// Ob ein Bündel im Gebiet des Prüfers liegt: Land, und bei Gebieten mit
+  /// Regionen die oberste Verwaltungsebene der Farm.
+  bool _inScope(_QcBundle bundle) {
+    final scope = _scope;
+    if (scope == null) return true;
+    final code = countryConfigService.resolve(bundle.storedCountry)?.code;
+    final entry = code == null ? null : scope.entryFor(code);
+    if (entry == null) return false;
+    if (entry.wholeCountry) return true;
+    final state = bundle.stateName;
+    return entry.regions.any((r) => CountryConfig.sameRegion(r, state));
+  }
+
+  /// Bündel im Gebiet - und, wenn gewählt, nur die des eigenen Teams.
+  List<_QcBundle> get _visibleBundles => _bundles
+      .where((b) =>
+          _inScope(b) && (!_teamOnly || _teamUids.contains(b.registrarUid)))
+      .toList();
 
   @override
   void dispose() {
@@ -369,11 +474,18 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// Nach Datum liesse sich hier nicht sortieren: das Registrierungsdatum steht
   /// nicht am Objekt, sondern an der zugehörigen Methode. Die Sortierung
   /// "neueste zuerst" passiert deshalb im Client über das, was geladen ist.
-  Query<Map<String, dynamic>> _pendingQuery() => FirebaseFirestore.instance
-      .collection('TFC_objects')
-      .where('objectState', isEqualTo: 'qcPending')
-      .orderBy(FieldPath.documentId)
-      .limit(_pageSize);
+  /// Mit Gebiet nur die Objekte seiner Länder.
+  Query<Map<String, dynamic>> _pendingQuery() {
+    var query = FirebaseFirestore.instance
+        .collection('TFC_objects')
+        .where('objectState', isEqualTo: 'qcPending');
+    final countries = _scopeCountryValues;
+    if (countries != null) {
+      query = query.where('currentGeolocation.postalAddress.country',
+          whereIn: countries);
+    }
+    return query.orderBy(FieldPath.documentId).limit(_pageSize);
+  }
 
   /// [fromInitState] suppresses the initial setState: at that point this
   /// element is being built, and marking it dirty from inside its own build
@@ -429,15 +541,21 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       // Je Typ einzeln: offene Bild-Objekte tragen denselben Zustand, gehören
       // aber nicht in die Warteschlange - eine Gesamtzahl über alle wäre eine
       // andere Zahl als die Liste zeigt.
+      // Mit Gebiet nur dessen Länder; Regionen kann die Zählung nicht
+      // unterscheiden, sie zählt dann das ganze Land.
+      final countries = _scopeCountryValues;
       final counts = await Future.wait(
-        ['farm', 'human', 'field'].map(
-          (ralType) => FirebaseFirestore.instance
+        ['farm', 'human', 'field'].map((ralType) {
+          var query = FirebaseFirestore.instance
               .collection('TFC_objects')
               .where('objectState', isEqualTo: 'qcPending')
-              .where('template.RALType', isEqualTo: ralType)
-              .count()
-              .get(),
-        ),
+              .where('template.RALType', isEqualTo: ralType);
+          if (countries != null) {
+            query = query.where('currentGeolocation.postalAddress.country',
+                whereIn: countries);
+          }
+          return query.count().get();
+        }),
       );
 
       final total =
@@ -487,11 +605,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           !_methodsExhausted &&
           rounds < 5) {
         rounds++;
-        collected.addAll(await _loadFromCreationMethods());
+        // Was sicher außerhalb des Gebiets liegt, zählt nicht mit - sonst
+        // stünde ein Koordinator in Kenia vor einer fast leeren Seite.
+        collected.addAll(
+            (await _loadFromCreationMethods()).where(_mayBeInScope));
       }
 
       if (collected.length < _targetPerLoad && _methodsExhausted) {
-        collected.addAll(await _loadFromObjects());
+        collected.addAll((await _loadFromObjects()).where(_mayBeInScope));
       }
 
       final newBundles = await _groupIntoBundles(collected);
@@ -599,12 +720,25 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   Future<List<_QcEntry>> _loadFromObjects() async {
     if (_objectsExhausted) return const [];
 
-    var query = _pendingQuery();
-    if (_objectCursor != null) {
-      query = query.startAfterDocument(_objectCursor!);
+    Query<Map<String, dynamic>> pageQuery() {
+      var query = _pendingQuery();
+      if (_objectCursor != null) {
+        query = query.startAfterDocument(_objectCursor!);
+      }
+      return query;
     }
 
-    final snapshot = await query.get();
+    QuerySnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await pageQuery().get();
+    } catch (e) {
+      if (_scopeCountryValues == null) rethrow;
+      // Lehnt Firestore den Länderfilter ab (z.B. fehlender Index), filtert
+      // eben nur der Client - die Warteschlange darf nicht leer bleiben.
+      debugPrint('QC: country filter unavailable ($e) - filtering locally');
+      _serverCountryFilter = false;
+      snapshot = await pageQuery().get();
+    }
     if (snapshot.docs.length < _pageSize) _objectsExhausted = true;
     if (snapshot.docs.isNotEmpty) _objectCursor = snapshot.docs.last;
 
@@ -1006,7 +1140,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   Map<String, ({String name, String email, String label})>
       get _availableRegistrars {
     final map = <String, ({String name, String email, String label})>{};
-    for (final bundle in _bundles) {
+    for (final bundle in _visibleBundles) {
       if (bundle.registrarUid.isEmpty) continue;
       map[bundle.registrarUid] = (
         name: bundle.registrarName,
@@ -1020,7 +1154,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   List<_QcBundle> get _filteredBundles {
     final query = _searchQuery.trim().toLowerCase();
 
-    final result = _bundles.where((bundle) {
+    final result = _visibleBundles.where((bundle) {
       if (_registrarFilter != 'all' &&
           bundle.registrarUid != _registrarFilter) {
         return false;
@@ -1390,6 +1524,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       body: Column(
         children: [
           if (_dateOrderUnavailable) _buildDateOrderWarning(l10n),
+          _buildScopeRow(l10n),
           _buildSearchField(l10n),
           _buildSortAndRegistrarRow(l10n),
           const SizedBox(height: 8),
@@ -1453,6 +1588,28 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   Widget _buildList(AppLocalizations l10n) {
+    // Ohne Gebiet gibt es nichts zu prüfen - das soll nicht wie eine leere
+    // Warteschlange aussehen.
+    if (_scope?.isEmpty ?? false) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.public_off, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                l10n.qcNoTerritory,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final entries = _filteredBundles;
 
     if (entries.isEmpty && _hasMore) {
@@ -1482,6 +1639,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       // Distinguish "nothing to review" from "your filter hides everything" -
       // otherwise an active filter looks like an empty queue.
       final hasActiveFilter = _registrarFilter != 'all' ||
+          _teamOnly ||
           _searchQuery.trim().isNotEmpty;
       return Center(
         child: Column(
@@ -1753,11 +1911,68 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   void _resetFilters() {
     setState(() {
       _focusBundleKey = null;
+      _teamOnly = false;
       _registrarFilter = 'all';
       _searchQuery = '';
       _searchController.clear();
     });
   }
+
+  /// Gebiet des Prüfers und - für Registrar Coordinators - der Teamfilter.
+  Widget _buildScopeRow(AppLocalizations l10n) {
+    final scope = _scope;
+    final showScope = scope != null && !scope.isEmpty;
+    final showTeam = _teamUids.length > 1;
+    if (!showScope && !showTeam) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 0),
+      child: Row(
+        children: [
+          if (showScope) ...[
+            Icon(Icons.public, size: 16, color: Colors.grey[700]),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.qcTerritoryInfo(_scopeLabel(scope)),
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+          ] else
+            const Spacer(),
+          if (showTeam)
+            FilterChip(
+              label: Text(l10n.qcMyTeamOnly),
+              selected: _teamOnly,
+              onSelected: (value) => setState(() {
+                _teamOnly = value;
+                if (_registrarFilter != 'all' &&
+                    !_visibleBundles
+                        .any((b) => b.registrarUid == _registrarFilter)) {
+                  _registrarFilter = 'all';
+                }
+              }),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Ort eines Bündels für die Karte, z.B. "La Paz, Honduras".
+  String? _locationLabel(_QcBundle bundle) {
+    final stored = bundle.storedCountry;
+    final country = countryConfigService.resolve(stored)?.name ?? stored;
+    final parts = [bundle.stateName, country].where((p) => p.isNotEmpty);
+    return parts.isEmpty ? null : parts.join(', ');
+  }
+
+  /// Gebiet mit Ländernamen statt Codes, z.B. "Kenya: Nyeri · Honduras".
+  String _scopeLabel(UserScope scope) => scope.entries.map((e) {
+        final name = countryConfigService.byCode(e.country)?.name ?? e.country;
+        return e.wholeCountry ? name : '$name: ${e.regions.join(', ')}';
+      }).join(' · ');
 
   Widget _buildSearchField(AppLocalizations l10n) {
     return Padding(
@@ -1931,8 +2146,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     final loaded = _pendingRegistrations.length;
     final total = _totalPending;
 
+    final visible = _visibleBundles.length;
     final parts = <String>[
-      if (shown != _bundles.length) l10n.qcResultCount(shown, _bundles.length),
+      if (shown != visible) l10n.qcResultCount(shown, visible),
       // Wie viel der Warteschlange überhaupt schon im Zugriff ist.
       if (total != null && loaded < total) l10n.qcLoadedOfTotal(loaded, total),
     ];
@@ -2016,6 +2232,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       : '-',
                 ),
                 _buildCardMeta(Icons.person_outline, bundle.registrarName),
+                if (_locationLabel(bundle) case final location?)
+                  _buildCardMeta(Icons.place_outlined, location),
                 _buildCardMeta(
                   complete ? Icons.check_circle_outline : Icons.checklist,
                   l10n.qcChecklistProgress(done, checks.length),
@@ -3835,15 +4053,26 @@ class _ObjectDetailsDialog extends StatelessWidget {
     } else if (ralType == 'farm') {
       final totalArea = getSpecificPropertyfromJSON(obj, 'totalAreaHa');
       final totalAreaValue = (totalArea is num) ? totalArea.toDouble() : 0.0;
-      final city =
-          obj['currentGeolocation']?['postalAddress']?['cityName'] ?? '-';
-      final country =
-          obj['currentGeolocation']?['postalAddress']?['countryName'] ?? '-';
+      final address = obj['currentGeolocation']?['postalAddress'];
+      String part(String key) {
+        final v = address is Map ? address[key]?.toString().trim() ?? '' : '';
+        return v.isEmpty ? '-' : v;
+      }
+
+      // Gespeichert ist der ISO-Code (ältere Registrierungen: der Name).
+      final storedCountry = part('country');
+      final countryConfig = countryConfigService.resolve(storedCountry);
+      final country = countryConfig?.name ?? storedCountry;
 
       details.addAll([
         _buildInfoRow(
             l10n.totalArea, '${totalAreaValue.toStringAsFixed(2)} ha'),
-        _buildInfoRow(l10n.cityName, city),
+        _buildInfoRow(
+            countryConfig?.regionLabel(0) ?? l10n.stateName, part('stateName')),
+        _buildInfoRow(countryConfig?.regionLabel(1) ?? l10n.municipalityName,
+            part('municipalityName')),
+        _buildInfoRow(
+            countryConfig?.regionLabel(2) ?? l10n.cityName, part('cityName')),
         _buildInfoRow(l10n.country, country),
       ]);
     } else if (ralType == 'field') {

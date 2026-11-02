@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/models/country_config.dart';
+import 'package:trace_foodchain_app/services/country_config_service.dart';
 import 'package:trace_foodchain_app/repositories/honduras_specifics.dart';
 import 'package:trace_foodchain_app/widgets/custom_text_field.dart';
 import 'package:trace_foodchain_app/repositories/coffee_species.dart'
@@ -150,14 +152,18 @@ List<Map<String, dynamic>> getWeightUnits(String country) {
   ];
 }
 
-List<Map<String, dynamic>> getAreaUnits(String country) {
-  if (country.toLowerCase() == 'honduras') {
-    return areaUnitsHonduras;
-  }
-  return [
-    {"name": "hectares", "symbol": "ha", "toHectareFactor": 1.0},
-    {"name": "acres", "symbol": "ac", "toHectareFactor": 0.404686},
-  ];
+/// Flächeneinheiten eines Landes (Code, Name oder frühere Schreibweise) aus
+/// der Länder-Konfiguration.
+List<Map<String, dynamic>> getAreaUnits(String country) =>
+    countryConfigService.resolve(country)?.effectiveAreaUnits ??
+    CountryConfig.fallbackAreaUnits;
+
+/// Flächeneinheiten des Landes, in dem der angemeldete Nutzer registriert.
+List<Map<String, dynamic>> currentAreaUnits() {
+  final countries = countryConfigService.registrationCountries(appUserDoc);
+  return countries.isNotEmpty
+      ? countries.first.effectiveAreaUnits
+      : getAreaUnits(country);
 }
 
 /// Konvertiert Hektar in die angegebene Einheit (anhand des toHectareFactor).

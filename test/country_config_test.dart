@@ -59,6 +59,30 @@ void main() {
       expect(c.storedValues, ['HN', 'Rep. de Honduras']);
     });
 
+    test('preselects the preferred area unit only if the country has it', () {
+      expect(_kenya.initialAreaUnit('ha'), 'ha');
+      expect(_kenya.initialAreaUnit('mz'), 'ac');
+      expect(_kenya.initialAreaUnit(), 'ac');
+
+      const bare = CountryConfig(code: 'NI', name: 'Nicaragua');
+      expect(bare.effectiveAreaUnits, CountryConfig.fallbackAreaUnits);
+      expect(bare.initialAreaUnit('mz'), 'ha');
+    });
+
+    test('names the region levels as configured, null beyond', () {
+      expect(_kenya.regionLabel(0), 'County');
+      expect(_kenya.regionLabel(2), 'Ward');
+      expect(_kenya.regionLabel(3), isNull);
+      expect(const CountryConfig(code: 'NI', name: 'N').regionLabel(0), isNull);
+    });
+
+    test('compares region names without case and accents', () {
+      expect(CountryConfig.sameRegion('Copán', ' copan '), isTrue);
+      expect(CountryConfig.sameRegion('Intibucá', 'INTIBUCA'), isTrue);
+      expect(CountryConfig.sameRegion('La Paz', 'Lempira'), isFalse);
+      expect(CountryConfig.sameRegion('La Paz', ''), isFalse);
+    });
+
     test('accepts only two upper-case letters as code', () {
       expect(CountryConfig.isValidCode('KE'), isTrue);
       expect(CountryConfig.isValidCode('ke'), isFalse);
@@ -106,6 +130,52 @@ void main() {
       expect(countryConfigService.isBuiltInOnly('HN'), isFalse);
       expect(countryConfigService.active.map((c) => c.code), ['KE']);
       expect(countryConfigService.all.map((c) => c.code), ['HN', 'KE']);
+    });
+
+    group('registrationCountries', () {
+      Map<String, dynamic> user({List<dynamic>? scope, String? country}) => {
+            'specificProperties': [
+              if (scope != null) {'key': 'assignedScope', 'value': scope},
+            ],
+            'currentGeolocation': {
+              'postalAddress': {'country': country ?? ''},
+            },
+          };
+
+      setUp(() async {
+        final box = await Hive.openBox<String>(countryConfigBoxName);
+        await box.put('KE', jsonEncode(_kenya.toMap()));
+        await countryConfigService.init();
+      });
+
+      test('are the countries of the assigned territory', () {
+        final countries = countryConfigService.registrationCountries(user(
+          scope: [
+            {'country': 'KE', 'regions': ['Nyeri']},
+            {'country': 'HN'},
+          ],
+          country: 'DE',
+        ));
+        expect(countries.map((c) => c.code), ['KE', 'HN']);
+      });
+
+      test('fall back to the country of the address, legacy names included',
+          () {
+        expect(
+            countryConfigService
+                .registrationCountries(user(country: 'Honduras'))
+                .map((c) => c.code),
+            ['HN']);
+      });
+
+      test('offer all active countries when none applies', () {
+        expect(
+            countryConfigService
+                .registrationCountries(user(country: 'DE'))
+                .map((c) => c.code),
+            ['HN', 'KE']);
+        expect(countryConfigService.registrationCountries(null).length, 2);
+      });
     });
 
     test('ignores unreadable cache entries', () async {

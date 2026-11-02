@@ -2408,5 +2408,9 @@
   "manageUserNotAuthorized": "Your role does not allow managing users.",
   "manageUserCannotManageSelf": "Your own role cannot be changed here.",
   "manageUserOutsideTerritory": "This user is outside your territory.",
-  "manageUserOtherTeam": "This registrar belongs to another coordinator's team."
+  "manageUserOtherTeam": "This registrar belongs to another coordinator's team.",
+  "qcMyTeamOnly": "Only my team",
+  "qcTerritoryInfo": "Registrations from your territory: {territory}",
+  "@qcTerritoryInfo": {"placeholders": {"territory": {"type": "String"}}},
+  "qcNoTerritory": "No territory has been assigned to you yet. Please ask your coordinator."
 }

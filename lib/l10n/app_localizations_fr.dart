@@ -3846,4 +3846,16 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get manageUserOtherTeam =>
       'Cet enregistreur fait partie de l\'équipe d\'un autre coordinateur.';
+
+  @override
+  String get qcMyTeamOnly => 'Seulement mon équipe';
+
+  @override
+  String qcTerritoryInfo(String territory) {
+    return 'Enregistrements de votre territoire : $territory';
+  }
+
+  @override
+  String get qcNoTerritory =>
+      'Aucun territoire ne vous a encore été attribué. Veuillez demander à votre coordinateur.';
 }

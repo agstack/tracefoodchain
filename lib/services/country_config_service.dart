@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:trace_foodchain_app/models/country_config.dart';
+import 'package:trace_foodchain_app/models/user_scope.dart';
 import 'package:trace_foodchain_app/repositories/honduras_specifics.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
 
@@ -191,6 +192,23 @@ class CountryConfigService extends ChangeNotifier {
       if (c.matches(value)) return c;
     }
     return null;
+  }
+
+  /// Länder, in denen [user] Farmer, Farmen und Felder registriert: das
+  /// zugewiesene Gebiet, sonst das Land aus seiner Adresse. Passt davon keins
+  /// zu einem aktiven Land (z.B. SUPERADMIN ohne Gebiet), stehen alle aktiven
+  /// zur Wahl.
+  List<CountryConfig> registrationCountries(Map<String, dynamic>? user) {
+    final scope = user == null
+        ? UserScope.empty
+        : UserScope.ofUser(user, resolveCountry: (s) => resolve(s)?.code);
+    final own = <CountryConfig>[
+      for (final code in scope.countries)
+        if (byCode(code) case final c? when c.active) c,
+    ];
+    if (own.isNotEmpty) return own;
+    final candidates = active;
+    return candidates.isNotEmpty ? candidates : all;
   }
 
   /// Eingebautes Land, das noch nie in der Cloud gespeichert wurde.

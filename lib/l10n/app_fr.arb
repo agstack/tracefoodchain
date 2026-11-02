@@ -2203,5 +2203,8 @@
   "manageUserNotAuthorized": "Votre rôle ne permet pas de gérer les utilisateurs.",
   "manageUserCannotManageSelf": "Votre propre rôle ne peut pas être modifié ici.",
   "manageUserOutsideTerritory": "Cet utilisateur est en dehors de votre territoire.",
-  "manageUserOtherTeam": "Cet enregistreur fait partie de l'équipe d'un autre coordinateur."
+  "manageUserOtherTeam": "Cet enregistreur fait partie de l'équipe d'un autre coordinateur.",
+  "qcMyTeamOnly": "Seulement mon équipe",
+  "qcTerritoryInfo": "Enregistrements de votre territoire : {territory}",
+  "qcNoTerritory": "Aucun territoire ne vous a encore été attribué. Veuillez demander à votre coordinateur."
 }

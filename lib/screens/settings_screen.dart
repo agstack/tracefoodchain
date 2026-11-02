@@ -93,7 +93,7 @@ class SettingsScreen extends StatelessWidget {
           // Flächeneinheit-Auswahl
           Consumer<AppState>(
             builder: (context, appState, _) {
-              final availableUnits = getAreaUnits(country);
+              final availableUnits = currentAreaUnits();
               final currentSymbol = appState.preferredAreaUnitSymbol;
               // Sicherstellen dass aktueller Wert in der Liste ist
               final validUnit =

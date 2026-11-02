@@ -54,7 +54,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    final availableUnits = getAreaUnits(country);
+    final availableUnits = currentAreaUnits();
     final hasMzUnit = availableUnits.any((u) => u['symbol'] == 'mz');
     final isSpanishLocale = _locale?.languageCode == 'es';
 

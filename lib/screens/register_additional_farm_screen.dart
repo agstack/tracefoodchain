@@ -5,7 +5,10 @@ import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
-import '../repositories/honduras_specifics.dart';
+import 'package:provider/provider.dart';
+import '../models/country_config.dart';
+import '../providers/app_state.dart';
+import '../services/country_config_service.dart';
 import '../services/gps_helper.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
@@ -37,6 +40,23 @@ class _RegisterAdditionalFarmScreenState
 
   String _selectedAreaUnit = 'ha';
   bool _isSaving = false;
+
+  /// Land des Farmers; ohne Angabe am Farmer das Land des Registrars.
+  late final CountryConfig? _country = countryConfigService.resolve(widget
+          .farmerDoc['currentGeolocation']?['postalAddress']?['country']
+          ?.toString()) ??
+      countryConfigService.registrationCountries(appUserDoc).firstOrNull;
+
+  List<Map<String, dynamic>> get _units =>
+      _country?.effectiveAreaUnits ?? CountryConfig.fallbackAreaUnits;
+
+  @override
+  void initState() {
+    super.initState();
+    final preferred =
+        Provider.of<AppState>(context, listen: false).preferredAreaUnitSymbol;
+    _selectedAreaUnit = _country?.initialAreaUnit(preferred) ?? 'ha';
+  }
 
   @override
   void dispose() {
@@ -106,7 +126,10 @@ class _RegisterAdditionalFarmScreenState
         };
       }
 
-      farm['currentGeolocation']['postalAddress']['country'] = 'Honduras';
+      if (_country != null) {
+        farm['currentGeolocation']['postalAddress']['country'] =
+            _country!.code;
+      }
       if (_cityController.text.trim().isNotEmpty) {
         farm['currentGeolocation']['postalAddress']['cityName'] =
             _cityController.text.trim();
@@ -123,9 +146,9 @@ class _RegisterAdditionalFarmScreenState
       if (areaText.isNotEmpty) {
         final areaRaw = double.tryParse(areaText);
         if (areaRaw != null) {
-          final unitData = areaUnitsHonduras.firstWhere(
+          final unitData = _units.firstWhere(
             (u) => u['symbol'] == _selectedAreaUnit,
-            orElse: () => areaUnitsHonduras.first,
+            orElse: () => _units.first,
           );
           final factor = (unitData['toHectareFactor'] as num).toDouble();
           final areaHa = areaRaw * factor;
@@ -183,7 +206,7 @@ class _RegisterAdditionalFarmScreenState
         ? '$firstName $lastName'.trim()
         : (widget.farmerDoc['identity']?['name']?.toString() ?? '');
 
-    final units = getAreaUnits(country);
+    final units = _units;
 
     return Scaffold(
       appBar: AppBar(
@@ -259,7 +282,7 @@ class _RegisterAdditionalFarmScreenState
                   controller: _stateController,
                   style: const TextStyle(color: Colors.black),
                   decoration: InputDecoration(
-                    labelText: l10n.stateName,
+                    labelText: _country?.regionLabel(0) ?? l10n.stateName,
                     border: const OutlineInputBorder(),
                   ),
                 ),

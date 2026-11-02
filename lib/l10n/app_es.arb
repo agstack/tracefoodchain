@@ -2214,5 +2214,8 @@
   "manageUserNotAuthorized": "Su rol no permite gestionar usuarios.",
   "manageUserCannotManageSelf": "Su propio rol no se puede cambiar aquí.",
   "manageUserOutsideTerritory": "Este usuario está fuera de su territorio.",
-  "manageUserOtherTeam": "Este registrador pertenece al equipo de otro coordinador."
+  "manageUserOtherTeam": "Este registrador pertenece al equipo de otro coordinador.",
+  "qcMyTeamOnly": "Solo mi equipo",
+  "qcTerritoryInfo": "Registros de su territorio: {territory}",
+  "qcNoTerritory": "Aún no se le ha asignado un territorio. Consulte a su coordinador."
 }

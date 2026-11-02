@@ -900,7 +900,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
             // Settings-Screen aus diesem Workflow nicht verlinkt ist.
             Consumer<AppState>(
               builder: (ctx, appState, _) {
-                final units = getAreaUnits(country);
+                final units = currentAreaUnits();
                 final currentUnit = units.firstWhere(
                   (u) => u['symbol'] == appState.preferredAreaUnitSymbol,
                   orElse: () => units.first,

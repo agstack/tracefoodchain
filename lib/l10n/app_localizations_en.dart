@@ -3770,4 +3770,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get manageUserOtherTeam =>
       'This registrar belongs to another coordinator\'s team.';
+
+  @override
+  String get qcMyTeamOnly => 'Only my team';
+
+  @override
+  String qcTerritoryInfo(String territory) {
+    return 'Registrations from your territory: $territory';
+  }
+
+  @override
+  String get qcNoTerritory =>
+      'No territory has been assigned to you yet. Please ask your coordinator.';
 }

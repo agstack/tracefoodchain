@@ -50,6 +50,32 @@ class CountryConfig {
   /// `{"name": "manzanas", "symbol": "mz", "toHectareFactor": 0.70259}`.
   final List<Map<String, dynamic>> areaUnits;
 
+  /// Einheiten für Länder, die keine eigenen festlegen.
+  static const List<Map<String, dynamic>> fallbackAreaUnits = [
+    {"name": "hectares", "symbol": "ha", "toHectareFactor": 1.0},
+    {"name": "acres", "symbol": "ac", "toHectareFactor": 0.404686},
+  ];
+
+  /// [areaUnits], oder [fallbackAreaUnits], wenn das Land keine hat.
+  List<Map<String, dynamic>> get effectiveAreaUnits =>
+      areaUnits.isNotEmpty ? areaUnits : fallbackAreaUnits;
+
+  /// Vorauswahl der Flächeneinheit: [preferred], wenn das Land sie kennt,
+  /// sonst [defaultAreaUnit], sonst die erste Einheit.
+  String initialAreaUnit([String? preferred]) {
+    final symbols = effectiveAreaUnits.map((u) => u['symbol']).toList();
+    if (preferred != null && symbols.contains(preferred)) return preferred;
+    if (symbols.contains(defaultAreaUnit)) return defaultAreaUnit;
+    return symbols.first as String;
+  }
+
+  /// Bezeichnung der Verwaltungsebene [level] (0 = oberste), oder null, wenn
+  /// das Land dafür keine festlegt.
+  String? regionLabel(int level) =>
+      level < regionLabels.length && regionLabels[level].trim().isNotEmpty
+          ? regionLabels[level]
+          : null;
+
   /// Symbol der vorausgewählten Flächeneinheit.
   final String defaultAreaUnit;
 
@@ -71,6 +97,21 @@ class CountryConfig {
   final String updatedBy;
 
   static bool isValidCode(String code) => RegExp(r'^[A-Z]{2}$').hasMatch(code);
+
+  /// Vergleicht Regionsnamen ohne Groß-/Kleinschreibung und Akzente
+  /// ("Copan" = "Copán"): Freitext und Importe schreiben sie uneinheitlich.
+  static bool sameRegion(String a, String b) {
+    String fold(String s) => s
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp('[áàâä]'), 'a')
+        .replaceAll(RegExp('[éèêë]'), 'e')
+        .replaceAll(RegExp('[íìîï]'), 'i')
+        .replaceAll(RegExp('[óòôö]'), 'o')
+        .replaceAll(RegExp('[úùûü]'), 'u')
+        .replaceAll('ñ', 'n');
+    return fold(a) == fold(b);
+  }
 
   /// Alle Werte, unter denen Registrierungen dieses Landes in
   /// `postalAddress.country` stehen können - für Firestore-`whereIn`.

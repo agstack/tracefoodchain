@@ -17,7 +17,10 @@ import '../services/firebase_storage_service.dart';
 import 'ihcafe_producer_widgets.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
-import '../repositories/honduras_specifics.dart';
+import '../models/country_config.dart';
+import '../providers/app_state.dart';
+import '../services/country_config_service.dart';
+import 'package:provider/provider.dart';
 
 /// Multi-Step Stepper für die Registrierung von Farmer, Farm und Feldern
 /// Speichert alle Daten mit objectState "qcPending" und verwendet generateDigitalSibling
@@ -71,6 +74,11 @@ class _StepperRegistrarRegistrationState
   final TextEditingController _farmEstimatedAreaController =
       TextEditingController();
   String _selectedAreaUnit = 'ha';
+
+  /// Länder, in denen der Registrar registriert (sein Gebiet), und das
+  /// gewählte. Ab zwei Ländern wählt er im ersten Schritt aus.
+  List<CountryConfig> _countries = const [];
+  CountryConfig? _country;
 
   // Position cache
   Position? _currentPosition;
@@ -137,7 +145,47 @@ class _StepperRegistrarRegistrationState
     } else {
       debugPrint('localStorage is initialized and ready for registration');
     }
+    _loadCountries();
   }
+
+  /// Liest die Länder des Registrars, sobald sein Nutzerobjekt geladen ist.
+  void _loadCountries() {
+    if (!mounted) return;
+    final countries = countryConfigService.registrationCountries(appUserDoc);
+    final preferred =
+        Provider.of<AppState>(context, listen: false).preferredAreaUnitSymbol;
+    setState(() {
+      _countries = countries;
+      if (_country == null || !countries.contains(_country)) {
+        _selectCountry(countries.isNotEmpty ? countries.first : null,
+            preferredUnit: preferred);
+      }
+    });
+  }
+
+  /// Wechselt das Land. Nur innerhalb von setState aufrufen.
+  ///
+  /// Eingaben, die zum neuen Land nicht passen, werden verworfen: die
+  /// Flächeneinheit und eine Auswahl aus dem IHCafe-Verzeichnis.
+  void _selectCountry(CountryConfig? country, {String? preferredUnit}) {
+    final changed = _country != null && _country!.code != country?.code;
+    _country = country;
+    _selectedAreaUnit =
+        country?.initialAreaUnit(preferredUnit ?? _selectedAreaUnit) ?? 'ha';
+    if (changed) {
+      _farmStateController.clear();
+      if (country?.producerRegistry != CountryConfig.producerRegistryIhcafe) {
+        _selectedIhcafeProducer = null;
+        _selectedIhcafeFinca = null;
+      }
+    }
+  }
+
+  bool get _usesIhcafe =>
+      _country?.producerRegistry == CountryConfig.producerRegistryIhcafe;
+
+  /// Beispiele in den Eingabefeldern stammen aus Honduras.
+  bool get _isHonduras => _country == null || _country!.code == 'HN';
 
   Future<void> _getCurrentPosition() async {
     try {
@@ -182,6 +230,12 @@ class _StepperRegistrarRegistrationState
 
   bool _validateFarmerData() {
     final l10n = AppLocalizations.of(context)!;
+    if (_country == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${l10n.country} required')),
+      );
+      return false;
+    }
     if (_farmerFirstNameController.text.trim().isEmpty ||
         _farmerLastNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -367,7 +421,7 @@ class _StepperRegistrarRegistrationState
         debugPrint('Farmer coordinates set');
       }
       farmer['currentGeolocation']['postalAddress']['country'] =
-          'Honduras'; //ToDo: Make dynamic
+          _country!.code;
       if (_farmMunicipalityController.text.isNotEmpty) {
         farmer['currentGeolocation']['postalAddress']['municipalityName'] =
             _farmMunicipalityController.text;
@@ -452,7 +506,7 @@ class _StepperRegistrarRegistrationState
         };
         debugPrint('Farm coordinates set');
       }
-      farm['currentGeolocation']['postalAddress']['country'] = 'Honduras';
+      farm['currentGeolocation']['postalAddress']['country'] = _country!.code;
       if (_farmMunicipalityController.text.isNotEmpty) {
         farm['currentGeolocation']['postalAddress']['municipalityName'] =
             _farmMunicipalityController.text;
@@ -474,9 +528,10 @@ class _StepperRegistrarRegistrationState
       if (_farmEstimatedAreaController.text.isNotEmpty) {
         final rawValue = double.tryParse(_farmEstimatedAreaController.text);
         if (rawValue != null) {
-          final unitData = areaUnitsHonduras.firstWhere(
+          final units = _country!.effectiveAreaUnits;
+          final unitData = units.firstWhere(
             (u) => u['symbol'] == _selectedAreaUnit,
-            orElse: () => areaUnitsHonduras.first,
+            orElse: () => units.first,
           );
           final factor = (unitData['toHectareFactor'] as num).toDouble();
           final estimatedHa = rawValue * factor;
@@ -1837,10 +1892,37 @@ class _StepperRegistrarRegistrationState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Land der Registrierung - nur zur Wahl, wenn das Gebiet des
+        // Registrars mehrere Länder umfasst.
+        if (_countries.length > 1) ...[
+          DropdownButtonFormField<String>(
+            key: ValueKey('country-${_country?.code}'),
+            initialValue: _country?.code,
+            decoration: InputDecoration(
+              labelText: l10n.country,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.flag),
+            ),
+            items: _countries
+                .map((c) => DropdownMenuItem<String>(
+                      value: c.code,
+                      child: Text(c.name,
+                          style: const TextStyle(color: Colors.black)),
+                    ))
+                .toList(),
+            onChanged: (code) {
+              if (code == null || code == _country?.code) return;
+              setState(() => _selectCountry(
+                  _countries.firstWhere((c) => c.code == code)));
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
         // ── Auswahl aus dem IHCafe-Verzeichnis statt Abtippen ──────────────
         // Nur sichtbar, wenn das Verzeichnis lokal vorliegt (Import erfolgt im
-        // QC-Screen des Registrar Coordinators, nicht auf Registrar-Phones).
-        if (_ihcafeAvailable)
+        // QC-Screen des Registrar Coordinators, nicht auf Registrar-Phones)
+        // und das Land gegen IHCafe abgleicht.
+        if (_ihcafeAvailable && _usesIhcafe)
           OutlinedButton.icon(
             onPressed: () async {
               final producer = await showIhcafeProducerPicker(context);
@@ -1923,7 +2005,7 @@ class _StepperRegistrarRegistrationState
             labelText: l10n.nationalID,
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.badge),
-            hintText: 'e.g., 0801-1990-12345',
+            hintText: _isHonduras ? 'e.g., 0801-1990-12345' : null,
           ),
         ),
         const SizedBox(height: 16),
@@ -2035,7 +2117,7 @@ class _StepperRegistrarRegistrationState
             labelText: l10n.phoneNumber,
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.phone),
-            hintText: '+504-9999-8888',
+            hintText: _isHonduras ? '+504-9999-8888' : null,
           ),
           keyboardType: TextInputType.phone,
         ),
@@ -2052,6 +2134,51 @@ class _StepperRegistrarRegistrationState
           keyboardType: TextInputType.emailAddress,
         ),
       ],
+    );
+  }
+
+  /// Oberste Verwaltungsebene (z.B. Departamento): Auswahl aus den Regionen
+  /// des Landes, Freitext, wenn das Land keine festlegt. Ein Wert außerhalb
+  /// der Liste (z.B. aus dem IHCafe-Verzeichnis) bleibt wählbar.
+  Widget _buildRegionField() {
+    final l10n = AppLocalizations.of(context)!;
+    final decoration = InputDecoration(
+      labelText: _country?.regionLabel(0) ?? l10n.stateName,
+      border: const OutlineInputBorder(),
+      prefixIcon: const Icon(Icons.map),
+    );
+    final regions = _country?.regions ?? const <String>[];
+    if (regions.isEmpty) {
+      return TextField(
+        controller: _farmStateController,
+        style: const TextStyle(color: Colors.black),
+        decoration: decoration.copyWith(
+            hintText: _isHonduras ? 'e.g., La Paz' : null),
+      );
+    }
+
+    final current = _farmStateController.text.trim();
+    final match = regions.firstWhere(
+      (r) => CountryConfig.sameRegion(r, current),
+      orElse: () => current,
+    );
+    final options = [
+      ...regions,
+      if (match.isNotEmpty && !regions.contains(match)) match,
+    ];
+    return DropdownButtonFormField<String>(
+      key: ValueKey('region-${_country?.code}-$match'),
+      initialValue: match.isEmpty ? null : match,
+      isExpanded: true,
+      decoration: decoration,
+      items: options
+          .map((r) => DropdownMenuItem<String>(
+                value: r,
+                child: Text(r, style: const TextStyle(color: Colors.black)),
+              ))
+          .toList(),
+      onChanged: (value) =>
+          setState(() => _farmStateController.text = value ?? ''),
     );
   }
 
@@ -2082,11 +2209,14 @@ class _StepperRegistrarRegistrationState
           ),
         ),
         const SizedBox(height: 16),
+        // Verwaltungsebenen von oben nach unten, benannt wie im Land.
+        _buildRegionField(),
+        const SizedBox(height: 16),
         TextField(
           controller: _farmMunicipalityController,
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
-            labelText: l10n.municipalityName,
+            labelText: _country?.regionLabel(1) ?? l10n.municipalityName,
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.account_balance),
           ),
@@ -2096,21 +2226,10 @@ class _StepperRegistrarRegistrationState
           controller: _farmCityController,
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
-            labelText: l10n.cityName,
+            labelText: _country?.regionLabel(2) ?? l10n.cityName,
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.location_city),
-            hintText: 'e.g., Marcala',
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _farmStateController,
-          style: const TextStyle(color: Colors.black),
-          decoration: InputDecoration(
-            labelText: l10n.stateName,
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.map),
-            hintText: 'e.g., La Paz',
+            hintText: _isHonduras ? 'e.g., Marcala' : null,
           ),
         ),
         const SizedBox(height: 16),
@@ -2155,7 +2274,8 @@ class _StepperRegistrarRegistrationState
                 child: DropdownButton<String>(
                   value: _selectedAreaUnit,
                   style: const TextStyle(color: Colors.black),
-                  items: areaUnitsHonduras
+                  items: (_country?.effectiveAreaUnits ??
+                          CountryConfig.fallbackAreaUnits)
                       .map((u) => DropdownMenuItem<String>(
                             value: u['symbol'] as String,
                             child: Text(

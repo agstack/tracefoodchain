@@ -1,6 +1,7 @@
 ﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'country_config_service.dart';
 
 class WhispApiService {
   static const String _geoJsonProxyUrl =
@@ -12,6 +13,17 @@ class WhispApiService {
   /// WHISP echoes it back as "external_id" on each result feature when it is
   /// passed as "externalIdColumn" in the analysis options.
   static const String externalIdProperty = 'external_id';
+
+  /// Länder mit nationalen WHISP-Datensätzen: die bisherigen plus alle aus
+  /// der Länder-Konfiguration.
+  static List<String> get nationalCodes => {
+        'hn',
+        'ke',
+        'de',
+        for (final c in countryConfigService.all)
+          if (c.whispNationalCode.trim().isNotEmpty)
+            c.whispNationalCode.trim().toLowerCase(),
+      }.toList();
 
   Future<Map<String, dynamic>> checkWhispGeoJson(
       List<Map<String, dynamic>> features) async {
@@ -28,7 +40,7 @@ class WhispApiService {
             'features': features,
             'analysisOptions': {
               'unitType': 'ha',
-              'nationalCodes': ['hn', 'ke', 'de'],
+              'nationalCodes': nationalCodes,
               'externalIdColumn': externalIdProperty,
             },
           }),

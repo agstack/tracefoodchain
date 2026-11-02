@@ -3810,4 +3810,16 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get manageUserOtherTeam =>
       'Dieser Registrar gehört zum Team eines anderen Koordinators.';
+
+  @override
+  String get qcMyTeamOnly => 'Nur mein Team';
+
+  @override
+  String qcTerritoryInfo(String territory) {
+    return 'Registrierungen aus dem eigenen Gebiet: $territory';
+  }
+
+  @override
+  String get qcNoTerritory =>
+      'Noch kein Gebiet zugewiesen. Bitte beim zuständigen Koordinator nachfragen.';
 }
