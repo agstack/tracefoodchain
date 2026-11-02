@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../helpers/handbook_links.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
@@ -528,6 +529,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
         title: Text(l10n.registrarDashboard),
         actions: [
           const LanguageSelector(),
+          const HandbookButton(),
           IconButton(
             icon: const Icon(Icons.manage_accounts),
             onPressed: _showEditProfileDialog,

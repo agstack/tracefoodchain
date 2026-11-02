@@ -95,16 +95,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noRole => '-sin rol-';
 
   @override
-  String get roleFarmer => 'Agriculteur';
+  String get roleFarmer => 'Agricultor';
 
   @override
-  String get roleFarmManager => 'Gestionnaire de Ferme';
+  String get roleFarmManager => 'Administrador de finca';
 
   @override
-  String get roleTrader => 'Négociant';
+  String get roleTrader => 'Comerciante';
 
   @override
-  String get roleTransporter => 'Transporteur';
+  String get roleTransporter => 'Transportista';
 
   @override
   String get roleProcessor => 'Procesador de café';
@@ -131,44 +131,44 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importHistory => 'Historial de importaciones';
 
   @override
-  String get roleSeller => 'Vendeur';
+  String get roleSeller => 'Vendedor';
 
   @override
-  String get roleBuyer => 'Acheteur';
+  String get roleBuyer => 'Comprador';
 
   @override
-  String get roleSystemAdministrator => 'Administrateur Système';
+  String get roleSystemAdministrator => 'Administrador del sistema';
 
   @override
-  String get roleDiascaAdmin => 'Administrateur Diasca';
+  String get roleDiascaAdmin => 'Administrador Diasca';
 
   @override
-  String get roleSuperAdmin => 'Super Administrator';
+  String get roleSuperAdmin => 'Superadministrador';
 
   @override
-  String get roleTfcAdmin => 'TFC Administrator';
+  String get roleTfcAdmin => 'Administrador TFC';
 
   @override
-  String get roleRegistrarCoordinator => 'Registrar Coordinator';
+  String get roleRegistrarCoordinator => 'Coordinador de registradores';
 
   @override
-  String get roleVerificationAuthority => 'Autorité de Vérification';
+  String get roleVerificationAuthority => 'Autoridad de verificación';
 
   @override
-  String get roleAssignedSuccessfully => 'Role assigned successfully';
+  String get roleAssignedSuccessfully => 'Rol asignado correctamente';
 
   @override
-  String get errorAssigningRole => 'Error assigning role';
+  String get errorAssigningRole => 'Error al asignar el rol';
 
   @override
   String get userManagement => 'Gestión de Usuarios';
 
   @override
-  String get userManagementSubtitle => 'Manage and assign user roles';
+  String get userManagementSubtitle => 'Gestionar y asignar roles de usuario';
 
   @override
   String get noPermissionForUserManagement =>
-      'No permission for user management';
+      'Sin permiso para la gestión de usuarios';
 
   @override
   String get qcReview => 'Revisión de QC';
@@ -178,7 +178,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get userManagementOnlineOnly =>
-      'User management is only available online';
+      'La gestión de usuarios solo está disponible con conexión';
 
   @override
   String get noUsersFound => 'No se encontraron usuarios';
@@ -199,7 +199,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get enterReasonForRoleChange => 'Ingrese la razón del cambio de rol';
 
   @override
-  String get enterReason => 'Enter reason for role change';
+  String get enterReason => 'Ingrese el motivo del cambio de rol';
 
   @override
   String get cancel => 'Cancelar';
@@ -212,22 +212,22 @@ class AppLocalizationsEs extends AppLocalizations {
       '¿Estás seguro de que quieres cerrar sesión?';
 
   @override
-  String get assign => 'Assign';
+  String get assign => 'Asignar';
 
   @override
   String get userDetails => 'Detalles del Usuario';
 
   @override
-  String get name => 'Name';
+  String get name => 'Nombre';
 
   @override
   String get email => 'Correo electrónico';
 
   @override
-  String get userID => 'User ID';
+  String get userID => 'ID de usuario';
 
   @override
-  String get manageable => 'Manageable';
+  String get manageable => 'Administrable';
 
   @override
   String get yes => 'Sí';
@@ -236,7 +236,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get no => 'No';
 
   @override
-  String get close => 'Close';
+  String get close => 'Cerrar';
 
   @override
   String get retry => 'Reintentar';
@@ -306,13 +306,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get allRoles => 'Todos los Roles';
 
   @override
-  String get roleSuccessfullyAssigned => 'Role successfully assigned';
+  String get roleSuccessfullyAssigned => 'Rol asignado correctamente';
 
   @override
-  String get errorWhileAssigningRole => 'Error while assigning role';
+  String get errorWhileAssigningRole => 'Error durante la asignación del rol';
 
   @override
-  String get reasonForRoleChange => 'Reason for role change';
+  String get reasonForRoleChange => 'Motivo del cambio de rol';
 
   @override
   String get enterNewFarmerID => 'Ingrese un nuevo ID de agricultor';

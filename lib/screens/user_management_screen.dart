@@ -4,6 +4,7 @@ import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../helpers/handbook_links.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
 import '../l10n/app_localizations.dart';
 import 'package:trace_foodchain_app/models/user_scope.dart';
@@ -935,6 +936,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadUsers,
           ),
+          const HandbookButton(),
         ],
       ),
       body: Column(

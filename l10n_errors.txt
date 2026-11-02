@@ -1,24 +1,4 @@
 {
-  "es": [
-    "roleSuperAdmin",
-    "roleTfcAdmin",
-    "roleRegistrarCoordinator",
-    "roleAssignedSuccessfully",
-    "errorAssigningRole",
-    "userManagementSubtitle",
-    "noPermissionForUserManagement",
-    "userManagementOnlineOnly",
-    "enterReason",
-    "assign",
-    "name",
-    "userID",
-    "manageable",
-    "close",
-    "roleSuccessfullyAssigned",
-    "errorWhileAssigningRole",
-    "reasonForRoleChange"
-  ],
-
   "fr": [
     "roleSuperAdmin",
     "roleTfcAdmin",

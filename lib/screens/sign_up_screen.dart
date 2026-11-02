@@ -5,7 +5,7 @@ import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/widgets/status_bar.dart';
 import 'package:trace_foodchain_app/widgets/language_selector.dart'; // Neue Import
 import '../l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../helpers/handbook_links.dart';
 import '../screens/user_profile_setup_screen.dart';
 import '../services/open_ral_service.dart';
 import '../main.dart'; // Für appUserDoc, cloudLogService
@@ -193,27 +193,8 @@ class _AuthScreenState extends State<AuthScreen> {
     await fshowInfoDialog(context, "${l10n.error}: $errorMessage");
   }
 
-  String _getHelpUrl(String languageCode) {
-    switch (languageCode) {
-      case 'de':
-        return 'https://docs.google.com/document/d/1wURF_uGIW3eKHh1qEn380_JE5tOdOyZRfFRQuL46Hn0';
-      case 'es':
-        return 'https://docs.google.com/document/d/1IVqaR_mJkQKbVobJfYM_EUxYCpd5B5qel0mY2U_KPVg';
-      case 'fr':
-        return 'https://docs.google.com/document/d/19Z0dMR6CqHqaT2nU9qM4uzHftNFlIeZpd2AlyuHngP4';
-      default:
-        return "https://docs.google.com/document/d/1JcNxTNEs6nkTDotVzFw-AFU0arB6T8aI1BfzKAuDF0A";
-    }
-  }
-
-  Future<void> _launchHelp() async {
-    final locale = Localizations.localeOf(context);
-    final Uri url = Uri.parse(_getHelpUrl(locale.languageCode));
-    if (!await launchUrl(url)) {
-      await fshowInfoDialog(
-          context, AppLocalizations.of(context)!.errorOpeningUrl);
-    }
-  }
+  // Vor der Anmeldung gibt es noch keine Rolle - es gilt das EUDR-Handbuch.
+  Future<void> _launchHelp() => openHandbook(context, role: '');
 
   // Neue Methode: Passwort zurücksetzen
   Future<void> _resetPassword() async {

@@ -8,7 +8,7 @@ import 'package:trace_foodchain_app/services/service_functions.dart';
 import 'package:trace_foodchain_app/widgets/add_empty_item_dialog.dart';
 import 'package:trace_foodchain_app/widgets/items_list_widget.dart';
 import 'package:trace_foodchain_app/widgets/shared_widgets.dart';
-import 'package:url_launcher/url_launcher.dart'; // Neuer Import
+import 'package:trace_foodchain_app/helpers/handbook_links.dart';
 
 class RoleBasedSpeedDial extends StatefulWidget {
   final String displayContext;
@@ -25,27 +25,7 @@ class _RoleBasedSpeedDialState extends State<RoleBasedSpeedDial> {
     super.initState();
   }
 
-  String _getHelpUrl(String languageCode) {
-    switch (languageCode) {
-      case 'de':
-        return 'https://docs.google.com/document/d/1wURF_uGIW3eKHh1qEn380_JE5tOdOyZRfFRQuL46Hn0';
-      case 'es':
-        return 'https://docs.google.com/document/d/1IVqaR_mJkQKbVobJfYM_EUxYCpd5B5qel0mY2U_KPVg';
-      case 'fr':
-        return 'https://docs.google.com/document/d/19Z0dMR6CqHqaT2nU9qM4uzHftNFlIeZpd2AlyuHngP4';
-      default:
-        return "https://docs.google.com/document/d/1JcNxTNEs6nkTDotVzFw-AFU0arB6T8aI1BfzKAuDF0A";
-    }
-  }
-
-  Future<void> _launchHelp() async {
-    final locale = Localizations.localeOf(context);
-    final Uri url = Uri.parse(_getHelpUrl(locale.languageCode));
-    if (!await launchUrl(url)) {
-      await fshowInfoDialog(
-          context, AppLocalizations.of(context)!.errorOpeningUrl);
-    }
-  }
+  Future<void> _launchHelp() => openHandbook(context);
 
   @override
   Widget build(BuildContext context) {

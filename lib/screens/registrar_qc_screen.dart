@@ -23,6 +23,7 @@ import '../services/role_management_service.dart';
 import '../services/asset_registry_api_service.dart';
 import '../services/user_registry_api_service.dart';
 import '../helpers/deep_copy_map.dart';
+import '../helpers/handbook_links.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
@@ -1519,6 +1520,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadPendingRegistrations,
           ),
+          const HandbookButton(),
         ],
       ),
       body: Column(
