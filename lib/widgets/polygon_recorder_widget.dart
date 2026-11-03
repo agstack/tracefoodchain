@@ -299,6 +299,12 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   final List<List<double>> _points = [];
   final List<double> _accuracies = []; // Genauigkeit für jeden Punkt in Metern
   StreamSubscription<Position>? _positionStream;
+  // Fällt auf den Fused Provider zurück, wenn reines GNSS zu lange schweigt
+  Timer? _gnssWatchdog;
+  static const _gnssTimeout = Duration(seconds: 20);
+  // Fixes der letzten Sekunden mit Empfangszeit (Geräteuhr, nicht GNSS-Zeit)
+  final List<(DateTime, Position)> _recentFixes = [];
+  static const _fixWindow = Duration(seconds: 3);
   bool _isRecording = false;
   GoogleMapController? _recordingMapController;
   bool _isLoading = false;
@@ -401,14 +407,23 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
     }
 
     setState(() => _isRecording = true);
+    _listenToPositions(gnssOnly: true);
+  }
 
-    // Starte GPS-Stream mit Distanzfilter
+  /// Startet den GPS-Stream. Zuerst reines GNSS (stabil wie eine GPS-App);
+  /// kommt [_gnssTimeout] lang kein Fix (z.B. unter dichtem Schattendach),
+  /// wird dauerhaft auf den Fused Provider umgeschaltet.
+  void _listenToPositions({required bool gnssOnly}) {
+    _positionStream?.cancel();
+    _recentFixes.clear();
+    if (gnssOnly) _armGnssWatchdog();
+
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 5, // Update alle 5m
-      ),
+      locationSettings: highAccuracyStreamSettings(gnssOnly: gnssOnly),
     ).listen((Position position) {
+      if (!mounted) return;
+      if (gnssOnly) _armGnssWatchdog();
+      _recentFixes.add((DateTime.now(), position));
       setState(() => _currentPosition = position);
       // Karte folgt GPS-Position wenn noch keine Punkte aufgenommen wurden
       if (_points.isEmpty && _recordingMapController != null) {
@@ -422,11 +437,39 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
           _recordingMapController = null;
         }
       }
+    }, onError: (Object e) {
+      debugPrint('GPS stream error (gnssOnly: $gnssOnly): $e');
     });
+  }
+
+  void _armGnssWatchdog() {
+    _gnssWatchdog?.cancel();
+    _gnssWatchdog = Timer(_gnssTimeout, () {
+      if (!mounted || !_isRecording) return;
+      debugPrint('GPS: kein GNSS-Fix seit ${_gnssTimeout.inSeconds}s, '
+          'wechsle auf Fused Provider');
+      _listenToPositions(gnssOnly: false);
+    });
+  }
+
+  /// Genauester Fix aus den letzten [_fixWindow]. Einzelne Messwerte streuen
+  /// stark; der beste aus einem kurzen Fenster ist deutlich stabiler. Das
+  /// Fenster ist bewusst kurz, damit beim Gehen kein Punkt von weiter hinten
+  /// gewählt wird.
+  Position? _bestRecentFix() {
+    final cutoff = DateTime.now().subtract(_fixWindow);
+    _recentFixes.removeWhere((fix) => fix.$1.isBefore(cutoff));
+    if (_recentFixes.isEmpty) return null;
+    return _recentFixes
+        .map((fix) => fix.$2)
+        .reduce((a, b) => a.accuracy <= b.accuracy ? a : b);
   }
 
   void _stopRecording() {
     setState(() => _isRecording = false);
+    _gnssWatchdog?.cancel();
+    _gnssWatchdog = null;
+    _recentFixes.clear();
     _positionStream?.cancel();
     _positionStream = null;
     setState(() => _currentPosition = null);
@@ -435,20 +478,8 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
   void _addCurrentPoint() async {
     final l10n = AppLocalizations.of(context)!;
 
-    Position? positionToAdd = _currentPosition;
-
-    // If stream hasn't provided position yet, try to get current position immediately
-    if (positionToAdd == null && !kDebugMode) {
-      positionToAdd = await getPositionWithTimeout(
-        timeLimit: const Duration(seconds: 5),
-      );
-      if (positionToAdd != null) {
-        debugPrint(
-            'Fetched current position directly: ${positionToAdd.latitude}, ${positionToAdd.longitude}');
-        // Update _currentPosition for UI
-        if (mounted) setState(() => _currentPosition = positionToAdd);
-      }
-    }
+    // Nur frische Fixes aus dem Stream - kein "letzter bekannter Standort"
+    Position? positionToAdd = _bestRecentFix();
 
     // Debug-Modus: Simuliere Punkte mit mindestens 15m Abstand
     if (kDebugMode && _lastAddedPosition != null) {
@@ -491,6 +522,19 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
         SnackBar(
           content: Text(l10n.waitingForGps),
           duration: const Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    // Nur Punkte mit gültiger Genauigkeit speichern (Debug: simulierte Punkte)
+    if (!kDebugMode && !isValidFix(positionToAdd)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '${l10n.gpsFixFailed(maxValidAccuracyMeters)} (±${positionToAdd.accuracy.toStringAsFixed(1)} m)'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
         ),
       );
       return;
@@ -1111,6 +1155,7 @@ class _PolygonRecorderWidgetState extends State<PolygonRecorderWidget> {
 
   @override
   void dispose() {
+    _gnssWatchdog?.cancel();
     _positionStream?.cancel();
     if (!kIsWeb) {
       try {

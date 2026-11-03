@@ -3354,7 +3354,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Foto noch nicht hochgeladen\n(liegt noch auf dem Gerät des Registrars)';
 
   @override
-  String get qcSearchHint => 'Name, ID oder Registrar suchen...';
+  String get qcSearchHint => 'Name, DNI/ID, Ort oder Registrar suchen...';
 
   @override
   String get qcAllRegistrars => 'Alle Registrare';
@@ -3822,4 +3822,211 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get qcNoTerritory =>
       'Noch kein Gebiet zugewiesen. Bitte beim zuständigen Koordinator nachfragen.';
+
+  @override
+  String get gpsFixTitle => 'GPS-Position wird bestimmt';
+
+  @override
+  String gpsFixHint(int meters) {
+    return 'Bitte im Freien mit freier Sicht zum Himmel warten. Erforderliche Genauigkeit: $meters m oder besser.';
+  }
+
+  @override
+  String gpsFixFailed(int meters) {
+    return 'Es konnte keine ausreichend genaue GPS-Position (±$meters m) bestimmt werden. Bitte ins Freie gehen, weg von Gebäuden und dichten Bäumen, und erneut versuchen.';
+  }
+
+  @override
+  String get gpsSaveBlocked =>
+      'Nicht gespeichert: Eine gültige GPS-Position ist erforderlich.';
+
+  @override
+  String get gpsPhotoDiscarded =>
+      'Foto verworfen: Eine gültige GPS-Position ist erforderlich. Bitte das Foto erneut aufnehmen.';
+
+  @override
+  String get qcCorrectData => 'Daten korrigieren';
+
+  @override
+  String qcCorrectionTitle(String name) {
+    return 'Korrigieren: $name';
+  }
+
+  @override
+  String get qcCorrectionInfo =>
+      'Jede Änderung wird als digital signierter Vorgang gespeichert - mit Ihrem Namen, dem Zeitpunkt, dem Grund sowie altem und neuem Wert.';
+
+  @override
+  String qcCorrectionPreviousValue(String value) {
+    return 'Bisher: $value';
+  }
+
+  @override
+  String get qcCorrectionReason => 'Grund der Änderung (Pflichtfeld)';
+
+  @override
+  String get qcCorrectionReasonHint => 'z. B. Schreibweise laut Ausweis';
+
+  @override
+  String get qcPhotoSelected => 'Neues Foto ausgewählt';
+
+  @override
+  String get qcPhotoOnRecord => 'Vorhanden';
+
+  @override
+  String get qcPhotoNotOnRecord => 'Fehlt';
+
+  @override
+  String get qcPhotoReplace => 'Ersetzen';
+
+  @override
+  String get qcPhotoUpload => 'Hochladen';
+
+  @override
+  String get qcPhotoMissing => 'Foto fehlt - vor der Freigabe hochladen';
+
+  @override
+  String get qcCorrectionSaving => 'Korrektur wird gespeichert...';
+
+  @override
+  String get qcCorrectionUploadingPhotos => 'Fotos werden hochgeladen...';
+
+  @override
+  String get qcCorrectionSaved => 'Korrektur gespeichert';
+
+  @override
+  String get qcCorrectionSaveFailed =>
+      'Korrektur konnte nicht gespeichert werden';
+
+  @override
+  String get qcReplacePolygonButton => 'Durch QGIS-Polygon ersetzen';
+
+  @override
+  String qcReplacePolygonTitle(String name) {
+    return 'Feldgrenze ersetzen: $name';
+  }
+
+  @override
+  String get qcReplacePolygonApply => 'Übernehmen';
+
+  @override
+  String get qcReplacePolygonInfo =>
+      'GeoJSON-Datei mit der korrigierten Feldgrenze wählen (aus QGIS in EPSG:4326 exportiert). Die bisherige Grenze bleibt im signierten Vorgang erhalten.';
+
+  @override
+  String get qcReplacePolygonChooseFile => 'GeoJSON-Datei wählen';
+
+  @override
+  String get qcReplacePolygonInvalidFile =>
+      'Die Datei ist kein gültiges GeoJSON.';
+
+  @override
+  String get qcReplacePolygonNoUsable =>
+      'Die Datei enthält kein übernehmbares Polygon.';
+
+  @override
+  String get qcReplacePolygonFeature => 'Polygon aus der Datei';
+
+  @override
+  String get qcReplacePolygonCurrent => 'Bisher';
+
+  @override
+  String get qcReplacePolygonNew => 'Neu';
+
+  @override
+  String get qcReplacePolygonDeviation => 'Abweichung';
+
+  @override
+  String qcReplacePolygonCorners(int count) {
+    return '$count Ecken';
+  }
+
+  @override
+  String get qcReplacePolygonLargeAreaChange =>
+      'Die Fläche ändert sich um mehr als 50 %. Bitte prüfen, ob es das richtige Polygon ist.';
+
+  @override
+  String get qcReplacePolygonFarAway =>
+      'Das neue Polygon liegt mehr als 200 m vom bisherigen entfernt. Bitte prüfen, ob es das richtige Polygon ist.';
+
+  @override
+  String get qcReplacePolygonReasonHint =>
+      'z. B. Grenze am Orthofoto korrigiert';
+
+  @override
+  String get qcReplacePolygonCorrectedBy => 'Korrigiert von (Pflichtfeld)';
+
+  @override
+  String get qcReplacePolygonTool => 'Werkzeug';
+
+  @override
+  String get qcReplacePolygonMethod => 'Methode';
+
+  @override
+  String get qcReplacePolygonMethodHint =>
+      'z. B. manuelle Digitalisierung auf Sentinel-2-Bildern';
+
+  @override
+  String get qcReplacePolygonCorrectedAt => 'Datum der Korrektur';
+
+  @override
+  String qcReplacePolygonSkipped(int count) {
+    return '$count Features in der Datei übersprungen';
+  }
+
+  @override
+  String get qcReplacePolygonRejectNotPolygon => 'Kein Polygon';
+
+  @override
+  String get qcReplacePolygonRejectMultiPart =>
+      'Besteht aus mehreren getrennten Flächen';
+
+  @override
+  String get qcReplacePolygonRejectHoles => 'Enthält Löcher';
+
+  @override
+  String get qcReplacePolygonRejectNotWgs84 =>
+      'Nicht in WGS84 - aus QGIS als EPSG:4326 exportieren';
+
+  @override
+  String get qcReplacePolygonRejectTooFewCorners => 'Weniger als 3 Ecken';
+
+  @override
+  String get qcFilterCountry => 'Land';
+
+  @override
+  String get qcFilterAllCountries => 'Alle Länder';
+
+  @override
+  String get qcFilterRegion => 'Region';
+
+  @override
+  String get qcFilterAllRegions => 'Alle';
+
+  @override
+  String get qcIndexUnavailable =>
+      'Der Suchindex ist nicht verfügbar - Suche und Filter erfassen nur bereits geladene Registrierungen.';
+
+  @override
+  String get qcRebuildIndex => 'Suchindex aufbauen';
+
+  @override
+  String get qcRebuildIndexInfo =>
+      'Erfasst alle offenen Registrierungen im Suchindex, damit Suche und Filter auch noch nicht geladene Registrierungen finden. Einmal nach dem Update nötig, danach hält die Cloud den Index selbst aktuell. Das kann einige Minuten dauern.';
+
+  @override
+  String get qcRebuildIndexStart => 'Starten';
+
+  @override
+  String qcRebuildIndexProgress(int count) {
+    return 'Suchindex wird aufgebaut... $count Registrierungen';
+  }
+
+  @override
+  String qcRebuildIndexDone(int count) {
+    return 'Suchindex aufgebaut ($count Registrierungen)';
+  }
+
+  @override
+  String get qcRebuildIndexFailed => 'Suchindex konnte nicht aufgebaut werden';
 }

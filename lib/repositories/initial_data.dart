@@ -585,7 +585,8 @@ Map<String, dynamic> initialMethodTemplateGenerateDigitalSibling = {
 
 Map<String, dynamic> initialMethodTemplateChangeObjectData = {
   "definition": {
-    "definitionText": "A process that persists changes made to an object.",
+    "definitionText":
+        "A process that persists changes made to an object. The old version of the object is the input object, the new version the output object. The method records why the change was made (changeReason), in which context (changeContext, e.g. qcCorrection or registrarEdit) and which fields changed with their old and new values (changedFields). If the new version comes from an external correction, e.g. a field boundary corrected in QGIS, the method also records it (externalCorrection: tool, method, corrected by, date, source file and a hash of the imported feature). It is digitally signed by the executor.",
     "definitionURL": "",
   },
   "existenceStarts": null,
@@ -601,10 +602,14 @@ Map<String, dynamic> initialMethodTemplateChangeObjectData = {
   "methodState": "undefined",
   "template": {
     "RALType": "changeObjectData",
-    "version": "1",
+    "version": "2",
     "methodStateTemplates": "generalMethodState",
   },
-  "specificProperties": [],
+  "specificProperties": [
+    {"key": "changeReason", "value": "", "unit": "String"},
+    {"key": "changeContext", "value": "", "unit": "String"},
+    {"key": "changedFields", "value": [], "unit": "json"}
+  ],
   "inputObjects": [],
   "inputObjectsRef": [],
   "outputObjects": [],

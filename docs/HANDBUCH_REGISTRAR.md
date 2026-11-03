@@ -43,11 +43,30 @@ Jede Registrierung geht anschließend in die **Qualitätskontrolle (QC)** beim R
 | Voraussetzung | Warum |
 |---|---|
 | Anmeldung mit dem Registrar-Konto | Ohne Anmeldung ist der lokale Datenspeicher nicht geöffnet, es kann nichts gespeichert werden. |
-| **GPS aktiviert** und Standortfreigabe erteilt | Ohne GPS lassen sich weder Registrierung noch Feldaufzeichnung starten. |
+| **GPS aktiviert** und Standortfreigabe erteilt | Ohne GPS lassen sich weder Registrierung noch Feldaufzeichnung starten. Gespeichert wird nur mit einer Genauigkeit von 20 m oder besser (Kapitel 2.1). |
 | Kamerafreigabe | Ausweisfoto, Einverständniserklärung und Feldfoto sind Pflichtaufnahmen. |
 | Geladener Akku / Speicherplatz | Fotos werden bis zum Upload lokal auf dem Gerät gehalten. |
 
 > Internet ist **nicht** Voraussetzung für die Erfassung – nur für den späteren Upload.
+
+### 2.1 GPS-Prüfung beim Speichern
+
+Damit jeder Datensatz einen verlässlichen Standort hat, speichert die App nur mit einer GPS-Position, die auf **20 m oder besser** genau ist. Das gilt für:
+
+- den Abschluss der Registrierung (Landwirt und Farm)
+- „Farm hinzufügen" im Verlauf (weitere Farm eines Landwirts)
+- Ausweis-Foto, Einverständnis-Foto und Feld-Foto
+- jeden Eckpunkt einer Feldgrenze
+
+Beim Speichern und nach jeder Fotoaufnahme öffnet sich das Fenster **„GPS-Position wird bestimmt"** und zeigt die aktuelle Genauigkeit: **orange** heißt noch zu ungenau, **grün** heißt gut. Bei Grün schließt sich das Fenster nach wenigen Sekunden von selbst, und die Daten werden gespeichert. Unter freiem Himmel dauert das meist nur wenige Sekunden.
+
+Findet die App nach etwa 45 Sekunden keine ausreichend genaue Position, stehen **„Erneut versuchen"** und **„Abbrechen"** zur Wahl. Bei „Abbrechen" wird nichts gespeichert; ein Foto wird verworfen und muss neu aufgenommen werden. Bereits eingegebene Formulardaten bleiben erhalten.
+
+Tipps:
+
+- Ausweis und Einverständniserklärung **im Freien** oder direkt an der Tür fotografieren. In Gebäuden reicht das GPS-Signal meist nicht.
+- Abstand zu Wänden, Dächern und dichtem Blätterdach halten.
+- Die Erfassung ist für das Smartphone gedacht. Am Computer lässt sich meist keine ausreichend genaue Position bestimmen.
 
 ---
 
@@ -87,7 +106,7 @@ Drei Anzeigen nebeneinander:
 | ± 3 m (grün) | Ausgezeichnet – unter 5 m Abweichung |
 | ± 8 m (hellgrün) | Gut – unter 10 m |
 | ± 15 m (orange) | Ausreichend – unter 20 m |
-| ± 30 m (rot) | Schlecht – Feldgrenzen sollten so nicht aufgezeichnet werden |
+| ± 30 m (rot) | Schlecht – über 20 m; so wird nichts gespeichert (siehe Kapitel 2.1) |
 | GPS aus / kein Fix | Antippen öffnet die Hinweise zum Aktivieren |
 
 **② Verbindung** – „Online" (grün) oder „Offline" (grau). Offline ist kein Fehler: es wird normal weitergearbeitet.
@@ -190,7 +209,7 @@ Der Landwirt unterschreibt die Einverständniserklärung auf Papier; **das unter
 | E-Mail | – | Kontakt der Farm |
 | Geschätzte Kaffeeanbaufläche | – | Zahl **plus Einheit** aus der Auswahlliste rechts daneben |
 
-Mit **„Registrierung abschließen"** werden Landwirt und Farm angelegt.
+Mit **„Registrierung abschließen"** werden Landwirt und Farm angelegt. Vorher bestimmt die App die GPS-Position (Kapitel 2.1); sie wird als Standort von Landwirt und Farm gespeichert.
 
 > 📷 **Screenshot 09** – Schritt 3 mit Flächenangabe und Einheiten-Auswahl.
 >
@@ -245,7 +264,7 @@ Regeln beim Setzen der Punkte:
 - **Mindestens 3 Punkte** sind erforderlich – sonst „Mindestens 3 Punkte erforderlich".
 - Zwei Punkte müssen **mindestens 5 m** auseinanderliegen – sonst „Punkt zu nahe am vorherigen Punkt".
 - Vor dem Speichern fragt die App, ob das Polygon **automatisch geschlossen** werden soll (letzter Punkt zurück zum ersten). Die berechnete Fläche wird angezeigt.
-- Bei schlechter GPS-Genauigkeit (rote Anzeige) besser einen Moment warten, bis das Signal stabiler ist.
+- Ein Punkt wird nur mit einer GPS-Genauigkeit von **20 m oder besser** übernommen. Ist sie schlechter, lehnt die App den Punkt mit einem Hinweis ab: an der Ecke einige Sekunden stehen bleiben, bis die Genauigkeitsanzeige besser wird, und erneut „Punkt hinzufügen" tippen.
 
 > 📷 **Screenshot 12** – Aufzeichnung läuft: Karte mit gesetzten Punkten, Punktzähler und Genauigkeitsanzeige.
 >
@@ -261,7 +280,7 @@ Regeln beim Setzen der Punkte:
 | 🟢 Haken | Foto vorhanden und gültig |
 | 🔴 Kreuz | Foto ungültig – es wurde **außerhalb des Polygons** aufgenommen |
 
-Das Foto muss **innerhalb der aufgezeichneten Fläche** entstehen (Toleranz 50 m); es dient als Nachweis, dass der Registrar tatsächlich vor Ort war.
+Das Foto muss **innerhalb der aufgezeichneten Fläche** entstehen (Toleranz 50 m); es dient als Nachweis, dass der Registrar tatsächlich vor Ort war. Nach der Aufnahme bestimmt die App die GPS-Position (Kapitel 2.1); ohne ausreichend genaue Position wird das Foto verworfen.
 
 > 📷 **Screenshot 13** – Feld-Foto-Dialog mit gültigem (grünem) Status.
 >
@@ -372,6 +391,10 @@ Deshalb gilt: **Fotos scharf und vollständig aufnehmen** und Namen sorgfältig 
 | „Mindestens 3 Punkte erforderlich" | Polygon hat zu wenige Eckpunkte | Weitere Punkte entlang der Feldgrenze setzen |
 | „Punkt zu nahe am vorherigen Punkt (mind. 5 m)" | Zwei Punkte liegen zu dicht beieinander | Ein Stück weitergehen und erst dann den nächsten Punkt setzen |
 | Feld-Foto rot markiert | Foto wurde außerhalb des Polygons aufgenommen | Innerhalb der aufgezeichneten Fläche stehen und Foto neu aufnehmen (Toleranz 50 m) |
+| „Es konnte keine ausreichend genaue GPS-Position (±20 m) bestimmt werden" | Zu schwacher Satellitenempfang, z. B. in Gebäuden oder unter dichtem Blätterdach | Ins Freie gehen, Abstand zu Gebäuden und Bäumen halten, dann „Erneut versuchen" |
+| „Foto verworfen: Eine gültige GPS-Position ist erforderlich" | GPS-Prüfung nach der Aufnahme abgebrochen oder ohne Ergebnis | Foto im Freien neu aufnehmen |
+| „Nicht gespeichert: Eine gültige GPS-Position ist erforderlich." | GPS-Prüfung beim Speichern abgebrochen oder ohne Ergebnis | Im Freien erneut speichern; die Eingaben im Formular bleiben erhalten |
+| Eckpunkt wird abgelehnt, Hinweis nennt die Genauigkeit | GPS-Genauigkeit an dieser Stelle schlechter als 20 m | Einige Sekunden an der Ecke warten und den Punkt erneut setzen |
 | „Feld muss mit einer Farm verknüpft sein" | Keine Farm ausgewählt | Farm auswählen bzw. zuerst eine Farm registrieren |
 | „Noch keine Farmen registriert" | Zu dieser Farm existiert noch kein Datensatz | Über **„Farm registrieren"** zunächst Landwirt und Farm anlegen |
 | Chip zeigt dauerhaft „*N* offen" | Keine Verbindung, Upload pausiert oder Upload-Fehler | Sync-Panel öffnen: Pausieren ausschalten, Verbindung prüfen, Fehlermeldung lesen, **„Jetzt synchronisieren"** |

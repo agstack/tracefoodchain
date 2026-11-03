@@ -91,6 +91,13 @@ class PermissionService {
 
     // QC Review
     'qc_review': ['SUPERADMIN', 'countryCoordinator', 'registrarCoordinator'],
+    // Korrektur von Farmer-, Farm- und Felddaten samt Fotos im QC - jede
+    // Änderung als signierter changeObjectData-Job mit Grund
+    'qc_correct_data': [
+      'SUPERADMIN',
+      'countryCoordinator',
+      'registrarCoordinator'
+    ],
 
     // Data Management
     'export_data': [

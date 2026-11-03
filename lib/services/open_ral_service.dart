@@ -14,6 +14,7 @@ import 'package:json_path/json_path.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:trace_foodchain_app/helpers/database_helper.dart';
 import 'package:trace_foodchain_app/helpers/json_full_double_to_int.dart';
+import 'package:trace_foodchain_app/helpers/object_diff.dart';
 import 'package:trace_foodchain_app/helpers/sort_json_alphabetically.dart';
 import 'package:trace_foodchain_app/main.dart';
 import 'package:trace_foodchain_app/models/user_scope.dart';
@@ -832,8 +833,30 @@ Future<String> generateDigitalSibling(Map<String, dynamic> newItem,
   return getObjectMethodUID(newItem);
 }
 
+/// Kontext einer Datenänderung - landet als `changeContext` im signierten
+/// changeObjectData-Job und unterscheidet im Audit z.B. eine QC-Korrektur von
+/// einer Bearbeitung durch den Registrar oder einer technischen Reparatur.
+const String changeContextQcCorrection = 'qcCorrection';
+const String changeContextRegistrarEdit = 'registrarEdit';
+
+/// Feldgrenze im QC durch eine extern (z.B. in QGIS) korrigierte Geometrie
+/// ersetzt. Der Job trägt dann zusätzlich `externalCorrection`: Werkzeug,
+/// Methode, Bearbeiter, Datum, Quelldatei und Fingerabdruck des Features.
+const String changeContextExternalGeometryReplacement =
+    'externalGeometryReplacement';
+
+/// Schreibt eine neue Fassung eines Objekts als signierten changeObjectData-Job.
+///
+/// Die Methode trägt alte Fassung (Input) und neue Fassung (Output), dazu
+/// [changeReason], [changeContext] und die daraus berechneten `changedFields`
+/// (Pfad, alter und neuer Wert) - so ist im Audit direkt lesbar, wer was wann
+/// warum geändert hat. [jobProperties] sind weitere Angaben zum Vorgang, die
+/// mitsigniert werden (z.B. `externalCorrection`).
 Future<void> changeObjectData(Map<String, dynamic> newObjectVersion,
-    {bool syncFromCloud = true}) async {
+    {bool syncFromCloud = true,
+    String changeReason = '',
+    String changeContext = '',
+    Map<String, dynamic> jobProperties = const {}}) async {
   //Get the old object version (from local storage or from cloud if newer and connected)
   final oldObjectVersion =
       await getLocalObjectMethod(newObjectVersion["identity"]["UID"]);
@@ -856,12 +879,30 @@ Future<void> changeObjectData(Map<String, dynamic> newObjectVersion,
     throw Exception(
         "The object with UID ${newObjectVersion["identity"]["UID"]} could not be found in local storage or cloud!");
   }
+  // Before anything is written: the field-level difference for the audit.
+  final changedFields = diffObjectVersions(oldObjectVersion, newObjectVersion);
+
   //Save the new version of the object locally
   await setObjectMethod(newObjectVersion, false, false,
       syncFromCloud: syncFromCloud);
 
   //Get the changeObjectData job template
-  final changeObjectDataJob = await getOpenRALTemplate("changeObjectData");
+  var changeObjectDataJob = await getOpenRALTemplate("changeObjectData");
+  if (changeObjectDataJob["template"]?["version"] !=
+      initialMethodTemplateChangeObjectData["template"]["version"]) {
+    // Hive-Box stammt aus einer Version ohne Grund und Änderungsliste.
+    changeObjectDataJob = deepCopyMap(initialMethodTemplateChangeObjectData);
+  }
+  changeObjectDataJob = setSpecificPropertyJSON(
+      changeObjectDataJob, "changeReason", changeReason, "String");
+  changeObjectDataJob = setSpecificPropertyJSON(
+      changeObjectDataJob, "changeContext", changeContext, "String");
+  changeObjectDataJob = setSpecificPropertyJSON(
+      changeObjectDataJob, "changedFields", changedFields, "json");
+  for (final MapEntry(:key, :value) in jobProperties.entries) {
+    changeObjectDataJob = setSpecificPropertyJSON(changeObjectDataJob, key,
+        value, value is Map || value is List ? "json" : "String");
+  }
   //Add Executor
   final userDoc = await _ensureAppUserDoc();
   if (userDoc == null) {

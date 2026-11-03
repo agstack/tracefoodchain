@@ -301,10 +301,13 @@ class _FieldPolygonMapPageState extends State<FieldPolygonMapPage> {
     final previousArea = polygonAreaInHectares(closeRing(_original.points));
     final crosses = ringSelfIntersects(_points);
 
+    // Jede Korrektur braucht einen Grund - er steht im signierten Job.
+    final reasonController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => PointerInterceptor(
-          child: AlertDialog(
+          child: StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
         backgroundColor: Colors.white,
         title: Text(l10n.qcEditPolygonSaveTitle,
             style: const TextStyle(color: Colors.black)),
@@ -341,6 +344,21 @@ class _FieldPolygonMapPageState extends State<FieldPolygonMapPage> {
                 ],
               ),
             ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              autofocus: true,
+              maxLines: 2,
+              style: const TextStyle(color: Colors.black),
+              onChanged: (_) => setDialogState(() {}),
+              decoration: InputDecoration(
+                labelText: l10n.qcCorrectionReason,
+                hintText: l10n.qcCorrectionReasonHint,
+                labelStyle: const TextStyle(color: Colors.black87),
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                border: const OutlineInputBorder(),
+              ),
+            ),
           ],
         ),
         actions: [
@@ -349,7 +367,9 @@ class _FieldPolygonMapPageState extends State<FieldPolygonMapPage> {
             child: Text(l10n.cancel),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: reasonController.text.trim().isEmpty
+                ? null
+                : () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
@@ -357,8 +377,11 @@ class _FieldPolygonMapPageState extends State<FieldPolygonMapPage> {
             child: Text(l10n.save),
           ),
         ],
-      )),
+      ))),
     );
+    // Nicht sofort disposen: der Dialog liest den Controller noch während
+    // seiner Schließanimation.
+    final reason = reasonController.text.trim();
 
     _blockMapEventsBriefly();
     if (confirmed != true || !mounted) return;
@@ -371,6 +394,7 @@ class _FieldPolygonMapPageState extends State<FieldPolygonMapPage> {
         movedCorners: _moved,
         addedCorners: _added,
         deletedCorners: _deleted,
+        reason: reason,
       ),
     );
   }

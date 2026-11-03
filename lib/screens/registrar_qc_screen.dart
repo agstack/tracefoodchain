@@ -27,11 +27,17 @@ import '../helpers/handbook_links.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../helpers/field_download_helper.dart';
+import '../helpers/qc_search_tokens.dart';
 import '../widgets/data_loading_indicator.dart';
 import '../widgets/ihcafe_producer_widgets.dart';
 import '../services/field_geometry_service.dart';
+import '../services/object_correction_service.dart';
+import '../services/permission_service.dart';
+import '../services/qc_index_service.dart';
 import '../widgets/field_polygon_editor.dart';
 import '../widgets/map_type_selector.dart';
+import '../widgets/qc_correction_dialog.dart';
+import '../widgets/qc_polygon_replace_page.dart';
 import '../widgets/qc_overview_map.dart';
 import '../utils/gps_quality.dart';
 import '../services/service_functions.dart';
@@ -48,14 +54,11 @@ class RegistrarQCScreen extends StatefulWidget {
 /// Sort orders offered in the QC list.
 enum _QcSort { dateDesc, dateAsc, registrar, name }
 
-/// Fotorollen je Objekttyp, die im QC als Prüfpunkt abgehakt werden müssen -
-/// sofern das Objekt ein solches Foto verknüpft hat. Excel-Importe tragen keine
-/// Fotos und bekommen deshalb keine Foto-Prüfpunkte.
-const Map<String, List<String>> _qcPhotoRoles = {
-  'human': ['nationalIDPhoto'],
-  'farm': ['consentFormPhoto', 'consentFormPhoto2'],
-  'field': ['fieldRegistrationPhoto'],
-};
+/// Fotorollen je Objekttyp, die im QC als Prüfpunkt abgehakt werden müssen.
+/// Pflichtfotos ([requiredPhotoRoles]) sind immer ein Prüfpunkt - fehlt das
+/// Foto, etwa bei Excel-Importen, muss es der Prüfer erst hochladen, bevor die
+/// Registrierung freigegeben werden kann. Optionale Fotos nur, wenn vorhanden.
+const Map<String, List<String>> _qcPhotoRoles = photoRolesByType;
 
 /// Prüfpunkt-Schlüssel für die Freigabe der Feldgrenze.
 const String _qcPolygonCheck = 'polygonGeometry';
@@ -97,6 +100,10 @@ class _QcBundle {
   String registrarUid = '';
   String registrarEmail = '';
   final Set<String> alternateIds = {};
+
+  /// Suchbegriffe aus dem QC-Index, wenn das Bündel von dort kam - die Suche
+  /// prüft dann gegen sie statt gegen [searchIndex].
+  Set<String>? indexTokens;
 
   static String uidOf(Map<String, dynamic>? obj) =>
       obj?['identity']?['UID']?.toString() ?? '';
@@ -281,7 +288,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
   bool _loadingMore = false;
 
-  bool get _hasMore => !_methodsExhausted || !_objectsExhausted;
+  bool get _hasMore => _useIndex
+      ? !_indexExhausted
+      : (!_methodsExhausted || !_objectsExhausted);
 
   /// Gesetzt, wenn die nach Zeitpunkt sortierte Methodenabfrage nicht bedient
   /// werden konnte (in aller Regel: der zusammengesetzte Index fehlt noch).
@@ -322,6 +331,39 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// Ob die Objektabfrage nach Land gefiltert werden kann. Fällt auf false,
   /// wenn Firestore die Abfrage ablehnt - dann filtert nur noch der Client.
   bool _serverCountryFilter = true;
+
+  /// Ob die Warteschlange aus dem Suchindex `TFC_qc_index` kommt. Den baut
+  /// die Cloud auf; erst wenn er vollständig ist (`TFC_qc_index_meta/state`),
+  /// löst er das Laden über Methoden und Objekte ab. Nur über den Index finden
+  /// Suche und Filter auch, was noch nicht geladen ist.
+  bool _useIndex = false;
+
+  /// Der Index war gemeldet, die Abfrage scheiterte aber - meist fehlt noch
+  /// ein zusammengesetzter Firestore-Index. Dann gilt der alte Weg, mit Hinweis.
+  bool _indexUnavailable = false;
+
+  DocumentSnapshot<Map<String, dynamic>>? _indexCursor;
+  bool _indexExhausted = false;
+  static const int _indexPageSize = 30;
+
+  /// Zählt jede neue Abfrage hoch - Ergebnisse einer überholten Abfrage
+  /// (Filter während des Ladens geändert) werden verworfen.
+  int _queryGeneration = 0;
+
+  /// Land (ISO-Code) und oberste Verwaltungsebene, auf die die Liste
+  /// eingeschränkt ist; null = alles im Gebiet.
+  String? _countryFilter;
+  String? _stateFilter;
+
+  /// Suchtext, mit dem der Index zuletzt abgefragt wurde. Die Abfrage folgt
+  /// der Eingabe erst nach einer Tipp-Pause.
+  String _serverQuery = '';
+  Timer? _searchDebounce;
+
+  /// Alle bisher gesehenen Registrare. Die Auswahl darf nicht schrumpfen, nur
+  /// weil die Liste gerade auf einen Registrar gefiltert ist.
+  final Map<String, ({String name, String email, String label})>
+      _knownRegistrars = {};
 
   String _registrarFilter = 'all'; // 'all' or a registrar UID
   _QcSort _sortMode = _QcSort.dateDesc;
@@ -399,13 +441,31 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   /// Bündel im Gebiet - und, wenn gewählt, nur die des eigenen Teams.
-  List<_QcBundle> get _visibleBundles => _bundles
-      .where((b) =>
-          _inScope(b) && (!_teamOnly || _teamUids.contains(b.registrarUid)))
-      .toList();
+  List<_QcBundle> get _visibleBundles => _bundles.where(_isVisible).toList();
+
+  bool _isVisible(_QcBundle b) =>
+      _inScope(b) &&
+      _matchesLocation(b) &&
+      (!_teamOnly || _teamUids.contains(b.registrarUid));
+
+  /// Land- und Regionsfilter. Mit Index filtert schon die Abfrage; hier greift
+  /// er für den alten Ladeweg und für alles, was vorher geladen war.
+  bool _matchesLocation(_QcBundle bundle) {
+    final country = _countryFilter;
+    if (country != null &&
+        countryConfigService.resolve(bundle.storedCountry)?.code != country) {
+      return false;
+    }
+    final state = _stateFilter;
+    if (state != null && !CountryConfig.sameRegion(bundle.stateName, state)) {
+      return false;
+    }
+    return true;
+  }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -495,7 +555,24 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// while `!kReleaseMode` - that surfaces as
   /// "_RenderLayoutBuilder was mutated in performLayout" when the screen opens.
   /// The fields are simply assigned instead; the first build reads them anyway.
-  Future<void> _loadPendingRegistrations({bool fromInitState = false}) async {
+  /// [keepReviewState] lädt nur die Liste neu (Filter oder Suche geändert) und
+  /// behält abgehakte Prüfpunkte und geladene Fotos - der Refresh-Knopf
+  /// setzt alles zurück.
+  Future<void> _loadPendingRegistrations({
+    bool fromInitState = false,
+    bool keepReviewState = false,
+  }) async {
+    final generation = ++_queryGeneration;
+    // Eine laufende Seite gehört zur alten Abfrage - abwarten, ihr Ergebnis
+    // verwirft die Generationsprüfung.
+    final running = _pageInFlight;
+    if (running != null) {
+      try {
+        await running;
+      } catch (_) {}
+      if (generation != _queryGeneration) return;
+    }
+
     if (fromInitState) {
       _isLoading = true;
       _loadingMessage = null; // l10n is not safe to read from initState
@@ -509,8 +586,12 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     // Neu aufsetzen - der Refresh-Knopf führt hier ebenfalls herein.
     _pendingRegistrations = [];
     _bundles = [];
-    _checks.clear();
-    _photoFutures.clear();
+    if (!keepReviewState) {
+      _checks.clear();
+      _photoFutures.clear();
+      _knownRegistrars.clear();
+      _indexUnavailable = false;
+    }
     _focusBundleKey = null;
     _registrarCache.clear();
     _loadedUids.clear();
@@ -519,13 +600,18 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     _dateOrderUnavailable = false;
     _objectCursor = null;
     _objectsExhausted = false;
+    _indexCursor = null;
+    _indexExhausted = false;
     _totalPending = null;
 
-    // Nur fürs Anzeigen ("150 von 2500 geladen"), deshalb ohne await im
-    // kritischen Pfad.
-    unawaited(_loadTotalCount());
-
     try {
+      if (!keepReviewState) {
+        _useIndex = await _indexReady();
+        _serverQuery = _searchQuery;
+      }
+      // Nur fürs Anzeigen ("150 von 2500 geladen"), deshalb ohne await im
+      // kritischen Pfad.
+      unawaited(_loadTotalCount());
       await _loadNextPage(initial: true);
     } finally {
       if (mounted) {
@@ -538,6 +624,18 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   Future<void> _loadTotalCount() async {
+    if (_useIndex) {
+      final generation = _queryGeneration;
+      try {
+        final snapshot = await _indexQuery(ordered: false).count().get();
+        if (mounted && generation == _queryGeneration) {
+          setState(() => _totalPending = snapshot.count);
+        }
+      } catch (e) {
+        debugPrint('QC: could not count index entries: $e');
+      }
+      return;
+    }
     try {
       // Je Typ einzeln: offene Bild-Objekte tragen denselben Zustand, gehören
       // aber nicht in die Warteschlange - eine Gesamtzahl über alle wäre eine
@@ -592,6 +690,11 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// zuerst". Sind die durch, folgt ein Durchlauf über die Objekte selbst, der
   /// alles einsammelt, was dabei nicht aufgetaucht ist.
   Future<void> _loadPage({bool initial = false}) async {
+    if (_useIndex) {
+      await _loadIndexPage(initial: initial);
+      return;
+    }
+    final generation = _queryGeneration;
     _loadingMore = true;
     if (!initial && mounted) setState(() {});
 
@@ -618,7 +721,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
       final newBundles = await _groupIntoBundles(collected);
 
-      if (!mounted) return;
+      if (!mounted || generation != _queryGeneration) return;
       setState(() {
         _pendingRegistrations = [..._pendingRegistrations, ...collected];
         _bundles = [..._bundles, ...newBundles];
@@ -999,6 +1102,232 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     }
   }
 
+  /// Ob die Cloud den Suchindex vollständig aufgebaut hat.
+  Future<bool> _indexReady() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('TFC_qc_index_meta')
+          .doc('state')
+          .get();
+      return doc.data()?['ready'] == true;
+    } catch (e) {
+      debugPrint('QC: index state unavailable ($e) - using the full scan');
+      return false;
+    }
+  }
+
+  /// Abfrage über den QC-Index mit Gebiet, Filtern und Suchbegriff.
+  ///
+  /// Für jede Kombination aus Filtern und Sortierung braucht Firestore einen
+  /// zusammengesetzten Index (firestore.indexes.json).
+  Query<Map<String, dynamic>> _indexQuery({bool ordered = true}) {
+    Query<Map<String, dynamic>> query =
+        FirebaseFirestore.instance.collection('TFC_qc_index');
+
+    final scope = _scope;
+    final scopeCountries =
+        scope == null || scope.isEmpty ? null : scope.countries;
+    final country = _countryFilter ??
+        (scopeCountries?.length == 1 ? scopeCountries!.first : null);
+    if (country != null) {
+      query = query.where('countryCode', isEqualTo: country);
+    } else if (scopeCountries != null && scopeCountries.length <= 30) {
+      query = query.where('countryCode', whereIn: scopeCountries);
+    }
+
+    if (_stateFilter != null) {
+      query = query.where('stateKey', isEqualTo: foldForSearch(_stateFilter!));
+    } else if (country != null) {
+      // Gebiet auf Regionen beschränkt: gleich in der Abfrage, sonst stünde
+      // ein Koordinator für ein Departamento vor lauter leeren Seiten.
+      final regions = scope?.entryFor(country)?.regions ?? const <String>[];
+      if (regions.isNotEmpty && regions.length <= 30) {
+        query = query.where('stateKey',
+            whereIn: regions.map(foldForSearch).toSet().toList());
+      }
+    }
+
+    if (_registrarFilter != 'all') {
+      query = query.where('registrarUid', isEqualTo: _registrarFilter);
+    }
+
+    final token = qcServerToken(qcQueryTokens(_serverQuery));
+    if (token != null) query = query.where('tokens', arrayContains: token);
+
+    if (!ordered) return query;
+    // Mit Suchbegriff nur nach Datum: jede weitere Sortierung bräuchte einen
+    // eigenen Firestore-Index je Filterkombination.
+    final sort = token != null ? _QcSort.dateDesc : _sortMode;
+    query = switch (sort) {
+      _QcSort.dateDesc => query.orderBy('registeredAt', descending: true),
+      _QcSort.dateAsc => query.orderBy('registeredAt'),
+      _QcSort.registrar => query.orderBy('registrarKey'),
+      _QcSort.name => query.orderBy('nameKey'),
+    };
+    return query.limit(_indexPageSize);
+  }
+
+  /// Nächste Seite aus dem QC-Index.
+  Future<void> _loadIndexPage({bool initial = false}) async {
+    final generation = _queryGeneration;
+    _loadingMore = true;
+    if (!initial && mounted) setState(() {});
+
+    final queryTokens = qcQueryTokens(_serverQuery);
+    final collected = <_QcBundle>[];
+    try {
+      // Teamfilter und Gebiete mit Regionen in mehreren Ländern prüft der
+      // Client - dann weiterblättern, bis etwas zu zeigen ist.
+      int rounds = 0;
+      while (!_indexExhausted &&
+          rounds < 5 &&
+          collected.where(_isVisible).length < 10) {
+        rounds++;
+        var query = _indexQuery();
+        if (_indexCursor != null) {
+          query = query.startAfterDocument(_indexCursor!);
+        }
+        final snapshot = await query.get();
+        if (generation != _queryGeneration) return;
+        if (snapshot.docs.length < _indexPageSize) _indexExhausted = true;
+        if (snapshot.docs.isNotEmpty) _indexCursor = snapshot.docs.last;
+
+        // Die Abfrage kann nur einen Suchbegriff - die übrigen hier.
+        final docs = snapshot.docs
+            .where((d) => qcTokensMatch(
+                List<String>.from(d.data()['tokens'] ?? const []),
+                queryTokens))
+            .toList();
+        collected.addAll(await _bundlesFromIndex(docs));
+        if (generation != _queryGeneration) return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _bundles = [..._bundles, ...collected];
+        _loadingMore = false;
+      });
+    } catch (e) {
+      if (generation != _queryGeneration) return;
+      // Meist fehlt ein zusammengesetzter Index - die Meldung enthält den
+      // Link, über den er sich anlegen lässt.
+      debugPrint('QC: index query failed ($e) - falling back to the full scan');
+      cloudLogService.warn('QC: index query failed',
+          data: {'error': e.toString()});
+      _useIndex = false;
+      _indexUnavailable = true;
+      _loadingMore = false;
+      if (mounted) {
+        setState(() {});
+        await _loadPage(initial: initial);
+      }
+    }
+  }
+
+  /// Baut die Bündel einer Indexseite: Farm, Farmer und offene Felder in
+  /// einem Sammelabruf, Datum und Registrar direkt aus dem Index.
+  Future<List<_QcBundle>> _bundlesFromIndex(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+    final known = _bundles.map((b) => b.key).toSet();
+    final fresh = docs.where((d) => !known.contains(d.id)).toList();
+
+    String? uidField(Map<String, dynamic> data, String key) {
+      final value = data[key]?.toString() ?? '';
+      return value.isEmpty ? null : value;
+    }
+
+    List<String> fieldUids(Map<String, dynamic> data) =>
+        List<String>.from(data['fieldUids'] ?? const []);
+
+    final uids = <String>{
+      for (final doc in fresh) ...[
+        if (uidField(doc.data(), 'farmUid') case final uid?) uid,
+        if (uidField(doc.data(), 'farmerUid') case final uid?) uid,
+        ...fieldUids(doc.data()),
+      ],
+    };
+    final objects = await _fetchObjects(uids.toList());
+
+    final bundles = <_QcBundle>[];
+    for (final doc in fresh) {
+      final data = doc.data();
+      final bundle = _QcBundle(
+        key: doc.id,
+        farm: objects[uidField(data, 'farmUid')],
+        farmer: objects[uidField(data, 'farmerUid')],
+      );
+      for (final uid in fieldUids(data)) {
+        final field = objects[uid];
+        if (field != null && _QcBundle.isPending(field)) {
+          bundle.fields.add(field);
+        }
+      }
+      // Der Index folgt den Objekten mit kurzem Abstand - was inzwischen
+      // entschieden ist, gehört nicht mehr in die Warteschlange.
+      if (bundle.pendingMembers.isEmpty) continue;
+
+      final registeredAt = data['registeredAt'];
+      if (registeredAt is Timestamp &&
+          registeredAt.millisecondsSinceEpoch > 0) {
+        bundle.registeredAt = registeredAt.toDate().toUtc();
+      }
+      final registrarName = data['registrarName']?.toString() ?? '';
+      bundle.registrarName = registrarName.isEmpty ? '-' : registrarName;
+      bundle.registrarUid = data['registrarUid']?.toString() ?? '';
+      bundle.registrarEmail = data['registrarEmail']?.toString() ?? '';
+      bundle.indexTokens = Set<String>.from(data['tokens'] ?? const []);
+      if (bundle.registrarUid.isNotEmpty) {
+        _knownRegistrars[bundle.registrarUid] = (
+          name: bundle.registrarName,
+          email: bundle.registrarEmail,
+          label: bundle.registrarLabel,
+        );
+      }
+
+      for (final member in bundle.pendingMembers) {
+        final uid = _QcBundle.uidOf(member);
+        _loadedUids.add(uid);
+        _pendingRegistrations.add(_QcEntry(
+          object: member,
+          ralType: member['template']?['RALType']?.toString() ?? '',
+          name: member['identity']?['name']?.toString() ?? 'Unnamed',
+          registeredAt: bundle.registeredAt,
+          registrarName: bundle.registrarName,
+          registrarUid: bundle.registrarUid,
+          registrarEmail: bundle.registrarEmail,
+        ));
+      }
+      bundles.add(bundle);
+    }
+    return bundles;
+  }
+
+  /// Lädt die Liste nach einer Änderung von Filter, Sortierung oder Suche
+  /// neu - nur mit Index, sonst filtert der Client das Geladene.
+  void _reloadIfIndexed() {
+    if (_useIndex) {
+      unawaited(_loadPendingRegistrations(keepReviewState: true));
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+    if (!_useIndex) return;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      final changed =
+          qcQueryTokens(_serverQuery).join(' ') != qcQueryTokens(value).join(' ');
+      _serverQuery = value;
+      if (changed) _reloadIfIndexed();
+    });
+  }
+
+  /// Gezählt wird, was die Gesamtzahl auch zählt: mit Index Prüfeinheiten,
+  /// sonst offene Objekte.
+  int get _loadedCount =>
+      _useIndex ? _bundles.length : _pendingRegistrations.length;
+
   /// Löst Datum und Registrar für eine ganze Seite auf.
   ///
   /// Beides steht an der Erzeugungsmethode, nicht am Objekt. Ein Einzelabruf je
@@ -1140,7 +1469,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// All registrars present in the current result set, for the dropdown.
   Map<String, ({String name, String email, String label})>
       get _availableRegistrars {
-    final map = <String, ({String name, String email, String label})>{};
+    final map = <String, ({String name, String email, String label})>{
+      if (_useIndex) ..._knownRegistrars,
+    };
     for (final bundle in _visibleBundles) {
       if (bundle.registrarUid.isEmpty) continue;
       map[bundle.registrarUid] = (
@@ -1160,7 +1491,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           bundle.registrarUid != _registrarFilter) {
         return false;
       }
-      if (query.isNotEmpty && !bundle.searchIndex.contains(query)) {
+      if (query.isNotEmpty && !_matchesSearch(bundle, query)) {
         return false;
       }
       return true;
@@ -1202,14 +1533,26 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return result;
   }
 
-  /// Die Prüfpunkte eines Bündels: je offenem Objekt ein Punkt pro verknüpftem
-  /// Foto, bei Feldern zusätzlich die Freigabe der Polygongeometrie.
+  /// Bündel aus dem Index werden über ihre Suchbegriffe geprüft - dieselben,
+  /// die schon die Abfrage verwendet hat ("gomez" findet "Gómez").
+  bool _matchesSearch(_QcBundle bundle, String query) {
+    final tokens = bundle.indexTokens;
+    if (tokens != null) {
+      final queryTokens = qcQueryTokens(query);
+      if (queryTokens.isNotEmpty) return qcTokensMatch(tokens, queryTokens);
+    }
+    return bundle.searchIndex.contains(query);
+  }
+
+  /// Die Prüfpunkte eines Bündels: je offenem Objekt ein Punkt pro Pflichtfoto
+  /// und pro verknüpftem optionalen Foto, bei Feldern zusätzlich die Freigabe
+  /// der Polygongeometrie.
   List<_QcCheck> _requiredChecks(_QcBundle bundle) {
     final checks = <_QcCheck>[];
     for (final obj in bundle.pendingMembers) {
       final ralType = obj['template']?['RALType']?.toString() ?? '';
       for (final role in _qcPhotoRoles[ralType] ?? const <String>[]) {
-        if (_hasLinkedPhoto(obj, role)) {
+        if (requiredPhotoRoles.contains(role) || _hasLinkedPhoto(obj, role)) {
           checks.add(_QcCheck(object: obj, check: role));
         }
       }
@@ -1520,13 +1863,22 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadPendingRegistrations,
           ),
+          if (RoleManagementService().getCurrentUserRole() == 'SUPERADMIN')
+            IconButton(
+              icon: const Icon(Icons.manage_search),
+              tooltip: l10n.qcRebuildIndex,
+              onPressed: _rebuildIndex,
+            ),
           const HandbookButton(),
         ],
       ),
       body: Column(
         children: [
-          if (_dateOrderUnavailable) _buildDateOrderWarning(l10n),
+          if (_dateOrderUnavailable)
+            _buildWarningBanner(l10n.qcDateOrderUnavailable),
+          if (_indexUnavailable) _buildWarningBanner(l10n.qcIndexUnavailable),
           _buildScopeRow(l10n),
+          _buildLocationRow(l10n),
           _buildSearchField(l10n),
           _buildSortAndRegistrarRow(l10n),
           const SizedBox(height: 8),
@@ -1561,6 +1913,55 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         ],
       ),
     );
+  }
+
+  /// Baut den QC-Suchindex aus allen offenen Objekten auf (SUPERADMIN).
+  /// Einmal nach dem Deploy nötig, danach pflegt ihn die Cloud selbst.
+  Future<void> _rebuildIndex() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.qcRebuildIndex,
+            style: const TextStyle(color: Colors.black)),
+        content: Text(l10n.qcRebuildIndexInfo,
+            style: const TextStyle(color: Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.qcRebuildIndexStart),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    _setBusy(l10n.qcRebuildIndexProgress(0));
+    try {
+      final processed = await QcIndexService.rebuild(
+          onProgress: (n) => _setBusy(l10n.qcRebuildIndexProgress(n)));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.qcRebuildIndexDone(processed)),
+          backgroundColor: Colors.green,
+        ));
+      }
+    } catch (e) {
+      debugPrint('QC: index rebuild failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${l10n.qcRebuildIndexFailed}: $e'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      _setBusy(null);
+    }
+    await _loadPendingRegistrations();
   }
 
   /// Import/Status des IHCafe-Produzentenverzeichnisses.
@@ -1628,7 +2029,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             Text(
               _totalPending != null
                   ? l10n.qcLoadedOfTotal(
-                      _pendingRegistrations.length, _totalPending!)
+                      _loadedCount, _totalPending!)
                   : l10n.qcLoadingRegistrations,
               style: TextStyle(color: Colors.grey[600]),
             ),
@@ -1676,9 +2077,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
-  /// Warnung, wenn die Warteschlange nicht global nach Datum geordnet werden
-  /// konnte.
-  Widget _buildDateOrderWarning(AppLocalizations l10n) {
+  /// Warnung über der Liste, z.B. wenn die Warteschlange nicht global nach
+  /// Datum geordnet werden konnte.
+  Widget _buildWarningBanner(String text) {
     return Container(
       width: double.infinity,
       color: Colors.orange[50],
@@ -1690,7 +2091,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              l10n.qcDateOrderUnavailable,
+              text,
               style: TextStyle(fontSize: 12, color: Colors.orange[900]),
             ),
           ),
@@ -1713,7 +2114,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             child: Text(
               _totalPending != null
                   ? l10n.qcLoadedOfTotal(
-                      _pendingRegistrations.length, _totalPending!)
+                      _loadedCount, _totalPending!)
                   : l10n.qcLoadingRegistrations,
               style: TextStyle(fontSize: 12, color: Colors.amber[900]),
             ),
@@ -1748,7 +2149,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           const SizedBox(height: 12),
           if (_totalPending != null)
             Text(
-              l10n.qcLoadedOfTotal(_pendingRegistrations.length, _totalPending!),
+              l10n.qcLoadedOfTotal(_loadedCount, _totalPending!),
               style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           // Die Übersichtskarte kann nur zeigen, was geladen ist - vor dem
@@ -1911,13 +2312,116 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   void _resetFilters() {
+    _searchDebounce?.cancel();
     setState(() {
       _focusBundleKey = null;
       _teamOnly = false;
       _registrarFilter = 'all';
+      _countryFilter = null;
+      _stateFilter = null;
       _searchQuery = '';
+      _serverQuery = '';
       _searchController.clear();
     });
+    _reloadIfIndexed();
+  }
+
+  /// Länder, nach denen gefiltert werden kann: die des Gebiets, ohne Gebiet
+  /// alle aktiven.
+  List<CountryConfig> get _filterCountries {
+    final scope = _scope;
+    if (scope != null && !scope.isEmpty) {
+      return [
+        for (final code in scope.countries)
+          if (countryConfigService.byCode(code) case final config?) config,
+      ];
+    }
+    return countryConfigService.active;
+  }
+
+  /// Regionen eines Landes, nach denen gefiltert werden kann - bei einem auf
+  /// Regionen beschränkten Gebiet nur diese.
+  List<String> _filterRegions(CountryConfig country) {
+    final entry = _scope?.entryFor(country.code);
+    if (entry != null && !entry.wholeCountry) return entry.regions;
+    return country.regions;
+  }
+
+  /// Filter nach Land und oberster Verwaltungsebene (z.B. Departamento).
+  /// Gemeinde und Ort stehen nicht in einer gepflegten Liste - die findet die
+  /// Suche.
+  Widget _buildLocationRow(AppLocalizations l10n) {
+    final countries = _filterCountries;
+    final countryCode = _countryFilter ??
+        (countries.length == 1 ? countries.first.code : null);
+    final country =
+        countryCode == null ? null : countryConfigService.byCode(countryCode);
+    final regions = country == null ? const <String>[] : _filterRegions(country);
+    final showCountry = countries.length > 1;
+    final showRegion = regions.length > 1;
+    if (!showCountry && !showRegion) return const SizedBox.shrink();
+
+    InputDecoration decoration(String label) => InputDecoration(
+          labelText: label,
+          isDense: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: Row(
+        children: [
+          if (showCountry)
+            Expanded(
+              child: DropdownButtonFormField<String?>(
+                key: ValueKey('qc-country-$_countryFilter'),
+                initialValue: _countryFilter,
+                isDense: true,
+                isExpanded: true,
+                decoration: decoration(l10n.qcFilterCountry),
+                items: [
+                  DropdownMenuItem(
+                      value: null, child: Text(l10n.qcFilterAllCountries)),
+                  for (final c in countries)
+                    DropdownMenuItem(value: c.code, child: Text(c.name)),
+                ],
+                onChanged: (value) {
+                  if (value == _countryFilter) return;
+                  setState(() {
+                    _countryFilter = value;
+                    _stateFilter = null;
+                  });
+                  _reloadIfIndexed();
+                },
+              ),
+            ),
+          if (showCountry && showRegion) const SizedBox(width: 8),
+          if (showRegion)
+            Expanded(
+              child: DropdownButtonFormField<String?>(
+                key: ValueKey('qc-region-$countryCode-$_stateFilter'),
+                initialValue: _stateFilter,
+                isDense: true,
+                isExpanded: true,
+                decoration: decoration(country!.regionLabels.isNotEmpty
+                    ? country.regionLabels.first
+                    : l10n.qcFilterRegion),
+                items: [
+                  DropdownMenuItem(
+                      value: null, child: Text(l10n.qcFilterAllRegions)),
+                  for (final r in regions)
+                    DropdownMenuItem(value: r, child: Text(r)),
+                ],
+                onChanged: (value) {
+                  if (value == _stateFilter) return;
+                  setState(() => _stateFilter = value);
+                  _reloadIfIndexed();
+                },
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   /// Gebiet des Prüfers und - für Registrar Coordinators - der Teamfilter.
@@ -1981,17 +2485,17 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       child: TextField(
         controller: _searchController,
-        onChanged: (value) => setState(() => _searchQuery = value),
+        onChanged: _onSearchChanged,
         decoration: InputDecoration(
           hintText: l10n.qcSearchHint,
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear),
-                  onPressed: () => setState(() {
-                    _searchQuery = '';
+                  onPressed: () {
                     _searchController.clear();
-                  }),
+                    _onSearchChanged('');
+                  },
                 )
               : null,
           isDense: true,
@@ -2006,7 +2510,10 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   Widget _buildSortAndRegistrarRow(AppLocalizations l10n) {
     final registrars = _availableRegistrars;
     // A registrar dropdown is pointless when everything comes from one person.
-    final showRegistrarFilter = registrars.length > 1;
+    // Auch bei nur einem sichtbaren Registrar, solange danach gefiltert wird -
+    // sonst liesse sich der Filter nicht mehr aufheben.
+    final showRegistrarFilter =
+        registrars.length > 1 || _registrarFilter != 'all';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
@@ -2043,7 +2550,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                 ),
               ],
               onChanged: (value) {
-                if (value != null) setState(() => _sortMode = value);
+                if (value == null || value == _sortMode) return;
+                setState(() => _sortMode = value);
+                _reloadIfIndexed();
               },
             ),
           ),
@@ -2087,7 +2596,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                   ),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _registrarFilter = value);
+                  if (value == null || value == _registrarFilter) return;
+                  setState(() => _registrarFilter = value);
+                  _reloadIfIndexed();
                 },
               ),
             ),
@@ -2145,7 +2656,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       return const SizedBox.shrink();
     }
     final shown = _filteredBundles.length;
-    final loaded = _pendingRegistrations.length;
+    final loaded = _loadedCount;
     final total = _totalPending;
 
     final visible = _visibleBundles.length;
@@ -2338,8 +2849,6 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     final ralType = obj['template']?['RALType']?.toString() ?? '';
     final pending = _QcBundle.isPending(obj);
     final ownChecks = checks.where((c) => c.objectUid == uid).toList();
-    final expectsPhotos = (_qcPhotoRoles[ralType] ?? const []).isNotEmpty;
-    final hasPhotoCheck = ownChecks.any((c) => c.isPhoto);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2362,6 +2871,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                       fontWeight: FontWeight.bold, color: Colors.black),
                 ),
               ),
+              if (pending && _canCorrect)
+                IconButton(
+                  onPressed: () => _correctObject(obj),
+                  icon: const Icon(Icons.edit_note),
+                  color: Colors.blueGrey,
+                  tooltip: l10n.qcCorrectData,
+                  visualDensity: VisualDensity.compact,
+                ),
               _buildStateChip(obj, l10n),
             ],
           ),
@@ -2377,10 +2894,9 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                   ],
                 )
               : _buildObjectDetails(obj),
-          if (ralType == 'field') _buildFieldDownloadButtons(obj),
-          if (pending && expectsPhotos && !hasPhotoCheck)
-            _buildHintLine(Icons.no_photography_outlined,
-                l10n.qcNoPhotoDocumentation),
+          if (ralType == 'field')
+            _buildFieldDownloadButtons(obj,
+                canReplace: pending && _canCorrect),
           if (ownChecks.isNotEmpty) ...[
             const Divider(height: 16),
             for (final check in ownChecks) _buildCheckTile(bundle, check),
@@ -2442,11 +2958,13 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 
   /// Ein Prüfpunkt. Foto-Punkte lassen sich nur abhaken, wenn das Foto in der
-  /// Cloud liegt - "Foto ist da" lässt sich sonst nicht bestätigen.
+  /// Cloud liegt - "Foto ist da" lässt sich sonst nicht bestätigen. Fehlt das
+  /// Foto ganz, führt der Punkt direkt zur Korrektur, wo es hochgeladen wird.
   Widget _buildCheckTile(_QcBundle bundle, _QcCheck check) {
     final l10n = AppLocalizations.of(context)!;
 
-    Widget tile({required bool enabled, String? hint}) => CheckboxListTile(
+    Widget tile({required bool enabled, String? hint, Widget? action}) =>
+        CheckboxListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
@@ -2461,9 +2979,24 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               ? null
               : Text(hint,
                   style: TextStyle(color: Colors.orange[900], fontSize: 12)),
+          secondary: action,
         );
 
     if (!check.isPhoto) return tile(enabled: true);
+
+    if (!_hasLinkedPhoto(check.object, check.check)) {
+      return tile(
+        enabled: false,
+        hint: l10n.qcPhotoMissing,
+        action: _canCorrect
+            ? TextButton.icon(
+                onPressed: () => _correctObject(check.object),
+                icon: const Icon(Icons.upload, size: 18),
+                label: Text(l10n.qcPhotoUpload),
+              )
+            : null,
+      );
+    }
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _photoFuture(check.object, check.check),
@@ -2501,7 +3034,8 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return null;
   }
 
-  Widget _buildFieldDownloadButtons(Map<String, dynamic> obj) {
+  Widget _buildFieldDownloadButtons(Map<String, dynamic> obj,
+      {bool canReplace = false}) {
     final l10n = AppLocalizations.of(context)!;
     final boundariesRaw = getSpecificPropertyfromJSON(obj, 'boundaries');
     final area = getSpecificPropertyfromJSON(obj, 'area')?.toString() ?? '';
@@ -2545,6 +3079,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             label: const Text('KML', style: TextStyle(fontSize: 12)),
             style: style(Colors.orange[700]),
           ),
+          if (canReplace && (_getBoundariesFromObject(obj)?.length ?? 0) >= 3)
+            TextButton.icon(
+              onPressed: () => _replacePolygonFromFile(obj),
+              icon: const Icon(Icons.swap_horiz, size: 16),
+              label: Text(l10n.qcReplacePolygonButton,
+                  style: const TextStyle(fontSize: 12)),
+              style: style(Colors.blueGrey[700]),
+            ),
         ],
       ),
     );
@@ -3461,19 +4003,154 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     );
   }
 
+  /// Ob der angemeldete Nutzer Daten im QC korrigieren darf - Registrar
+  /// Coordinator und aufwärts.
+  bool get _canCorrect =>
+      PermissionService().hasPermission('qc_correct_data');
+
+  /// Korrigiert Daten und Fotos eines offenen Objekts.
+  ///
+  /// Geschrieben wird ein signierter changeObjectData-Job mit Grund und Liste
+  /// der geänderten Felder (siehe [saveObjectCorrection]). Neue Fotos werden
+  /// sofort hochgeladen, damit der Prüfer sie gleich bestätigen kann.
+  Future<void> _correctObject(Map<String, dynamic> obj) async {
+    final l10n = AppLocalizations.of(context)!;
+    final uid = _QcBundle.uidOf(obj);
+    final ralType = obj['template']?['RALType']?.toString() ?? '';
+
+    final result = await showDialog<QcCorrectionResult>(
+      context: context,
+      builder: (_) => QcCorrectionDialog(
+        object: obj,
+        linkedPhotoRoles: {
+          for (final role in _qcPhotoRoles[ralType] ?? const <String>[])
+            if (_hasLinkedPhoto(obj, role)) role,
+        },
+      ),
+    );
+    if (result == null) return;
+
+    _setBusy(l10n.qcCorrectionSaving);
+    try {
+      // Auf der aktuellen Fassung aufsetzen - eine Polygonkorrektur kann sie
+      // inzwischen verändert haben.
+      final current = await getCurrentObjectVersion(uid);
+      final updated = await saveObjectCorrection(
+        current: current.isNotEmpty ? current : obj,
+        values: result.values,
+        photos: result.photos,
+        reason: result.reason,
+      );
+
+      if (result.photos.isNotEmpty) {
+        // Die Prüfansicht liest Fotos aus der Cloud - ohne Upload liesse sich
+        // das neue Foto nicht abhaken.
+        _setBusy(l10n.qcCorrectionUploadingPhotos);
+        await cloudSyncService.uploadPendingPhotos(ignorePause: true);
+        await cloudSyncService.syncMethods('tracefoodchain.org',
+            syncFromCloud: false, ignorePause: true);
+      }
+
+      if (mounted) {
+        setState(() {
+          _pendingRegistrations = [
+            for (final entry in _pendingRegistrations)
+              entry.uid == uid ? entry.withObject(updated) : entry,
+          ];
+          for (final bundle in _bundles) {
+            if (!bundle.contains(uid)) continue;
+            bundle.replaceObject(updated);
+            // Ein ersetztes Foto muss der Prüfer erneut bestätigen.
+            for (final role in result.photos.keys) {
+              _checks[bundle.key]?.remove('$uid|$role');
+            }
+          }
+          for (final role in result.photos.keys) {
+            _photoFutures.remove('$uid|$role');
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.qcCorrectionSaved),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      repaintContainerList.value = true;
+    } catch (e) {
+      debugPrint('Error saving QC correction for $uid: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${l10n.qcCorrectionSaveFailed}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      _setBusy(null);
+    }
+  }
+
   /// Schreibt eine im Karteneditor korrigierte Feldgrenze über den signierten
   /// openRAL-Pfad und übernimmt die neue Fassung in die Liste.
   ///
   /// Die geschriebene Version kommt direkt aus dem Service zurück; ein erneutes
   /// Laden aus Firestore wäre ein Rennen gegen den asynchronen Cloud-Sync und
   /// würde oft noch den alten Stand zeigen.
+  /// Ersetzt die Feldgrenze durch ein extern (z.B. in QGIS) korrigiertes
+  /// Polygon aus einer GeoJSON-Datei.
+  ///
+  /// Gespeichert wird wie bei der Korrektur im Editor - die alte Geometrie
+  /// bleibt als Input im signierten Job, dazu kommen die Angaben zur externen
+  /// Korrektur (`externalCorrection`).
+  Future<void> _replacePolygonFromFile(Map<String, dynamic> obj) async {
+    final boundaries = _getBoundariesFromObject(obj);
+    if (boundaries == null) return;
+
+    final replacement = await Navigator.of(context).push<PolygonReplacement>(
+      MaterialPageRoute(
+        builder: (_) => QcPolygonReplacePage(
+          fieldName: obj['identity']?['name']?.toString() ?? '',
+          currentRing: boundaries,
+          geoId: _assetRegistryGeoId(obj),
+        ),
+      ),
+    );
+    if (replacement == null || !mounted) return;
+
+    final ring = replacement.polygon.ring;
+    await _saveGeometryEdit(
+      obj,
+      FieldGeometryEdit(
+        points: ring,
+        // Nicht im Feld gemessen - wie von Hand gesetzte Ecken.
+        accuracies: List.filled(ring.length, manuallyEditedAccuracy),
+        reason: replacement.reason,
+        description: 'replaced by external geometry from '
+            '${replacement.fileName} (feature ${replacement.polygon.featureId})',
+      ),
+      changeContext: changeContextExternalGeometryReplacement,
+      jobProperties: {'externalCorrection': replacement.toJobProperty()},
+    );
+  }
+
   Future<void> _saveGeometryEdit(
-      Map<String, dynamic> obj, FieldGeometryEdit edit) async {
+    Map<String, dynamic> obj,
+    FieldGeometryEdit edit, {
+    String changeContext = changeContextQcCorrection,
+    Map<String, dynamic> jobProperties = const {},
+  }) async {
     final l10n = AppLocalizations.of(context)!;
     _setBusy(l10n.qcPolygonSaving);
 
     try {
-      final updated = await saveFieldGeometry(field: obj, edit: edit);
+      final updated = await saveFieldGeometry(
+        field: obj,
+        edit: edit,
+        changeContext: changeContext,
+        jobProperties: jobProperties,
+      );
       final uid = updated['identity']?['UID']?.toString() ?? '';
 
       if (mounted) {

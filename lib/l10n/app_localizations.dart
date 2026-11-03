@@ -5907,7 +5907,7 @@ abstract class AppLocalizations {
   /// No description provided for @qcSearchHint.
   ///
   /// In en, this message translates to:
-  /// **'Search name, ID or registrar...'**
+  /// **'Search name, DNI/ID, place or registrar...'**
   String get qcSearchHint;
 
   /// No description provided for @qcAllRegistrars.
@@ -6683,6 +6683,354 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No territory has been assigned to you yet. Please ask your coordinator.'**
   String get qcNoTerritory;
+
+  /// No description provided for @gpsFixTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Determining GPS position'**
+  String get gpsFixTitle;
+
+  /// No description provided for @gpsFixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait outdoors with a clear view of the sky. Required accuracy: {meters} m or better.'**
+  String gpsFixHint(int meters);
+
+  /// No description provided for @gpsFixFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'No sufficiently accurate GPS position (±{meters} m) could be determined. Move outdoors, away from buildings and dense trees, and try again.'**
+  String gpsFixFailed(int meters);
+
+  /// No description provided for @gpsSaveBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved: a valid GPS position is required.'**
+  String get gpsSaveBlocked;
+
+  /// No description provided for @gpsPhotoDiscarded.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo discarded: a valid GPS position is required. Please take the photo again.'**
+  String get gpsPhotoDiscarded;
+
+  /// No description provided for @qcCorrectData.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct data'**
+  String get qcCorrectData;
+
+  /// No description provided for @qcCorrectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct: {name}'**
+  String qcCorrectionTitle(String name);
+
+  /// No description provided for @qcCorrectionInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Every change is saved as a digitally signed record with your name, the time, the reason and the old and new values.'**
+  String get qcCorrectionInfo;
+
+  /// No description provided for @qcCorrectionPreviousValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Previously: {value}'**
+  String qcCorrectionPreviousValue(String value);
+
+  /// No description provided for @qcCorrectionReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for the change (required)'**
+  String get qcCorrectionReason;
+
+  /// No description provided for @qcCorrectionReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. spelling as on the national ID card'**
+  String get qcCorrectionReasonHint;
+
+  /// No description provided for @qcPhotoSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'New photo selected'**
+  String get qcPhotoSelected;
+
+  /// No description provided for @qcPhotoOnRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'On record'**
+  String get qcPhotoOnRecord;
+
+  /// No description provided for @qcPhotoNotOnRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing'**
+  String get qcPhotoNotOnRecord;
+
+  /// No description provided for @qcPhotoReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get qcPhotoReplace;
+
+  /// No description provided for @qcPhotoUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get qcPhotoUpload;
+
+  /// No description provided for @qcPhotoMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo missing - upload it before approving'**
+  String get qcPhotoMissing;
+
+  /// No description provided for @qcCorrectionSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving correction...'**
+  String get qcCorrectionSaving;
+
+  /// No description provided for @qcCorrectionUploadingPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading photos...'**
+  String get qcCorrectionUploadingPhotos;
+
+  /// No description provided for @qcCorrectionSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction saved'**
+  String get qcCorrectionSaved;
+
+  /// No description provided for @qcCorrectionSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the correction'**
+  String get qcCorrectionSaveFailed;
+
+  /// No description provided for @qcReplacePolygonButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with QGIS polygon'**
+  String get qcReplacePolygonButton;
+
+  /// No description provided for @qcReplacePolygonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace boundary: {name}'**
+  String qcReplacePolygonTitle(String name);
+
+  /// No description provided for @qcReplacePolygonApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get qcReplacePolygonApply;
+
+  /// No description provided for @qcReplacePolygonInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a GeoJSON file with the corrected boundary (exported from QGIS in EPSG:4326). The current boundary stays on record in the signed change.'**
+  String get qcReplacePolygonInfo;
+
+  /// No description provided for @qcReplacePolygonChooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose GeoJSON file'**
+  String get qcReplacePolygonChooseFile;
+
+  /// No description provided for @qcReplacePolygonInvalidFile.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is not valid GeoJSON.'**
+  String get qcReplacePolygonInvalidFile;
+
+  /// No description provided for @qcReplacePolygonNoUsable.
+  ///
+  /// In en, this message translates to:
+  /// **'The file contains no usable polygon.'**
+  String get qcReplacePolygonNoUsable;
+
+  /// No description provided for @qcReplacePolygonFeature.
+  ///
+  /// In en, this message translates to:
+  /// **'Polygon from the file'**
+  String get qcReplacePolygonFeature;
+
+  /// No description provided for @qcReplacePolygonCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get qcReplacePolygonCurrent;
+
+  /// No description provided for @qcReplacePolygonNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get qcReplacePolygonNew;
+
+  /// No description provided for @qcReplacePolygonDeviation.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get qcReplacePolygonDeviation;
+
+  /// No description provided for @qcReplacePolygonCorners.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} corners'**
+  String qcReplacePolygonCorners(int count);
+
+  /// No description provided for @qcReplacePolygonLargeAreaChange.
+  ///
+  /// In en, this message translates to:
+  /// **'The area changes by more than 50 %. Check that this is the right polygon.'**
+  String get qcReplacePolygonLargeAreaChange;
+
+  /// No description provided for @qcReplacePolygonFarAway.
+  ///
+  /// In en, this message translates to:
+  /// **'The new polygon is more than 200 m away from the current one. Check that this is the right polygon.'**
+  String get qcReplacePolygonFarAway;
+
+  /// No description provided for @qcReplacePolygonReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. boundary corrected on orthophoto'**
+  String get qcReplacePolygonReasonHint;
+
+  /// No description provided for @qcReplacePolygonCorrectedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrected by (required)'**
+  String get qcReplacePolygonCorrectedBy;
+
+  /// No description provided for @qcReplacePolygonTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool'**
+  String get qcReplacePolygonTool;
+
+  /// No description provided for @qcReplacePolygonMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Method'**
+  String get qcReplacePolygonMethod;
+
+  /// No description provided for @qcReplacePolygonMethodHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. manual digitizing on Sentinel-2 imagery'**
+  String get qcReplacePolygonMethodHint;
+
+  /// No description provided for @qcReplacePolygonCorrectedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of correction'**
+  String get qcReplacePolygonCorrectedAt;
+
+  /// No description provided for @qcReplacePolygonSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} features in the file skipped'**
+  String qcReplacePolygonSkipped(int count);
+
+  /// No description provided for @qcReplacePolygonRejectNotPolygon.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a polygon'**
+  String get qcReplacePolygonRejectNotPolygon;
+
+  /// No description provided for @qcReplacePolygonRejectMultiPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Consists of several separate areas'**
+  String get qcReplacePolygonRejectMultiPart;
+
+  /// No description provided for @qcReplacePolygonRejectHoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Contains holes'**
+  String get qcReplacePolygonRejectHoles;
+
+  /// No description provided for @qcReplacePolygonRejectNotWgs84.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in WGS84 - export from QGIS as EPSG:4326'**
+  String get qcReplacePolygonRejectNotWgs84;
+
+  /// No description provided for @qcReplacePolygonRejectTooFewCorners.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer than 3 corners'**
+  String get qcReplacePolygonRejectTooFewCorners;
+
+  /// No description provided for @qcFilterCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get qcFilterCountry;
+
+  /// No description provided for @qcFilterAllCountries.
+  ///
+  /// In en, this message translates to:
+  /// **'All countries'**
+  String get qcFilterAllCountries;
+
+  /// No description provided for @qcFilterRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get qcFilterRegion;
+
+  /// No description provided for @qcFilterAllRegions.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get qcFilterAllRegions;
+
+  /// No description provided for @qcIndexUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The search index is not available - search and filters only cover registrations already loaded.'**
+  String get qcIndexUnavailable;
+
+  /// No description provided for @qcRebuildIndex.
+  ///
+  /// In en, this message translates to:
+  /// **'Build search index'**
+  String get qcRebuildIndex;
+
+  /// No description provided for @qcRebuildIndexInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes all pending registrations so that search and filters also find registrations that are not loaded yet. Needed once after the update; afterwards the cloud keeps the index up to date. This can take a few minutes.'**
+  String get qcRebuildIndexInfo;
+
+  /// No description provided for @qcRebuildIndexStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get qcRebuildIndexStart;
+
+  /// No description provided for @qcRebuildIndexProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Building search index... {count} registrations'**
+  String qcRebuildIndexProgress(int count);
+
+  /// No description provided for @qcRebuildIndexDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Search index built ({count} registrations)'**
+  String qcRebuildIndexDone(int count);
+
+  /// No description provided for @qcRebuildIndexFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not build the search index'**
+  String get qcRebuildIndexFailed;
 }
 
 class _AppLocalizationsDelegate

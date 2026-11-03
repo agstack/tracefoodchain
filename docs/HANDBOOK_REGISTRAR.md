@@ -43,11 +43,30 @@ Every registration then goes into **quality control (QC)** performed by the regi
 | Requirement | Why |
 |---|---|
 | Signed in with the registrar account | Without a sign-in the local data store is not open and nothing can be saved. |
-| **GPS enabled** and location permission granted | Without GPS neither registration nor field recording can be started. |
+| **GPS enabled** and location permission granted | Without GPS neither registration nor field recording can be started. Data is only saved with an accuracy of 20 m or better (chapter 2.1). |
 | Camera permission | The ID photo, consent form photo and field photo are all mandatory. |
 | Charged battery / free storage | Photos stay on the device until they are uploaded. |
 
 > Internet is **not** required for data capture – only for the later upload.
+
+### 2.1 GPS check when saving
+
+So that every record has a reliable location, the app only saves with a GPS position that is accurate to **20 m or better**. This applies to:
+
+- completing a registration (farmer and farm)
+- "Add Farm" in the history (another farm for a farmer)
+- the ID photo, the consent form photo and the field photo
+- every corner point of a field boundary
+
+When you save, and after every photo, the window **"Determining GPS position"** opens and shows the current accuracy: **orange** means not accurate enough yet, **green** means good. Once it is green, the window closes by itself after a few seconds and the data is saved. Outdoors with a clear view of the sky this usually takes only a few seconds.
+
+If the app finds no sufficiently accurate position within about 45 seconds, you can choose **"Retry"** or **"Cancel"**. With "Cancel" nothing is saved; a photo is discarded and has to be taken again. Data already entered in the form is kept.
+
+Tips:
+
+- Photograph the ID and the consent form **outdoors** or right at the door. Inside buildings the GPS signal is usually too weak.
+- Keep away from walls, roofs and dense tree cover.
+- Data capture is meant for a smartphone. A computer can usually not determine an accurate enough position.
 
 ---
 
@@ -87,7 +106,7 @@ Three indicators side by side:
 | ± 3 m (green) | Excellent – below 5 m of error |
 | ± 8 m (light green) | Good – below 10 m |
 | ± 15 m (orange) | Fair – below 20 m |
-| ± 30 m (red) | Poor – field boundaries should not be recorded like this |
+| ± 30 m (red) | Poor – over 20 m; nothing is saved like this (see chapter 2.1) |
 | "No GPS" | Tap to open the instructions for enabling it |
 
 **② Connection** – "Online" (green) or "Offline" (grey). Offline is not an error: you simply keep working.
@@ -190,7 +209,7 @@ The farmer signs the consent form on paper; **the signed form is photographed**.
 | Email | – | contact of the farm |
 | Estimated coffee-planted area | – | number **plus the unit** from the dropdown next to it |
 
-**"Complete Registration"** creates the farmer and the farm.
+**"Complete Registration"** creates the farmer and the farm. Before that, the app determines the GPS position (chapter 2.1); it is saved as the location of the farmer and the farm.
 
 > 📷 **Screenshot 09** – Step 3 with area entry and unit selection.
 >
@@ -245,7 +264,7 @@ Rules when setting points:
 - **At least 3 points** are required – otherwise "At least 3 points required".
 - Two points must be **at least 5 m** apart – otherwise "Point too close to previous point".
 - Before saving, the app asks whether the polygon should be **closed automatically** (last point back to the first). The calculated area is shown.
-- With poor GPS accuracy (red display) it is better to wait a moment until the signal stabilises.
+- A point is only accepted with a GPS accuracy of **20 m or better**. If it is worse, the app rejects the point with a message: stay at the corner for a few seconds until the accuracy display improves, then tap "Add Point" again.
 
 > 📷 **Screenshot 12** – Recording in progress: map with points set, point counter and accuracy display.
 >
@@ -261,7 +280,7 @@ The **Field Photo** is taken via the camera icon in the top bar. The icon carrie
 | 🟢 Check mark | Photo present and valid |
 | 🔴 Cross | Photo invalid – it was taken **outside the polygon** |
 
-The photo must be taken **inside the recorded area** (tolerance 50 m); it serves as proof that the registrar was actually on site.
+The photo must be taken **inside the recorded area** (tolerance 50 m); it serves as proof that the registrar was actually on site. After the photo is taken, the app determines the GPS position (chapter 2.1); without a sufficiently accurate position the photo is discarded.
 
 > 📷 **Screenshot 13** – Field photo dialog with a valid (green) status.
 >
@@ -372,6 +391,10 @@ Hence: **take sharp, complete photos** and write names carefully – every corre
 | "At least 3 points required" | The polygon has too few corner points | Set more points along the field boundary |
 | "Point too close to previous point (min 5m)" | Two points are too close together | Walk a bit further before setting the next point |
 | Field photo marked red | The photo was taken outside the polygon | Stand inside the recorded area and retake the photo (tolerance 50 m) |
+| "No sufficiently accurate GPS position (±20 m) could be determined" | Satellite reception too weak, e.g. inside buildings or under dense tree cover | Go outdoors, keep away from buildings and trees, then tap "Retry" |
+| "Photo discarded: a valid GPS position is required" | GPS check after the photo was cancelled or found no position | Retake the photo outdoors |
+| "Not saved: a valid GPS position is required." | GPS check when saving was cancelled or found no position | Save again outdoors; the data entered in the form is kept |
+| Corner point is rejected, message shows the accuracy | GPS accuracy at this spot is worse than 20 m | Wait a few seconds at the corner and set the point again |
 | "Field must be linked to a farm" | No farm selected | Select a farm, or register one first |
 | "No farms registered yet" | No record exists for this farm yet | Use **"Register Farm"** to create the farmer and farm first |
 | Chip permanently shows "*N* open" | No connection, uploads paused, or an upload error | Open the sync panel: turn pausing off, check the connection, read the error message, tap **"Sync now"** |

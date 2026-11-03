@@ -3314,7 +3314,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Photo not uploaded yet\n(still on the registrar\'s device)';
 
   @override
-  String get qcSearchHint => 'Search name, ID or registrar...';
+  String get qcSearchHint => 'Search name, DNI/ID, place or registrar...';
 
   @override
   String get qcAllRegistrars => 'All registrars';
@@ -3782,4 +3782,208 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get qcNoTerritory =>
       'No territory has been assigned to you yet. Please ask your coordinator.';
+
+  @override
+  String get gpsFixTitle => 'Determining GPS position';
+
+  @override
+  String gpsFixHint(int meters) {
+    return 'Please wait outdoors with a clear view of the sky. Required accuracy: $meters m or better.';
+  }
+
+  @override
+  String gpsFixFailed(int meters) {
+    return 'No sufficiently accurate GPS position (±$meters m) could be determined. Move outdoors, away from buildings and dense trees, and try again.';
+  }
+
+  @override
+  String get gpsSaveBlocked => 'Not saved: a valid GPS position is required.';
+
+  @override
+  String get gpsPhotoDiscarded =>
+      'Photo discarded: a valid GPS position is required. Please take the photo again.';
+
+  @override
+  String get qcCorrectData => 'Correct data';
+
+  @override
+  String qcCorrectionTitle(String name) {
+    return 'Correct: $name';
+  }
+
+  @override
+  String get qcCorrectionInfo =>
+      'Every change is saved as a digitally signed record with your name, the time, the reason and the old and new values.';
+
+  @override
+  String qcCorrectionPreviousValue(String value) {
+    return 'Previously: $value';
+  }
+
+  @override
+  String get qcCorrectionReason => 'Reason for the change (required)';
+
+  @override
+  String get qcCorrectionReasonHint =>
+      'e.g. spelling as on the national ID card';
+
+  @override
+  String get qcPhotoSelected => 'New photo selected';
+
+  @override
+  String get qcPhotoOnRecord => 'On record';
+
+  @override
+  String get qcPhotoNotOnRecord => 'Missing';
+
+  @override
+  String get qcPhotoReplace => 'Replace';
+
+  @override
+  String get qcPhotoUpload => 'Upload';
+
+  @override
+  String get qcPhotoMissing => 'Photo missing - upload it before approving';
+
+  @override
+  String get qcCorrectionSaving => 'Saving correction...';
+
+  @override
+  String get qcCorrectionUploadingPhotos => 'Uploading photos...';
+
+  @override
+  String get qcCorrectionSaved => 'Correction saved';
+
+  @override
+  String get qcCorrectionSaveFailed => 'Could not save the correction';
+
+  @override
+  String get qcReplacePolygonButton => 'Replace with QGIS polygon';
+
+  @override
+  String qcReplacePolygonTitle(String name) {
+    return 'Replace boundary: $name';
+  }
+
+  @override
+  String get qcReplacePolygonApply => 'Apply';
+
+  @override
+  String get qcReplacePolygonInfo =>
+      'Choose a GeoJSON file with the corrected boundary (exported from QGIS in EPSG:4326). The current boundary stays on record in the signed change.';
+
+  @override
+  String get qcReplacePolygonChooseFile => 'Choose GeoJSON file';
+
+  @override
+  String get qcReplacePolygonInvalidFile => 'The file is not valid GeoJSON.';
+
+  @override
+  String get qcReplacePolygonNoUsable => 'The file contains no usable polygon.';
+
+  @override
+  String get qcReplacePolygonFeature => 'Polygon from the file';
+
+  @override
+  String get qcReplacePolygonCurrent => 'Current';
+
+  @override
+  String get qcReplacePolygonNew => 'New';
+
+  @override
+  String get qcReplacePolygonDeviation => 'Change';
+
+  @override
+  String qcReplacePolygonCorners(int count) {
+    return '$count corners';
+  }
+
+  @override
+  String get qcReplacePolygonLargeAreaChange =>
+      'The area changes by more than 50 %. Check that this is the right polygon.';
+
+  @override
+  String get qcReplacePolygonFarAway =>
+      'The new polygon is more than 200 m away from the current one. Check that this is the right polygon.';
+
+  @override
+  String get qcReplacePolygonReasonHint =>
+      'e.g. boundary corrected on orthophoto';
+
+  @override
+  String get qcReplacePolygonCorrectedBy => 'Corrected by (required)';
+
+  @override
+  String get qcReplacePolygonTool => 'Tool';
+
+  @override
+  String get qcReplacePolygonMethod => 'Method';
+
+  @override
+  String get qcReplacePolygonMethodHint =>
+      'e.g. manual digitizing on Sentinel-2 imagery';
+
+  @override
+  String get qcReplacePolygonCorrectedAt => 'Date of correction';
+
+  @override
+  String qcReplacePolygonSkipped(int count) {
+    return '$count features in the file skipped';
+  }
+
+  @override
+  String get qcReplacePolygonRejectNotPolygon => 'Not a polygon';
+
+  @override
+  String get qcReplacePolygonRejectMultiPart =>
+      'Consists of several separate areas';
+
+  @override
+  String get qcReplacePolygonRejectHoles => 'Contains holes';
+
+  @override
+  String get qcReplacePolygonRejectNotWgs84 =>
+      'Not in WGS84 - export from QGIS as EPSG:4326';
+
+  @override
+  String get qcReplacePolygonRejectTooFewCorners => 'Fewer than 3 corners';
+
+  @override
+  String get qcFilterCountry => 'Country';
+
+  @override
+  String get qcFilterAllCountries => 'All countries';
+
+  @override
+  String get qcFilterRegion => 'Region';
+
+  @override
+  String get qcFilterAllRegions => 'All';
+
+  @override
+  String get qcIndexUnavailable =>
+      'The search index is not available - search and filters only cover registrations already loaded.';
+
+  @override
+  String get qcRebuildIndex => 'Build search index';
+
+  @override
+  String get qcRebuildIndexInfo =>
+      'Indexes all pending registrations so that search and filters also find registrations that are not loaded yet. Needed once after the update; afterwards the cloud keeps the index up to date. This can take a few minutes.';
+
+  @override
+  String get qcRebuildIndexStart => 'Start';
+
+  @override
+  String qcRebuildIndexProgress(int count) {
+    return 'Building search index... $count registrations';
+  }
+
+  @override
+  String qcRebuildIndexDone(int count) {
+    return 'Search index built ($count registrations)';
+  }
+
+  @override
+  String get qcRebuildIndexFailed => 'Could not build the search index';
 }

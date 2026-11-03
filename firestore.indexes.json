@@ -1,0 +1,721 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "TFC_methods",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "executor.identity.UID",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "template.RALType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "existenceStarts",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "TFC_methods",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "template.RALType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "existenceStarts",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "TFC_objects",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "objectState",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "template.RALType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "existenceStarts",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "TFC_objects",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "template.RALType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "existenceStarts",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nameKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_qc_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "countryCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrarUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tokens",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "registeredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

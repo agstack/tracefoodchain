@@ -10,6 +10,7 @@ import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../l10n/app_localizations.dart';
 import '../services/firebase_storage_service.dart';
+import '../services/object_correction_service.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
@@ -1320,7 +1321,7 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       }
 
       if (nationalIdPhotoFile != null) {
-        await _replaceLinkedImageByRole(
+        await attachPhotoByRole(
           updated,
           role: 'nationalIDPhoto',
           imageName:
@@ -1331,7 +1332,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
 
       final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(updated))
           as Map<String, dynamic>;
-      await changeObjectData(processedDoc, syncFromCloud: false);
+      await changeObjectData(processedDoc,
+          syncFromCloud: false, changeContext: changeContextRegistrarEdit);
     } else {
       // farm – start from passed doc (already deep-copied)
       doc['identity']['name'] = controllers['farmName']!.text.trim();
@@ -1372,7 +1374,7 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       }
 
       if (consentFormPhotoFile != null) {
-        await _replaceLinkedImageByRole(
+        await attachPhotoByRole(
           doc,
           role: 'consentFormPhoto',
           imageName:
@@ -1382,7 +1384,7 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
       }
 
       if (consentFormPhoto2File != null) {
-        await _replaceLinkedImageByRole(
+        await attachPhotoByRole(
           doc,
           role: 'consentFormPhoto2',
           imageName:
@@ -1393,7 +1395,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
 
       final processedDoc = jsonFullDoubleToInt(sortJsonAlphabetically(doc))
           as Map<String, dynamic>;
-      await changeObjectData(processedDoc, syncFromCloud: false);
+      await changeObjectData(processedDoc,
+          syncFromCloud: false, changeContext: changeContextRegistrarEdit);
     }
   }
 
@@ -1429,41 +1432,6 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
     }
 
     return null;
-  }
-
-  Future<void> _replaceLinkedImageByRole(
-    Map<String, dynamic> doc, {
-    required String role,
-    required String imageName,
-    required XFile file,
-  }) async {
-    // On web the path is a blob URL that cannot be fetched back later, so the
-    // bytes are read here while the file is still accessible.
-    final imageObj = await createImageObject(
-      localPath: file.path,
-      position: null,
-      imageName: imageName,
-      bytes: kIsWeb ? await file.readAsBytes() : null,
-    );
-
-    final processedImage = jsonFullDoubleToInt(sortJsonAlphabetically(imageObj))
-        as Map<String, dynamic>;
-    await generateDigitalSibling(processedImage);
-
-    final newImageUid = getObjectMethodUID(processedImage);
-
-    final linkedRefs = (doc['linkedObjectRef'] as List?) ?? <dynamic>[];
-    linkedRefs.removeWhere((ref) {
-      if (ref is! Map) return false;
-      return ref['RALType']?.toString() == 'image' &&
-          ref['role']?.toString() == role;
-    });
-    linkedRefs.add({
-      'UID': newImageUid,
-      'RALType': 'image',
-      'role': role,
-    });
-    doc['linkedObjectRef'] = linkedRefs;
   }
 
   Future<void> _showEditDialog(

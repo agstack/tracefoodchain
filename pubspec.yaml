@@ -3,7 +3,7 @@ description: Trace Foodchains App for the diasca project
 
 publish_to: 'none'
 
-version: 2.0.0+38
+version: 2.0.1+39
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

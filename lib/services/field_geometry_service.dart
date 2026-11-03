@@ -20,6 +20,8 @@ class FieldGeometryEdit {
     this.movedCorners = 0,
     this.addedCorners = 0,
     this.deletedCorners = 0,
+    this.reason = '',
+    this.description,
   });
 
   final List<LatLng> points;
@@ -28,11 +30,22 @@ class FieldGeometryEdit {
   final int addedCorners;
   final int deletedCorners;
 
+  /// Begründung des Prüfers - geht als changeReason in den signierten Job.
+  final String reason;
+
+  /// Beschreibung der Änderung statt der Eckenzählung - etwa beim Ersetzen
+  /// durch ein Polygon aus einer Datei.
+  final String? description;
+
   bool get hasChanges =>
-      movedCorners > 0 || addedCorners > 0 || deletedCorners > 0;
+      description != null ||
+      movedCorners > 0 ||
+      addedCorners > 0 ||
+      deletedCorners > 0;
 
   /// Landet so in der Objekt-Historie - deshalb englisch, wie alle openRAL-Texte.
   String get summary =>
+      description ??
       '$movedCorners moved, $addedCorners added, $deletedCorners deleted';
 }
 
@@ -49,9 +62,15 @@ class FieldGeometryEdit {
 /// Gibt die geschriebene Objektversion zurück, damit der aufrufende Screen sie
 /// sofort anzeigen kann - der Weg über die Cloud zurück wäre ein Rennen gegen
 /// den asynchronen Sync.
+///
+/// [changeContext] und [jobProperties] gehen in den Job - für das Ersetzen
+/// durch eine extern korrigierte Geometrie etwa
+/// [changeContextExternalGeometryReplacement] mit `externalCorrection`.
 Future<Map<String, dynamic>> saveFieldGeometry({
   required Map<String, dynamic> field,
   required FieldGeometryEdit edit,
+  String changeContext = changeContextQcCorrection,
+  Map<String, dynamic> jobProperties = const {},
 }) async {
   final closed = closeRing(edit.points);
   if (closed.length < 4) {
@@ -88,7 +107,14 @@ Future<Map<String, dynamic>> saveFieldGeometry({
     };
   }
 
-  await changeObjectData(updated, syncFromCloud: false);
+  final reason = edit.reason.trim().isEmpty
+      ? 'Boundary corrected in QC (${edit.summary})'
+      : '${edit.reason.trim()} (${edit.summary})';
+  await changeObjectData(updated,
+      syncFromCloud: false,
+      changeReason: reason,
+      changeContext: changeContext,
+      jobProperties: jobProperties);
 
   await _updateFarmTotalArea(field, previousArea, newArea);
 
@@ -157,7 +183,11 @@ Future<void> _updateFarmTotalArea(
     final updatedFarm = setSpecificPropertyJSON(
         farm, 'totalAreaHa', newTotal < 0 ? 0.0 : newTotal, 'double');
 
-    await changeObjectData(updatedFarm, syncFromCloud: false);
+    await changeObjectData(updatedFarm,
+        syncFromCloud: false,
+        changeReason: 'Total area adjusted after boundary correction of field '
+            '${field['identity']?['name'] ?? field['identity']?['UID']}',
+        changeContext: changeContextQcCorrection);
     debugPrint('Field geometry: farm $farmUid total area '
         '$total -> $newTotal ha');
   } catch (e) {

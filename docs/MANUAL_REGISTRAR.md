@@ -43,11 +43,30 @@ Cada registro pasa después por el **control de calidad (QC)** del coordinador d
 | Requisito | Motivo |
 |---|---|
 | Sesión iniciada con la cuenta de registrador | Sin sesión iniciada el almacenamiento local no está abierto y no se puede guardar nada. |
-| **GPS activado** y permiso de ubicación concedido | Sin GPS no se puede iniciar ni el registro ni la grabación de parcelas. |
+| **GPS activado** y permiso de ubicación concedido | Sin GPS no se puede iniciar ni el registro ni la grabación de parcelas. Solo se guarda con una precisión de 20 m o mejor (capítulo 2.1). |
 | Permiso de cámara | La foto de identificación, la del formulario de consentimiento y la del campo son obligatorias. |
 | Batería cargada / espacio libre | Las fotos permanecen en el dispositivo hasta que se suben. |
 
 > Internet **no** es un requisito para capturar los datos, solo para la subida posterior.
+
+### 2.1 Verificación del GPS al guardar
+
+Para que cada registro tenga una ubicación confiable, la app solo guarda con una posición GPS con una precisión de **20 m o mejor**. Esto se aplica a:
+
+- completar el registro (agricultor y finca)
+- «Agregar finca» en el historial (otra finca de un agricultor)
+- la foto de la identificación, la foto del consentimiento y la foto del campo
+- cada vértice del límite de una parcela
+
+Al guardar, y después de cada foto, se abre la ventana **«Obteniendo posición GPS»**, que muestra la precisión actual: **naranja** significa que todavía no es suficiente, **verde** significa que es buena. En verde, la ventana se cierra sola después de unos segundos y los datos se guardan. Al aire libre, con vista despejada del cielo, esto suele tardar solo unos segundos.
+
+Si la app no encuentra una posición suficientemente precisa en unos 45 segundos, se puede elegir **«Reintentar»** o **«Cancelar»**. Con «Cancelar» no se guarda nada; una foto se descarta y hay que tomarla de nuevo. Los datos ya ingresados en el formulario se conservan.
+
+Consejos:
+
+- Fotografiar la identificación y el consentimiento **al aire libre** o justo en la puerta. Dentro de los edificios la señal GPS suele ser demasiado débil.
+- Mantenerse alejado de paredes, techos y follaje denso.
+- La captura de datos está pensada para el teléfono. Una computadora normalmente no puede determinar una posición suficientemente precisa.
 
 ---
 
@@ -87,7 +106,7 @@ Tres indicadores uno junto al otro:
 | ± 3 m (verde) | Excelente: menos de 5 m de error |
 | ± 8 m (verde claro) | Bueno: menos de 10 m |
 | ± 15 m (naranja) | Aceptable: menos de 20 m |
-| ± 30 m (rojo) | Malo: no se deberían grabar límites de parcela así |
+| ± 30 m (rojo) | Malo: más de 20 m; así no se guarda nada (ver capítulo 2.1) |
 | «Sin GPS» | Tocar abre las indicaciones para activarlo |
 
 **② Conexión** – «En línea» (verde) o «Sin conexión» (gris). Estar sin conexión no es un error: se sigue trabajando con normalidad.
@@ -190,7 +209,7 @@ El agricultor firma el formulario de consentimiento en papel; **el formulario fi
 | Correo electrónico | – | contacto de la finca |
 | Área estimada cultivada con café | – | número **más la unidad** de la lista desplegable contigua |
 
-Con **«Completar Registro»** se crean el agricultor y la finca.
+Con **«Completar Registro»** se crean el agricultor y la finca. Antes, la app determina la posición GPS (capítulo 2.1); se guarda como ubicación del agricultor y de la finca.
 
 > 📷 **Captura 09** – Paso 3 con el área y la selección de unidad.
 >
@@ -245,7 +264,7 @@ Reglas al colocar los puntos:
 - Se requieren **al menos 3 puntos**, de lo contrario: «Se requieren al menos 3 puntos».
 - Dos puntos deben estar separados **al menos 5 m**, de lo contrario: «Punto demasiado cerca del punto anterior».
 - Antes de guardar, la app pregunta si el polígono debe **cerrarse automáticamente** (último punto de vuelta al primero). Se muestra el área calculada.
-- Con mala precisión de GPS (indicador rojo) conviene esperar un momento hasta que la señal se estabilice.
+- Un punto solo se acepta con una precisión de GPS de **20 m o mejor**. Si es peor, la app rechaza el punto con un aviso: quedarse unos segundos en la esquina hasta que mejore el indicador de precisión y volver a tocar «Agregar Punto».
 
 > 📷 **Captura 12** – Grabación en curso: mapa con los puntos, contador de puntos e indicador de precisión.
 >
@@ -261,7 +280,7 @@ La **Foto del Campo** se toma con el icono de cámara de la barra superior. El i
 | 🟢 Marca de verificación | Foto presente y válida |
 | 🔴 Cruz | Foto inválida: fue tomada **fuera del polígono** |
 
-La foto debe tomarse **dentro del área grabada** (tolerancia de 50 m); sirve como prueba de que el registrador estuvo realmente en el sitio.
+La foto debe tomarse **dentro del área grabada** (tolerancia de 50 m); sirve como prueba de que el registrador estuvo realmente en el sitio. Después de tomar la foto, la app determina la posición GPS (capítulo 2.1); sin una posición suficientemente precisa, la foto se descarta.
 
 > 📷 **Captura 13** – Diálogo de la foto del campo con estado válido (verde).
 >
@@ -372,6 +391,10 @@ Por eso: **tomar fotos nítidas y completas** y escribir los nombres con cuidado
 | «Se requieren al menos 3 puntos» | El polígono tiene muy pocos vértices | Colocar más puntos a lo largo del límite de la parcela |
 | «Punto demasiado cerca del punto anterior (mín 5m)» | Dos puntos están demasiado juntos | Caminar un poco más antes de colocar el siguiente punto |
 | Foto del campo marcada en rojo | La foto se tomó fuera del polígono | Situarse dentro del área grabada y repetir la foto (tolerancia de 50 m) |
+| «No se pudo obtener una posición GPS suficientemente precisa (±20 m)» | Recepción satelital demasiado débil, p. ej. dentro de edificios o bajo follaje denso | Salir al aire libre, alejarse de edificios y árboles y tocar «Reintentar» |
+| «Foto descartada: se requiere una posición GPS válida» | La verificación del GPS después de la foto se canceló o no encontró posición | Tomar la foto de nuevo al aire libre |
+| «No guardado: se requiere una posición GPS válida.» | La verificación del GPS al guardar se canceló o no encontró posición | Guardar de nuevo al aire libre; los datos del formulario se conservan |
+| Se rechaza un vértice, el aviso muestra la precisión | La precisión del GPS en ese lugar es peor que 20 m | Esperar unos segundos en la esquina y volver a poner el punto |
 | «El campo debe estar vinculado a una finca» | No se ha seleccionado ninguna finca | Seleccionar una finca o registrar una primero |
 | «Aún no hay fincas registradas» | Todavía no existe un registro para esa finca | Con **«Registrar Finca»** crear primero el agricultor y la finca |
 | El indicador muestra siempre «*N* pend.» | Sin conexión, subida pausada o error de subida | Abrir el panel de sincronización: desactivar la pausa, comprobar la conexión, leer el mensaje de error y pulsar **«Sincronizar ahora»** |

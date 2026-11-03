@@ -10,7 +10,7 @@ import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/excel_farmer_import_objects.dart' show splitSpanishName;
-import '../services/gps_helper.dart';
+import 'gps_fix_dialog.dart';
 import '../services/ihcafe_producer_service.dart';
 import '../services/open_ral_service.dart';
 import '../services/firebase_storage_service.dart';
@@ -111,7 +111,6 @@ class _StepperRegistrarRegistrationState
   void initState() {
     super.initState();
     _initializeAndCheckStorage();
-    _getCurrentPosition();
     _checkIhcafeAvailability();
   }
 
@@ -186,25 +185,6 @@ class _StepperRegistrarRegistrationState
 
   /// Beispiele in den Eingabefeldern stammen aus Honduras.
   bool get _isHonduras => _country == null || _country!.code == 'HN';
-
-  Future<void> _getCurrentPosition() async {
-    try {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        await Geolocator.requestPermission();
-      }
-
-      // Bounded: without a limit this call can hang for the plugin's default
-      // of 24 hours on web, leaving the form without a position and no hint why.
-      final position = await getPositionWithTimeout();
-      if (position != null && mounted) {
-        setState(() => _currentPosition = position);
-      }
-    } catch (e) {
-      debugPrint('Error getting position: $e');
-    }
-  }
 
   void _nextStep() {
     if (_currentStep == 0) {
@@ -285,6 +265,20 @@ class _StepperRegistrarRegistrationState
 
   Future<void> _completeRegistration() async {
     final l10n = AppLocalizations.of(context)!;
+
+    // Farmer and farm get the registrar's position - only save with a valid one.
+    final gps = await requireValidPosition(context);
+    if (!mounted) return;
+    if (!gps.proceed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.gpsSaveBlocked),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    _currentPosition = gps.position;
 
     setState(() {
       _isProcessing = true;
@@ -975,16 +969,23 @@ class _StepperRegistrarRegistrationState
       debugPrint(
           '${isConsentForm ? "Consent Form" : "National ID"} Photo taken: ${photo.path}');
 
-      // Get current GPS position when photo is taken. Bounded via the shared
-      // helper - LocationSettings.timeLimit alone is not honoured on web.
-      final Position? photoPosition =
-          await getPositionWithTimeout(fallback: _currentPosition);
-      if (photoPosition != null) {
-        debugPrint(
-            'Photo GPS: ${photoPosition.latitude}, ${photoPosition.longitude}');
-      } else {
-        debugPrint('Warning: no GPS position for photo');
+      // A photo is only kept with a valid geotag.
+      if (!mounted) return;
+      final gps = await requireValidPosition(context);
+      if (!gps.proceed) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.gpsPhotoDiscarded),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
       }
+      final Position? photoPosition = gps.position;
+      debugPrint(
+          'Photo GPS: ${photoPosition?.latitude}, ${photoPosition?.longitude}');
 
       // Save photo locally for offline access
       if (!kIsWeb) {

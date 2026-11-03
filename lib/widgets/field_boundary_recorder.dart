@@ -10,7 +10,7 @@ import 'package:camera/camera.dart' as camera_plugin;
 import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../services/country_config_service.dart';
-import '../services/gps_helper.dart';
+import 'gps_fix_dialog.dart';
 import '../services/open_ral_service.dart';
 import '../helpers/json_full_double_to_int.dart';
 import '../helpers/sort_json_alphabetically.dart';
@@ -402,13 +402,10 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
     try {
       debugPrint('Field Photo taken: ${photo.path}');
 
-      // Get current GPS position when photo is taken. Bounded - a missing
-      // geotag must not cost the photo.
-      final Position? photoPosition = await getPositionWithTimeout();
-      if (photoPosition != null) {
-        debugPrint(
-            'Photo GPS: ${photoPosition.latitude}, ${photoPosition.longitude}');
-      }
+      // A field photo is only kept with a valid geotag.
+      final gps = await _requirePhotoPosition();
+      if (!gps.proceed) return;
+      final Position? photoPosition = gps.position;
 
       await _saveFieldPhotoWithPosition(photo, photoPosition);
     } catch (e) {
@@ -422,6 +419,22 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
         );
       }
     }
+  }
+
+  /// Waits for a valid fix and tells the user when the photo is discarded
+  /// for lack of one.
+  Future<GpsGateResult> _requirePhotoPosition() async {
+    if (!mounted) return (proceed: false, position: null);
+    final gps = await requireValidPosition(context);
+    if (!gps.proceed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.gpsPhotoDiscarded),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+    return gps;
   }
 
   Future<void> _saveFieldPhotoWithPosition(
@@ -587,14 +600,12 @@ class _FieldBoundaryRecorderState extends State<FieldBoundaryRecorder> {
                               Navigator.of(dialogContext).pop();
                             }
 
-                            // Geotag the photo - bounded, and falling back to
-                            // the position the recorder already knows.
+                            // Geotag the photo - it is only kept with a
+                            // valid position.
                             debugPrint('Fetching GPS position...');
-                            final Position? photoPosition =
-                                await getPositionWithTimeout();
-                            debugPrint(photoPosition != null
-                                ? 'Photo GPS captured: ${photoPosition.latitude}, ${photoPosition.longitude}'
-                                : 'Warning: no GPS position for photo');
+                            final gps = await _requirePhotoPosition();
+                            if (!gps.proceed) return;
+                            final Position? photoPosition = gps.position;
 
                             // Save photo with GPS position AFTER dialog is closed
                             debugPrint('Saving photo... mounted=$mounted');

@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import '../models/country_config.dart';
 import '../providers/app_state.dart';
 import '../services/country_config_service.dart';
-import '../services/gps_helper.dart';
+import '../widgets/gps_fix_dialog.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
 
@@ -81,21 +81,23 @@ class _RegisterAdditionalFarmScreenState
       return;
     }
 
+    // The farm location is the registrar's position - only save with a valid one.
+    final gps = await requireValidPosition(context);
+    if (!mounted) return;
+    if (!gps.proceed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.gpsSaveBlocked),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    final Position? currentPosition = gps.position;
+
     setState(() => _isSaving = true);
 
     try {
-      Position? currentPosition;
-      try {
-        final permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) {
-          await Geolocator.requestPermission();
-        }
-        currentPosition = await getPositionWithTimeout();
-      } catch (_) {
-        currentPosition = null;
-      }
-
       final farmUID = const Uuid().v4();
       Map<String, dynamic> farm = await getOpenRALTemplate('farm');
       setObjectMethodUID(farm, farmUID);
