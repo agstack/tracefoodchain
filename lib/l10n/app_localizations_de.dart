@@ -3518,6 +3518,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get qcApprovedByYouHint => 'Von dir in der QC freigegebene Felder';
 
   @override
+  String qcApprovedInAreaTotal(String count, String area) {
+    return '$count QC-geprüfte Felder in deinem Gebiet ($area)';
+  }
+
+  @override
+  String qcApprovedInAreaHint(String area) {
+    return 'QC-geprüfte Felder in deinem Gebiet ($area)';
+  }
+
+  @override
+  String get qcApprovedPerReviewer =>
+      'Freigaben je Prüfer im gewählten Zeitraum - antippen zum Filtern';
+
+  @override
+  String qcApprovedBy(String name) {
+    return 'In der QC freigegeben von $name';
+  }
+
+  @override
   String get noFarmAssigned => 'Keine Farm zugeordnet';
 
   @override

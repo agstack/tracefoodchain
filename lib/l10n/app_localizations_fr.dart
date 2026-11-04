@@ -3545,6 +3545,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get qcApprovedByYouHint => 'Champs que vous avez validés en QC';
 
   @override
+  String qcApprovedInAreaTotal(String count, String area) {
+    return '$count champs validés QC dans votre zone ($area)';
+  }
+
+  @override
+  String qcApprovedInAreaHint(String area) {
+    return 'Champs validés QC dans votre zone ($area)';
+  }
+
+  @override
+  String get qcApprovedPerReviewer =>
+      'Validés par contrôleur sur la période choisie - toucher pour filtrer';
+
+  @override
+  String qcApprovedBy(String name) {
+    return 'Validé en QC par $name';
+  }
+
+  @override
   String get noFarmAssigned => 'Aucune ferme associée';
 
   @override

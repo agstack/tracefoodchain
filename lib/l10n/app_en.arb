@@ -2312,6 +2312,34 @@
     }
   },
   "qcApprovedByYouHint": "Fields you approved in QC",
+  "qcApprovedInAreaTotal": "{count} QC-approved fields in your area ({area})",
+  "@qcApprovedInAreaTotal": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "qcApprovedInAreaHint": "QC-approved fields in your area ({area})",
+  "@qcApprovedInAreaHint": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "qcApprovedPerReviewer": "Approved per reviewer in the selected period - tap to filter",
+  "qcApprovedBy": "QC approved by {name}",
+  "@qcApprovedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "noFarmAssigned": "No farm assigned",
   "noFarmerAssigned": "No farmer assigned",
   "loadingFarmAssignments": "Loading farm and farmer assignments...",

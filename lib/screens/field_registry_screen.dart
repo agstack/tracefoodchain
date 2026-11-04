@@ -12,7 +12,11 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as excel;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:trace_foodchain_app/main.dart';
+import 'package:trace_foodchain_app/models/country_config.dart';
+import 'package:trace_foodchain_app/models/user_scope.dart';
 import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
+import 'package:trace_foodchain_app/services/country_config_service.dart';
+import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
@@ -89,6 +93,21 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   final Set<String> _qcSeenUids = {};
   final Map<String, Map<String, dynamic>> _objectCache = {};
 
+  /// Gebiet der QC-Ansicht; null heißt: alle Freigaben (view_all_qc_fields)
+  /// oder, ohne zugewiesenes Gebiet, nur die eigenen.
+  UserScope? _qcScope;
+
+  /// Prüfer, deren Freigaben die QC-Ansicht abfragt; null = alle.
+  List<String>? _qcApproverUids;
+
+  /// Wer ein Feld zuletzt in der QC freigegeben hat, je Feld-UID.
+  final Map<String, ({String uid, String name})> _qcApprovalOf = {};
+
+  /// Freigaben je Prüfer im gewählten Zeitraum, im Gebiet der Ansicht.
+  Map<String, ({String name, int count})>? _qcByApprover;
+  String? _qcApproverFilter;
+  int _qcStatsGeneration = 0;
+
   // Progress tracking variables
   bool showProgressOverlay = false;
   String currentProgressStep = '';
@@ -157,12 +176,14 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       registeredFields = [];
       filteredFields = [];
       _qcSeenUids.clear();
+      _qcApprovalOf.clear();
+      _qcByApprover = null;
       _objectCache.clear();
     });
 
     final l10n = AppLocalizations.of(context)!;
     _setLoadingStatus(l10n.loadingConnectingCloud);
-    unawaited(_loadQcTotal());
+    unawaited(_loadQcStats());
 
     try {
       final result = await _fetchFieldsPage(
@@ -240,6 +261,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       registeredFields = [];
       filteredFields = [];
       _qcSeenUids.clear();
+      _qcApprovalOf.clear();
       _objectCache.clear();
     });
     _setLoadingStatus(l10n.loadingConnectingCloud);
@@ -263,36 +285,187 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     }
   }
 
-  /// Gesamtzahl aller freigegebenen Felder, unabhängig vom Datumsfilter.
+  /// Zahlen zur QC-Ansicht: alle freigegebenen Felder (ohne Datumsfilter)
+  /// und die Freigaben je Prüfer im gewählten Zeitraum - beides im Gebiet
+  /// der Ansicht.
   ///
-  /// Nur für Rollen, die alle Freigaben sehen. Gezählt wird wie in der Liste
-  /// über die freigebenden QC-Jobs - `objectState == 'active'` allein trifft
-  /// auch Felder, die nie durch die QC gegangen sind. Dafür müssen alle
-  /// QC-Jobs und die freigegebenen Felder geladen werden; die Felder landen
-  /// im Zwischenspeicher und kosten die Liste danach nichts mehr.
-  Future<void> _loadQcTotal() async {
-    if (!_qcView ||
-        !PermissionService().hasPermission('view_all_qc_fields')) {
-      return;
-    }
+  /// Gezählt wird wie in der Liste über die freigebenden QC-Jobs -
+  /// `objectState == 'active'` allein trifft auch Felder, die nie durch die
+  /// QC gegangen sind. Dafür müssen alle QC-Jobs der Prüfer und die
+  /// freigegebenen Felder geladen werden; die Felder landen im
+  /// Zwischenspeicher und kosten die Liste danach nichts mehr.
+  Future<void> _loadQcStats() async {
+    if (!_qcView) return;
+    final generation = ++_qcStatsGeneration;
     try {
-      final uids = <String>{};
+      await _ensureQcApprovers();
+      final (fromDate, toDate) = _getDateRangeForFilter();
+
+      // Neueste Freigabe je Feld - die Jobs kommen neueste zuerst.
+      final approvals = <String, ({String uid, String name, bool inPeriod})>{};
       QueryDocumentSnapshot? cursor;
       bool exhausted = false;
       while (!exhausted) {
-        final snapshot = await _qcMethodsPage(null, cursor);
+        final snapshot = await _qcMethodsPage(_qcApproverUids, cursor);
+        if (generation != _qcStatsGeneration) return;
         if (snapshot.docs.length < _qcMethodPageSize) exhausted = true;
         if (snapshot.docs.isNotEmpty) cursor = snapshot.docs.last;
         for (final doc in snapshot.docs) {
-          uids.addAll(_approvedFieldUids(doc.data() as Map<String, dynamic>));
+          final method = doc.data() as Map<String, dynamic>;
+          final approver = _approverOf(method);
+          final inPeriod =
+              _isInDateRange(method['existenceStarts'], fromDate, toDate);
+          for (final uid in _approvedFieldUids(method)) {
+            approvals.putIfAbsent(
+                uid,
+                () => (
+                      uid: approver.uid,
+                      name: approver.name,
+                      inPeriod: inPeriod
+                    ));
+          }
         }
       }
-      final objects = await _fetchObjectsByUid(uids);
-      final total = objects.values.where(_isListedField).length;
-      if (mounted && _qcView) setState(() => _qcTotal = total);
+
+      final objects = await _fetchObjectsByUid(approvals.keys);
+      final listed = {
+        for (final e in objects.entries)
+          if (_isListedField(e.value)) e.key: e.value,
+      };
+      await _prefetchFarmsAndFarmers(listed.values);
+
+      int total = 0;
+      final byApprover = <String, ({String name, int count})>{};
+      for (final e in listed.entries) {
+        if (!_inQcScope(e.value)) continue;
+        total++;
+        final approval = approvals[e.key];
+        if (approval == null || !approval.inPeriod) continue;
+        final count = byApprover[approval.uid]?.count ?? 0;
+        byApprover[approval.uid] = (name: approval.name, count: count + 1);
+      }
+
+      if (!mounted || !_qcView || generation != _qcStatsGeneration) return;
+      setState(() {
+        _qcTotal = total;
+        _qcByApprover = byApprover;
+        if (!byApprover.containsKey(_qcApproverFilter)) {
+          _qcApproverFilter = null;
+          _applySearchFilter();
+        }
+      });
     } catch (e) {
-      debugPrint('QC-Gesamtzahl nicht ladbar: $e');
+      debugPrint('QC-Zahlen nicht ladbar: $e');
     }
+  }
+
+  Future<void>? _qcApproversLoading;
+
+  Future<void> _ensureQcApprovers() =>
+      _qcApproversLoading ??= _loadQcApprovers();
+
+  /// Legt fest, wessen Freigaben die QC-Ansicht zeigt: mit view_all_qc_fields
+  /// alle, sonst die aller Prüfer, deren Gebiet sich mit dem eigenen
+  /// überschneidet - und davon nur Felder im eigenen Gebiet. So sehen sich
+  /// Koordinatoren verschiedener Teams in einem Departamento gegenseitig.
+  /// Ohne zugewiesenes Gebiet bleibt es bei den eigenen Freigaben.
+  Future<void> _loadQcApprovers() async {
+    if (PermissionService().hasPermission('view_all_qc_fields')) return;
+    final ownUid = appUserDoc?["identity"]["UID"] as String?;
+    if (ownUid == null) throw Exception('User not authenticated');
+    _qcApproverUids = [ownUid];
+
+    final scope = RoleManagementService().currentUserScope();
+    if (scope == null || scope.isEmpty) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('TFC_user_assignments')
+          .where('role',
+              whereIn: PermissionService.featurePermissions['qc_review'])
+          .get();
+      final uids = {ownUid};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        // Globale Rollen tragen kein Gebiet und prüfen überall.
+        if (RoleManagementService.globalRoles.contains(data['role']) ||
+            UserScope.fromJson(data['scope']).overlaps(scope)) {
+          uids.add(doc.id);
+        }
+      }
+      // Mehr als 30 Prüfer passen nicht in ein whereIn - dann alle Freigaben
+      // abfragen; das Gebiet filtert ohnehin.
+      _qcApproverUids = uids.length <= 30 ? uids.toList() : null;
+      _qcScope = scope;
+    } catch (e) {
+      debugPrint('QC-Prüfer im Gebiet nicht ladbar, nur eigene Freigaben: $e');
+    }
+  }
+
+  /// Wer einen QC-Job ausgeführt hat - Name, sonst E-Mail, sonst UID.
+  ({String uid, String name}) _approverOf(Map<String, dynamic> method) {
+    final executor = method['executor'];
+    final identity = executor is Map ? executor['identity'] : null;
+    final uid = (identity is Map ? identity['UID'] : null)?.toString() ?? '';
+    var name =
+        (identity is Map ? identity['name'] : null)?.toString().trim() ?? '';
+    if (name.isEmpty && executor is Map) {
+      final email = executor['email']?.toString().trim() ??
+          getSpecificPropertyfromJSON(
+                  Map<String, dynamic>.from(executor), 'email')
+              ?.toString()
+              .trim() ??
+          '';
+      if (email.isNotEmpty && email != '-no data found-') name = email;
+    }
+    return (uid: uid, name: name.isNotEmpty ? name : uid);
+  }
+
+  /// Lädt Farmen und Farmer der Felder in den Zwischenspeicher - für die
+  /// Gebietsprüfung, die ihre Adresse braucht.
+  Future<void> _prefetchFarmsAndFarmers(
+      Iterable<Map<String, dynamic>> fields) async {
+    if (_qcScope == null) return;
+    final farms = await _fetchObjectsByUid([
+      for (final field in fields)
+        if (farmUidOfField(field) case final uid?) uid,
+    ]);
+    await _fetchObjectsByUid([
+      for (final farm in farms.values)
+        if (ownerUidOfFarm(farm) case final uid?) uid,
+    ]);
+  }
+
+  /// Ob ein freigegebenes Feld im Gebiet der QC-Ansicht liegt. Land und
+  /// oberste Verwaltungsebene stehen an der Farm, sonst am Farmer; wie im
+  /// QC-Screen zählt ein Feld ohne lesbare Region zum Land.
+  bool _inQcScope(Map<String, dynamic> field) {
+    final scope = _qcScope;
+    if (scope == null) return true;
+    final farmUid = farmUidOfField(field);
+    final farm = farmUid != null ? _objectCache[farmUid] : null;
+    final ownerUid = farm != null ? ownerUidOfFarm(farm) : null;
+    final farmer = ownerUid != null ? _objectCache[ownerUid] : null;
+
+    String address(String key) {
+      for (final obj in [farm, farmer, field]) {
+        final v = obj?['currentGeolocation']?['postalAddress']?[key]
+                ?.toString()
+                .trim() ??
+            '';
+        if (v.isNotEmpty && v != 'unknown') return v;
+      }
+      return '';
+    }
+
+    final code = countryConfigService.resolve(address('country'))?.code;
+    // Ohne Land entscheidet der Prüfer - und der liegt im Gebiet.
+    if (code == null) return true;
+    final entry = scope.entryFor(code);
+    if (entry == null) return false;
+    if (entry.wholeCountry) return true;
+    final state = address('stateName');
+    return state.isEmpty ||
+        entry.regions.any((r) => CountryConfig.sameRegion(r, state));
   }
 
   void _setQcView(bool qcView) {
@@ -300,8 +473,60 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     setState(() {
       _qcView = qcView;
       _qcTotal = null;
+      _qcByApprover = null;
+      _qcApproverFilter = null;
     });
     _loadRegisteredFields();
+  }
+
+  /// Kopfzeile der QC-Ansicht: Gesamtzahl, im Gebiet oder insgesamt.
+  String _qcHeadline(AppLocalizations l10n) {
+    final scope = _qcScope;
+    final total = _qcTotal;
+    if (scope != null) {
+      return total != null
+          ? l10n.qcApprovedInAreaTotal(total.toString(), scope.label)
+          : l10n.qcApprovedInAreaHint(scope.label);
+    }
+    if (PermissionService().hasPermission('view_all_qc_fields')) {
+      return total != null ? l10n.qcApprovedFieldsTotal(total.toString()) : '';
+    }
+    return l10n.qcApprovedByYouHint;
+  }
+
+  /// Freigaben je Prüfer im gewählten Zeitraum; ein Chip filtert die Liste
+  /// auf diesen Prüfer.
+  Widget _buildApproverChips(AppLocalizations l10n) {
+    final entries = _qcByApprover!.entries.toList()
+      ..sort((a, b) => b.value.count.compareTo(a.value.count));
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.qcApprovedPerReviewer,
+            style: TextStyle(color: Colors.grey[700], fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final e in entries)
+                FilterChip(
+                  label: Text('${e.value.name} · ${e.value.count}'),
+                  selected: _qcApproverFilter == e.key,
+                  onSelected: (selected) => setState(() {
+                    _qcApproverFilter = selected ? e.key : null;
+                    _applySearchFilter();
+                  }),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildAssignmentLine(IconData icon, String? name, String missingText) {
@@ -486,14 +711,17 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   /// Sortiert wird die ganze geladene Liste, nicht seitenweise - sonst stünde
   /// nach "Mehr laden" ein neueres Feld unter einem älteren der ersten Seite.
   void _applySearchFilter() {
-    if (_searchQuery.isNotEmpty) {
-      filteredFields = registeredFields.where((field) {
-        final name = (field["name"] as String? ?? '').toLowerCase();
-        return name.contains(_searchQuery);
-      }).toList();
-    } else {
-      filteredFields = List.from(registeredFields);
-    }
+    final approver = _qcView ? _qcApproverFilter : null;
+    filteredFields = registeredFields.where((field) {
+      if (approver != null &&
+          (field["qcApproval"] as ({String uid, String name})?)?.uid !=
+              approver) {
+        return false;
+      }
+      if (_searchQuery.isEmpty) return true;
+      final name = (field["name"] as String? ?? '').toLowerCase();
+      return name.contains(_searchQuery);
+    }).toList();
     filteredFields.sort(_compareFields);
   }
 
@@ -568,20 +796,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
       List<Map<String, dynamic>> objects;
       if (_qcView) {
-        // Alle Freigaben sehen nur Rollen mit view_all_qc_fields, ein
-        // registrarCoordinator nur seine eigenen.
-        final executorUID =
-            permissionService.hasPermission('view_all_qc_fields')
-                ? null
-                : appUserDoc?["identity"]["UID"] as String?;
-        if (executorUID == null &&
-            !permissionService.hasPermission('view_all_qc_fields')) {
-          throw Exception('User not authenticated');
-        }
+        await _ensureQcApprovers();
         (objects, lastDocument, hasMore) = await _fetchQcApprovedFieldObjects(
-            executorUID: executorUID,
-            limit: limit,
-            startAfterDoc: startAfterDoc);
+            limit: limit, startAfterDoc: startAfterDoc);
       } else {
         (objects, lastDocument, hasMore) = await _fetchFieldObjects(
             isSuperAdmin: isSuperAdmin,
@@ -594,7 +811,9 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       for (final fieldData in objects) {
         try {
           if (!_isListedField(fieldData)) continue;
-          fields.add(_fieldEntryFrom(fieldData));
+          final entry = _fieldEntryFrom(fieldData);
+          if (_qcView) entry["qcApproval"] = _qcApprovalOf[entry["uid"]];
+          fields.add(entry);
         } catch (e) {
           debugPrint("❌ CRITICAL ERROR processing field: $e");
         }
@@ -722,8 +941,8 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     );
   }
 
-  /// QC-Ansicht: die Felder, die ein QC-Job freigegeben hat - mit
-  /// [executorUID] nur die Freigaben dieses Prüfers, sonst alle.
+  /// QC-Ansicht: die Felder, die die Prüfer aus [_qcApproverUids] (null =
+  /// alle) freigegeben haben und die im Gebiet der Ansicht liegen.
   ///
   /// Am Feld steht nicht, ob und von wem es geprüft wurde - das weiß nur der
   /// QC-Job. Geblättert wird deshalb über die QC-Jobs, neueste zuerst; der
@@ -732,7 +951,6 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
   /// weitergesucht, bis eine Seite Felder zusammenkommt.
   Future<(List<Map<String, dynamic>>, QueryDocumentSnapshot?, bool)>
       _fetchQcApprovedFieldObjects({
-    String? executorUID,
     int? limit,
     QueryDocumentSnapshot? startAfterDoc,
   }) async {
@@ -746,7 +964,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     while (!exhausted &&
         (limit == null || (objects.length < limit && rounds < 5))) {
       rounds++;
-      final snapshot = await _qcMethodsPage(executorUID, cursor);
+      final snapshot = await _qcMethodsPage(_qcApproverUids, cursor);
       if (snapshot.docs.length < _qcMethodPageSize) exhausted = true;
       if (snapshot.docs.isNotEmpty) cursor = snapshot.docs.last;
 
@@ -756,30 +974,39 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         if (!_isInDateRange(method['existenceStarts'], fromDate, toDate)) {
           continue;
         }
+        final approver = _approverOf(method);
         for (final uid in _approvedFieldUids(method)) {
-          if (_qcSeenUids.add(uid)) newUids.add(uid);
+          if (_qcSeenUids.add(uid)) {
+            newUids.add(uid);
+            _qcApprovalOf[uid] = approver;
+          }
         }
       }
 
       final fetched = await _fetchObjectsByUid(newUids);
-      objects.addAll(fetched.values.where(_isListedField));
+      final listed = fetched.values.where(_isListedField).toList();
+      await _prefetchFarmsAndFarmers(listed);
+      objects.addAll(listed.where(_inQcScope));
     }
 
     return (objects, cursor, !exhausted);
   }
 
-  /// Eine Seite QC-Jobs - mit [executorUID] nur die dieses Prüfers.
+  /// Eine Seite QC-Jobs - mit [executorUids] nur die dieser Prüfer
+  /// (höchstens 30).
   ///
   /// Die Datumsfilterung passiert im Client: existenceStarts steht an älteren
   /// Methoden als Timestamp, an neueren als String - ein Bereichsfilter in der
   /// Abfrage träfe nur eine der beiden Sorten.
   Future<QuerySnapshot> _qcMethodsPage(
-      String? executorUID, QueryDocumentSnapshot? cursor) async {
+      List<String>? executorUids, QueryDocumentSnapshot? cursor) async {
     Query query = FirebaseFirestore.instance
         .collection('TFC_methods')
         .where('template.RALType', isEqualTo: 'performQualityControl');
-    if (executorUID != null) {
-      query = query.where('executor.identity.UID', isEqualTo: executorUID);
+    if (executorUids != null) {
+      query = executorUids.length == 1
+          ? query.where('executor.identity.UID', isEqualTo: executorUids.first)
+          : query.where('executor.identity.UID', whereIn: executorUids);
     }
 
     if (!_qcMethodsUnordered) {
@@ -794,7 +1021,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         // weiter. Ein Cursor aus der sortierten Abfrage passt dann nicht mehr.
         debugPrint('QC-Methoden-Query ohne Index, Fallback: $e');
         _qcMethodsUnordered = true;
-        if (cursor != null) return _qcMethodsPage(executorUID, null);
+        if (cursor != null) return _qcMethodsPage(executorUids, null);
       }
     }
 
@@ -2111,19 +2338,15 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            PermissionService()
-                                    .hasPermission('view_all_qc_fields')
-                                ? (_qcTotal != null
-                                    ? l10n.qcApprovedFieldsTotal(
-                                        _qcTotal.toString())
-                                    : '')
-                                : l10n.qcApprovedByYouHint,
+                            _qcHeadline(l10n),
                             style: TextStyle(
                               color: Colors.grey[800],
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
+                      if (_qcView && (_qcByApprover?.isNotEmpty ?? false))
+                        _buildApproverChips(l10n),
                     ],
                   ),
                 ),
@@ -2294,6 +2517,15 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
                                             Icons.person,
                                             field["farmerName"] as String?,
                                             l10n.noFarmerAssigned),
+                                        if (field["qcApproval"]
+                                            case ({
+                                              String uid,
+                                              String name
+                                            }) approval)
+                                          _buildAssignmentLine(
+                                              Icons.verified_user,
+                                              l10n.qcApprovedBy(approval.name),
+                                              ''),
                                         if (field["registrationDate"] != null)
                                           Container(
                                             margin:

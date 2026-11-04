@@ -3477,6 +3477,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qcApprovedByYouHint => 'Fields you approved in QC';
 
   @override
+  String qcApprovedInAreaTotal(String count, String area) {
+    return '$count QC-approved fields in your area ($area)';
+  }
+
+  @override
+  String qcApprovedInAreaHint(String area) {
+    return 'QC-approved fields in your area ($area)';
+  }
+
+  @override
+  String get qcApprovedPerReviewer =>
+      'Approved per reviewer in the selected period - tap to filter';
+
+  @override
+  String qcApprovedBy(String name) {
+    return 'QC approved by $name';
+  }
+
+  @override
   String get noFarmAssigned => 'No farm assigned';
 
   @override

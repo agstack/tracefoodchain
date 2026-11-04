@@ -6150,6 +6150,30 @@ abstract class AppLocalizations {
   /// **'Fields you approved in QC'**
   String get qcApprovedByYouHint;
 
+  /// No description provided for @qcApprovedInAreaTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} QC-approved fields in your area ({area})'**
+  String qcApprovedInAreaTotal(String count, String area);
+
+  /// No description provided for @qcApprovedInAreaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'QC-approved fields in your area ({area})'**
+  String qcApprovedInAreaHint(String area);
+
+  /// No description provided for @qcApprovedPerReviewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved per reviewer in the selected period - tap to filter'**
+  String get qcApprovedPerReviewer;
+
+  /// No description provided for @qcApprovedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'QC approved by {name}'**
+  String qcApprovedBy(String name);
+
   /// No description provided for @noFarmAssigned.
   ///
   /// In en, this message translates to:
