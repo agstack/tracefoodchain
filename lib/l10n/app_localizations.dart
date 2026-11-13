@@ -7055,6 +7055,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not build the search index'**
   String get qcRebuildIndexFailed;
+
+  /// No description provided for @ihmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'IHCafé matching (experimental)'**
+  String get ihmTitle;
+
+  /// No description provided for @ihmIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches QC-approved farms against the IHCafé export and sets the IHCafé IDs as alternateIDs (farmer: clave + productor_id, farm: finca_id). The dry run writes nothing and logs every decision.'**
+  String get ihmIntro;
+
+  /// No description provided for @ihmStepSource.
+  ///
+  /// In en, this message translates to:
+  /// **'1 · IHCafé export'**
+  String get ihmStepSource;
+
+  /// No description provided for @ihmLoadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Load file (.zip/.json)'**
+  String get ihmLoadFile;
+
+  /// No description provided for @ihmUseStored.
+  ///
+  /// In en, this message translates to:
+  /// **'Use stored directory'**
+  String get ihmUseStored;
+
+  /// No description provided for @ihmSourceNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing loaded yet'**
+  String get ihmSourceNone;
+
+  /// No description provided for @ihmSourceLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} producers · {source}'**
+  String ihmSourceLoaded(int count, String source);
+
+  /// No description provided for @ihmInMemoryOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'in memory only, not stored'**
+  String get ihmInMemoryOnly;
+
+  /// No description provided for @ihmStepFarms.
+  ///
+  /// In en, this message translates to:
+  /// **'2 · QC-approved farms'**
+  String get ihmStepFarms;
+
+  /// No description provided for @ihmLoadFarms.
+  ///
+  /// In en, this message translates to:
+  /// **'Load farms'**
+  String get ihmLoadFarms;
+
+  /// No description provided for @ihmFarmsLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} farms loaded'**
+  String ihmFarmsLoaded(int count);
+
+  /// No description provided for @ihmStepRun.
+  ///
+  /// In en, this message translates to:
+  /// **'3 · Matching'**
+  String get ihmStepRun;
+
+  /// No description provided for @ihmRunMatching.
+  ///
+  /// In en, this message translates to:
+  /// **'Run matching'**
+  String get ihmRunMatching;
+
+  /// No description provided for @ihmDryRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Dry run (write nothing)'**
+  String get ihmDryRun;
+
+  /// No description provided for @ihmApplyLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Write for:'**
+  String get ihmApplyLevels;
+
+  /// No description provided for @ihmApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Write {count} matches'**
+  String ihmApply(int count);
+
+  /// No description provided for @ihmApplyConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write IHCafé IDs?'**
+  String get ihmApplyConfirmTitle;
+
+  /// No description provided for @ihmApplyConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{matches} matches are written as signed changeObjectData jobs ({objects} objects). This cannot be undone automatically.'**
+  String ihmApplyConfirmBody(int matches, int objects);
+
+  /// No description provided for @ihmTabLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log'**
+  String get ihmTabLog;
+
+  /// No description provided for @ihmTabResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get ihmTabResults;
+
+  /// No description provided for @ihmExportLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Export log'**
+  String get ihmExportLog;
+
+  /// No description provided for @ihmExportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export results as CSV'**
+  String get ihmExportCsv;
+
+  /// No description provided for @ihmStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get ihmStop;
+
+  /// No description provided for @ihmAllLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ihmAllLevels;
+
+  /// No description provided for @ihmNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet.'**
+  String get ihmNoResults;
+
+  /// No description provided for @ihmWillWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'writes'**
+  String get ihmWillWrite;
+
+  /// No description provided for @ihmNothingToWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'nothing to write'**
+  String get ihmNothingToWrite;
+
+  /// No description provided for @ihmLevelAlreadyLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Already linked'**
+  String get ihmLevelAlreadyLinked;
+
+  /// No description provided for @ihmLevelDni.
+  ///
+  /// In en, this message translates to:
+  /// **'DNI'**
+  String get ihmLevelDni;
+
+  /// No description provided for @ihmLevelDniNameMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'DNI, name differs'**
+  String get ihmLevelDniNameMismatch;
+
+  /// No description provided for @ihmLevelNameMunicipio.
+  ///
+  /// In en, this message translates to:
+  /// **'Name + municipio'**
+  String get ihmLevelNameMunicipio;
+
+  /// No description provided for @ihmLevelNameFuzzy.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar name'**
+  String get ihmLevelNameFuzzy;
+
+  /// No description provided for @ihmLevelNameOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Name only'**
+  String get ihmLevelNameOnly;
+
+  /// No description provided for @ihmLevelConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflict'**
+  String get ihmLevelConflict;
+
+  /// No description provided for @ihmLevelAmbiguous.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambiguous'**
+  String get ihmLevelAmbiguous;
+
+  /// No description provided for @ihmLevelDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get ihmLevelDuplicate;
+
+  /// No description provided for @ihmLevelOutOfScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside export'**
+  String get ihmLevelOutOfScope;
+
+  /// No description provided for @ihmLevelNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No match'**
+  String get ihmLevelNone;
+
+  /// No description provided for @qcPreviewTapForMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview without map · tap for satellite map'**
+  String get qcPreviewTapForMap;
+
+  /// No description provided for @qcFarmOverviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm overview'**
+  String get qcFarmOverviewTitle;
+
+  /// No description provided for @qcLoadSatelliteMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Load satellite map'**
+  String get qcLoadSatelliteMap;
 }
 
 class _AppLocalizationsDelegate

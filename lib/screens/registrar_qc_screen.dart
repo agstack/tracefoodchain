@@ -30,6 +30,7 @@ import '../helpers/field_download_helper.dart';
 import '../helpers/qc_search_tokens.dart';
 import '../widgets/data_loading_indicator.dart';
 import '../widgets/ihcafe_producer_widgets.dart';
+import 'ihcafe_matching_screen.dart';
 import '../services/field_geometry_service.dart';
 import '../services/object_correction_service.dart';
 import '../services/permission_service.dart';
@@ -39,6 +40,7 @@ import '../widgets/map_type_selector.dart';
 import '../widgets/qc_correction_dialog.dart';
 import '../widgets/qc_polygon_replace_page.dart';
 import '../widgets/qc_overview_map.dart';
+import '../widgets/qc_shape_preview.dart';
 import '../utils/gps_quality.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
@@ -1859,6 +1861,19 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             tooltip: l10n.ihcafeDirectoryTitle,
             onPressed: _showIhcafeDirectory,
           ),
+          // Experimentell: QC-geprüfte Farmen mit dem IHCafe-Export abgleichen.
+          if (const {
+            'SUPERADMIN',
+            'tfcAdmin',
+            'countryCoordinator',
+            'registrarCoordinator',
+          }.contains(RoleManagementService().getCurrentUserRole()))
+            IconButton(
+              icon: const Icon(Icons.science_outlined),
+              tooltip: l10n.ihmTitle,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const IhcafeMatchingScreen())),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadPendingRegistrations,
@@ -2173,21 +2188,28 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       for (final field in bundle.pendingFields) {
         final uid = _QcBundle.uidOf(field);
         if (uid.isEmpty || !seen.add(uid)) continue;
-        final points = _getBoundariesFromObject(field);
-        if (points == null || points.length < 3) continue;
-
-        final area = getSpecificPropertyfromJSON(field, 'area');
-        result.add(QcMapPolygon(
-          uid: uid,
-          name: field['identity']?['name']?.toString() ?? bundle.name,
-          points: points,
-          accuracies: _getBoundaryAccuracies(field),
-          registrarName: bundle.registrarName,
-          areaHa: (area is num) ? area.toDouble() : null,
-        ));
+        final polygon = _qcMapPolygonFor(bundle, field);
+        if (polygon != null) result.add(polygon);
       }
     }
     return result;
+  }
+
+  /// Kartenpolygon eines Felds, oder null ohne verwertbare Boundaries.
+  QcMapPolygon? _qcMapPolygonFor(_QcBundle bundle, Map<String, dynamic> field) {
+    final uid = _QcBundle.uidOf(field);
+    final points = _getBoundariesFromObject(field);
+    if (uid.isEmpty || points == null || points.length < 3) return null;
+
+    final area = getSpecificPropertyfromJSON(field, 'area');
+    return QcMapPolygon(
+      uid: uid,
+      name: field['identity']?['name']?.toString() ?? bundle.name,
+      points: points,
+      accuracies: _getBoundaryAccuracies(field),
+      registrarName: bundle.registrarName,
+      areaHa: (area is num) ? area.toDouble() : null,
+    );
   }
 
   /// Springt aus der Übersichtskarte zur Prüfung des Bündels in der Liste.
@@ -2763,6 +2785,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               children: [
                 if (bundle.farm == null)
                   _buildHintLine(Icons.link_off, l10n.qcNoLinkedFarm),
+                _buildBundleMapSection(bundle),
                 if (bundle.farmer != null)
                   _buildMemberSection(
                     bundle,
@@ -3890,37 +3913,75 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return points.isNotEmpty ? points : null;
   }
 
-  /// Erstellt eine kleine Map-Vorschau für die Card
+  /// Farbe eines Punktobjekts in Vorschau und Karte - wie die Icons der
+  /// Abschnitte (Farmer blau, Farm grün).
+  Color _pointColorFor(Map<String, dynamic> obj) {
+    switch (obj['template']?['RALType']) {
+      case 'human':
+        return Colors.blue;
+      case 'farm':
+        return Colors.green;
+      default:
+        return Colors.red;
+    }
+  }
+
+  /// Gezeichnete Vorschau eines Objekts ohne Kartenhintergrund.
+  ///
+  /// Bewusst kein GoogleMap-Widget: im Web wird jede erzeugte Karte als
+  /// "Dynamic Map" abgerechnet, und die Liste zeigt viele Objekte gleichzeitig.
+  /// Die echte Karte lädt erst der Klick ([_showFullScreenMap]).
   Widget _buildMiniMapWidget(Map<String, dynamic> obj) {
     final l10n = AppLocalizations.of(context)!;
     final location = _getLocationFromObject(obj);
     final boundaries = _getBoundariesFromObject(obj);
-    final accuracies = _getBoundaryAccuracies(obj);
 
-    // Berechne Kamera-Position (Center)
-    LatLng center;
-    if (location != null) {
-      center = location;
-    } else if (boundaries != null && boundaries.isNotEmpty) {
-      // Berechne Center des Polygons
-      double sumLat = 0;
-      double sumLng = 0;
-      for (var point in boundaries) {
-        sumLat += point.latitude;
-        sumLng += point.longitude;
-      }
-      center = LatLng(sumLat / boundaries.length, sumLng / boundaries.length);
+    // Wie bisher: Felder zeigen ihr Polygon, nur Punktobjekte ihren Standort.
+    final Widget preview;
+    String? caption;
+    if (boundaries != null) {
+      preview = QcShapePreview(shapes: [
+        QcPreviewShape(
+          points: boundaries,
+          accuracies: _getBoundaryAccuracies(obj),
+        ),
+      ]);
+    } else if (location != null) {
+      preview = QcShapePreview(points: [
+        QcPreviewPoint(position: location, color: _pointColorFor(obj)),
+      ]);
+      caption = '${location.latitude.toStringAsFixed(6)}, '
+          '${location.longitude.toStringAsFixed(6)}';
     } else {
       return const SizedBox.shrink();
     }
 
-    return GestureDetector(
+    return _buildPreviewFrame(
+      width: 300,
+      height: 200,
       onTap: () => _showFullScreenMap(obj),
+      preview: preview,
+      caption: caption,
+      hint: l10n.qcPreviewTapForMap,
+    );
+  }
+
+  /// Rahmen um eine [QcShapePreview] mit Klickziel und Hinweiszeile.
+  Widget _buildPreviewFrame({
+    required double height,
+    double? width,
+    required VoidCallback onTap,
+    required Widget preview,
+    required String hint,
+    String? caption,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          height: 200,
-          width: 300,
+          height: height,
+          width: width,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
             borderRadius: BorderRadius.circular(8),
@@ -3929,51 +3990,16 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             borderRadius: BorderRadius.circular(8),
             child: Stack(
               children: [
-                // AbsorbPointer verhindert Interaktion mit der Map (verhindert Links zu Google Maps)
-                AbsorbPointer(
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: center,
-                      zoom: boundaries != null ? 16 : 14,
+                Positioned.fill(child: preview),
+                if (caption != null)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Text(
+                      caption,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[800]),
                     ),
-                    markers: location != null && boundaries == null
-                        ? {
-                            Marker(
-                              markerId: const MarkerId('location'),
-                              position: location,
-                            ),
-                          }
-                        : {},
-                    circles: (boundaries != null &&
-                            accuracies != null &&
-                            (accuracies.length == boundaries.length ||
-                                accuracies.length == boundaries.length - 1))
-                        ? _createAccuracyCircles(boundaries, accuracies)
-                        : {},
-                    polygons: boundaries != null
-                        ? {
-                            Polygon(
-                              polygonId: const PolygonId('boundary'),
-                              points: boundaries,
-                              strokeColor: Colors.blue,
-                              strokeWidth: 2,
-                              fillColor: Colors.blue.withOpacity(0.2),
-                            ),
-                          }
-                        : {},
-                    mapType: MapType.satellite,
-                    zoomControlsEnabled: false,
-                    mapToolbarEnabled: false,
-                    myLocationButtonEnabled: false,
-                    scrollGesturesEnabled: false,
-                    zoomGesturesEnabled: false,
-                    rotateGesturesEnabled: false,
-                    tiltGesturesEnabled: false,
-                    liteModeEnabled:
-                        true, // Lite Mode für bessere Performance und weniger Interaktivität
                   ),
-                ),
-                // Overlay mit Hinweis
                 Positioned(
                   bottom: 8,
                   left: 8,
@@ -3982,21 +4008,145 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
+                      color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
-                      l10n.tapToEnlargeMap,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.satellite_alt,
+                            size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            hint,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Offene Felder des Bündels mit verwertbarem Polygon.
+  List<QcMapPolygon> _bundlePolygons(_QcBundle bundle) {
+    final result = <QcMapPolygon>[];
+    for (final field in bundle.pendingFields) {
+      final polygon = _qcMapPolygonFor(bundle, field);
+      if (polygon != null) result.add(polygon);
+    }
+    return result;
+  }
+
+  /// Punktobjekte des Bündels (Farmer, Farm) mit Standort.
+  List<({Map<String, dynamic> obj, LatLng location})> _bundlePointObjects(
+      _QcBundle bundle) {
+    final result = <({Map<String, dynamic> obj, LatLng location})>[];
+    for (final obj in [bundle.farmer, bundle.farm]) {
+      if (obj == null) continue;
+      final location = _getLocationFromObject(obj);
+      if (location != null) result.add((obj: obj, location: location));
+    }
+    return result;
+  }
+
+  /// Lage der ganzen Farm auf einen Blick: alle offenen Felder und die
+  /// Standorte von Farm und Farmer in einer gezeichneten Vorschau. Die
+  /// Satellitenkarte dazu ist eine einzige Karte für die ganze Farm und wird
+  /// erst auf Klick geladen.
+  Widget _buildBundleMapSection(_QcBundle bundle) {
+    final l10n = AppLocalizations.of(context)!;
+    final polygons = _bundlePolygons(bundle);
+    // Ohne Feld ist die Farm-Übersicht nur ein Punkt - den zeigt schon der
+    // Abschnitt des Objekts.
+    if (polygons.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.layers_outlined,
+                  color: Colors.black54, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.qcFarmOverviewTitle,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showBundleMap(bundle),
+                icon: const Icon(Icons.satellite_alt, size: 18),
+                label: Text(l10n.qcLoadSatelliteMap),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildPreviewFrame(
+            height: 220,
+            onTap: () => _showBundleMap(bundle),
+            hint: l10n.qcPreviewTapForMap,
+            preview: QcShapePreview(
+              shapes: [
+                for (final p in polygons)
+                  QcPreviewShape(points: p.points, accuracies: p.accuracies),
+              ],
+              points: [
+                for (final p in _bundlePointObjects(bundle))
+                  QcPreviewPoint(
+                      position: p.location, color: _pointColorFor(p.obj)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Eine Satellitenkarte mit allen offenen Feldern der Farm sowie Farm- und
+  /// Farmer-Standort - statt einer Karte je Objekt.
+  void _showBundleMap(_QcBundle bundle) {
+    final markers = {
+      for (final p in _bundlePointObjects(bundle))
+        Marker(
+          markerId: MarkerId(_QcBundle.uidOf(p.obj)),
+          position: p.location,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            p.obj['template']?['RALType'] == 'human'
+                ? BitmapDescriptor.hueAzure
+                : BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: InfoWindow(
+            title: p.obj['identity']?['name']?.toString() ?? bundle.name,
+          ),
+        ),
+    };
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(bundle.name)),
+          body: QcOverviewMap(
+            polygons: _bundlePolygons(bundle),
+            markers: markers,
+            // Antippen hebt das Feld hervor; bearbeitet wird über den
+            // Abschnitt des Felds.
+            onPolygonTap: (_) {},
           ),
         ),
       ),

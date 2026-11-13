@@ -291,6 +291,75 @@ class IhcafeCatalog {
   }
 }
 
+/// Liest einen IHCafe-Export (Endpunkt "productores" bzw. "paraiso").
+///
+/// Zwei Aufbauten sind im Umlauf:
+/// - älter: success/contract/proyecto_uid/scope/export_info/data auf oberster
+///   Ebene,
+/// - neuer Bulk-Export: endpoint/exported_at/envelope{contract, scope, ...}/
+///   data.
+///
+/// Der Export des Endpunkts "fincas" (eine Zeile je Finca, Produzent darin
+/// verschachtelt) wird erkannt und mit einer klaren Meldung abgelehnt - er
+/// enthält dieselben Daten, nur anders herum gruppiert.
+///
+/// Wirft [FormatException] bei unerwartetem Aufbau.
+({List<IhcafeProducer> producers, IhcafeCatalogMeta meta}) parseIhcafeExport(
+    String exportJson) {
+  final dynamic decoded = jsonDecode(exportJson);
+  if (decoded is! Map<String, dynamic>) {
+    throw const FormatException(
+        'Unerwartetes Format: erwartet wird ein JSON-Objekt.');
+  }
+  final data = decoded['data'];
+  if (data is! List) {
+    throw const FormatException(
+        'Im Export fehlt die Liste "data" mit den Produzenten.');
+  }
+
+  if (decoded['endpoint'] == 'fincas' ||
+      (data.isNotEmpty &&
+          data.first is Map &&
+          (data.first as Map).containsKey('finca_id') &&
+          !(data.first as Map).containsKey('fincas'))) {
+    throw const FormatException(
+        'Das ist der Finca-Export (fincas.json). Bitte productores.json '
+        'bzw. paraiso.json verwenden.');
+  }
+
+  final producers = data
+      .whereType<Map<String, dynamic>>()
+      .map(IhcafeProducer.fromExport)
+      .where((p) => p.nombreCompleto.isNotEmpty)
+      .toList();
+
+  if (producers.isEmpty) {
+    throw const FormatException('Der Export enthält keine Produzenten.');
+  }
+
+  // Im neuen Bulk-Export stecken contract/scope im "envelope".
+  final envelope = (decoded['envelope'] as Map?) ?? decoded;
+  final scope = (envelope['scope'] as Map?) ?? const {};
+  final exportInfo = (decoded['export_info'] as Map?) ?? const {};
+
+  final meta = IhcafeCatalogMeta(
+    contract: (envelope['contract'] as String?) ?? '',
+    proyectoUid: (envelope['proyecto_uid'] as String?) ?? '',
+    scopeDepartamento: (scope['departamento'] as String?) ?? '',
+    scopeMunicipios: ((scope['municipios_cod'] as List?) ?? const [])
+        .map((e) => '$e')
+        .toList(),
+    exportedAt: (decoded['exported_at'] as String?) ??
+        (exportInfo['exported_at'] as String?) ??
+        (envelope['server_time'] as String?) ??
+        '',
+    recordCount: producers.length,
+    importedAt: DateTime.now().toUtc().toIso8601String(),
+  );
+
+  return (producers: producers, meta: meta);
+}
+
 /// Zugriff auf den lokal gespeicherten Katalog.
 class IhcafeProducerService {
   IhcafeProducerService._();
@@ -350,46 +419,13 @@ class IhcafeProducerService {
 
   /// Importiert einen IHCafe-Export und legt ihn verdichtet ab.
   ///
-  /// [exportJson] ist der komplette Dateiinhalt mit den Schlüsseln
-  /// success/contract/scope/data. Wirft [FormatException] bei unerwartetem
-  /// Aufbau, damit die UI eine verständliche Meldung zeigen kann.
+  /// [exportJson] ist der komplette Dateiinhalt, siehe [parseIhcafeExport].
+  /// Wirft [FormatException] bei unerwartetem Aufbau, damit die UI eine
+  /// verständliche Meldung zeigen kann.
   Future<IhcafeCatalogMeta> importExport(String exportJson) async {
-    final dynamic decoded = jsonDecode(exportJson);
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException(
-          'Unerwartetes Format: erwartet wird ein JSON-Objekt.');
-    }
-    final data = decoded['data'];
-    if (data is! List) {
-      throw const FormatException(
-          'Im Export fehlt die Liste "data" mit den Produzenten.');
-    }
-
-    final producers = data
-        .whereType<Map<String, dynamic>>()
-        .map(IhcafeProducer.fromExport)
-        .where((p) => p.nombreCompleto.isNotEmpty)
-        .toList();
-
-    if (producers.isEmpty) {
-      throw const FormatException('Der Export enthält keine Produzenten.');
-    }
-
-    final scope = (decoded['scope'] as Map?) ?? const {};
-    final exportInfo = (decoded['export_info'] as Map?) ?? const {};
-
-    final meta = IhcafeCatalogMeta(
-      contract: (decoded['contract'] as String?) ?? '',
-      proyectoUid: (decoded['proyecto_uid'] as String?) ?? '',
-      scopeDepartamento: (scope['departamento'] as String?) ?? '',
-      scopeMunicipios:
-          ((scope['municipios_cod'] as List?) ?? const []).map((e) => '$e').toList(),
-      exportedAt: (exportInfo['exported_at'] as String?) ??
-          (decoded['server_time'] as String?) ??
-          '',
-      recordCount: producers.length,
-      importedAt: DateTime.now().toUtc().toIso8601String(),
-    );
+    final parsed = parseIhcafeExport(exportJson);
+    final producers = parsed.producers;
+    final meta = parsed.meta;
 
     final compact =
         jsonEncode(producers.map((p) => p.toCompact()).toList());

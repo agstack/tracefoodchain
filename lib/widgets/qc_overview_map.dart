@@ -57,10 +57,15 @@ class QcOverviewMap extends StatefulWidget {
     required this.polygons,
     required this.onPolygonTap,
     this.maxRendered = 400,
+    this.markers = const {},
   });
 
   final List<QcMapPolygon> polygons;
   final ValueChanged<QcMapPolygon> onPolygonTap;
+
+  /// Zusätzliche Punktobjekte (z.B. Farm und Farmer einer Farm-Karte). Sie
+  /// gehen in den Kartenausschnitt ein, werden aber nicht gefiltert.
+  final Set<Marker> markers;
 
   /// Obergrenze für gleichzeitig gezeichnete Polygone. Greift nur, wenn sehr
   /// viele Flächen in einem Ausschnitt liegen; gezeichnet werden dann die mit
@@ -83,16 +88,22 @@ class _QcOverviewMapState extends State<QcOverviewMap> {
 
   /// Umschließende Box aller Polygone, für den ersten Kameraschwenk.
   LatLngBounds? get _allBounds {
-    if (widget.polygons.isEmpty) return null;
-    double minLat = widget.polygons.first.minLat;
-    double maxLat = widget.polygons.first.maxLat;
-    double minLng = widget.polygons.first.minLng;
-    double maxLng = widget.polygons.first.maxLng;
+    if (widget.polygons.isEmpty && widget.markers.isEmpty) return null;
+    double minLat = double.infinity;
+    double maxLat = double.negativeInfinity;
+    double minLng = double.infinity;
+    double maxLng = double.negativeInfinity;
     for (final p in widget.polygons) {
       minLat = math.min(minLat, p.minLat);
       maxLat = math.max(maxLat, p.maxLat);
       minLng = math.min(minLng, p.minLng);
       maxLng = math.max(maxLng, p.maxLng);
+    }
+    for (final m in widget.markers) {
+      minLat = math.min(minLat, m.position.latitude);
+      maxLat = math.max(maxLat, m.position.latitude);
+      minLng = math.min(minLng, m.position.longitude);
+      maxLng = math.max(maxLng, m.position.longitude);
     }
     return LatLngBounds(
       southwest: LatLng(minLat, minLng),
@@ -196,7 +207,7 @@ class _QcOverviewMapState extends State<QcOverviewMap> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    if (widget.polygons.isEmpty) {
+    if (widget.polygons.isEmpty && widget.markers.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -228,6 +239,7 @@ class _QcOverviewMapState extends State<QcOverviewMap> {
             zoom: _initialZoom(bounds),
           ),
           polygons: rendered.polygons,
+          markers: widget.markers,
           onMapCreated: (controller) {
             _controller = controller;
             _fitAll();

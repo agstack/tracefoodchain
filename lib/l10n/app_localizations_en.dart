@@ -4005,4 +4005,137 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qcRebuildIndexFailed => 'Could not build the search index';
+
+  @override
+  String get ihmTitle => 'IHCafé matching (experimental)';
+
+  @override
+  String get ihmIntro =>
+      'Matches QC-approved farms against the IHCafé export and sets the IHCafé IDs as alternateIDs (farmer: clave + productor_id, farm: finca_id). The dry run writes nothing and logs every decision.';
+
+  @override
+  String get ihmStepSource => '1 · IHCafé export';
+
+  @override
+  String get ihmLoadFile => 'Load file (.zip/.json)';
+
+  @override
+  String get ihmUseStored => 'Use stored directory';
+
+  @override
+  String get ihmSourceNone => 'Nothing loaded yet';
+
+  @override
+  String ihmSourceLoaded(int count, String source) {
+    return '$count producers · $source';
+  }
+
+  @override
+  String get ihmInMemoryOnly => 'in memory only, not stored';
+
+  @override
+  String get ihmStepFarms => '2 · QC-approved farms';
+
+  @override
+  String get ihmLoadFarms => 'Load farms';
+
+  @override
+  String ihmFarmsLoaded(int count) {
+    return '$count farms loaded';
+  }
+
+  @override
+  String get ihmStepRun => '3 · Matching';
+
+  @override
+  String get ihmRunMatching => 'Run matching';
+
+  @override
+  String get ihmDryRun => 'Dry run (write nothing)';
+
+  @override
+  String get ihmApplyLevels => 'Write for:';
+
+  @override
+  String ihmApply(int count) {
+    return 'Write $count matches';
+  }
+
+  @override
+  String get ihmApplyConfirmTitle => 'Write IHCafé IDs?';
+
+  @override
+  String ihmApplyConfirmBody(int matches, int objects) {
+    return '$matches matches are written as signed changeObjectData jobs ($objects objects). This cannot be undone automatically.';
+  }
+
+  @override
+  String get ihmTabLog => 'Log';
+
+  @override
+  String get ihmTabResults => 'Results';
+
+  @override
+  String get ihmExportLog => 'Export log';
+
+  @override
+  String get ihmExportCsv => 'Export results as CSV';
+
+  @override
+  String get ihmStop => 'Stop';
+
+  @override
+  String get ihmAllLevels => 'All';
+
+  @override
+  String get ihmNoResults => 'Nothing here yet.';
+
+  @override
+  String get ihmWillWrite => 'writes';
+
+  @override
+  String get ihmNothingToWrite => 'nothing to write';
+
+  @override
+  String get ihmLevelAlreadyLinked => 'Already linked';
+
+  @override
+  String get ihmLevelDni => 'DNI';
+
+  @override
+  String get ihmLevelDniNameMismatch => 'DNI, name differs';
+
+  @override
+  String get ihmLevelNameMunicipio => 'Name + municipio';
+
+  @override
+  String get ihmLevelNameFuzzy => 'Similar name';
+
+  @override
+  String get ihmLevelNameOnly => 'Name only';
+
+  @override
+  String get ihmLevelConflict => 'Conflict';
+
+  @override
+  String get ihmLevelAmbiguous => 'Ambiguous';
+
+  @override
+  String get ihmLevelDuplicate => 'Duplicate';
+
+  @override
+  String get ihmLevelOutOfScope => 'Outside export';
+
+  @override
+  String get ihmLevelNone => 'No match';
+
+  @override
+  String get qcPreviewTapForMap =>
+      'Preview without map · tap for satellite map';
+
+  @override
+  String get qcFarmOverviewTitle => 'Farm overview';
+
+  @override
+  String get qcLoadSatelliteMap => 'Load satellite map';
 }

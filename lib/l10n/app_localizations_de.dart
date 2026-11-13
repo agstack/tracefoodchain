@@ -4048,4 +4048,137 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get qcRebuildIndexFailed => 'Suchindex konnte nicht aufgebaut werden';
+
+  @override
+  String get ihmTitle => 'IHCafé-Abgleich (experimentell)';
+
+  @override
+  String get ihmIntro =>
+      'Gleicht QC-freigegebene Farmen mit dem IHCafé-Export ab und setzt die IHCafé-Kennungen als alternateIDs (Farmer: clave + productor_id, Farm: finca_id). Der Probelauf schreibt nichts und protokolliert jede Entscheidung.';
+
+  @override
+  String get ihmStepSource => '1 · IHCafé-Export';
+
+  @override
+  String get ihmLoadFile => 'Datei laden (.zip/.json)';
+
+  @override
+  String get ihmUseStored => 'Gespeichertes Verzeichnis nutzen';
+
+  @override
+  String get ihmSourceNone => 'Noch nichts geladen';
+
+  @override
+  String ihmSourceLoaded(int count, String source) {
+    return '$count Produzenten · $source';
+  }
+
+  @override
+  String get ihmInMemoryOnly => 'nur im Speicher, nicht abgelegt';
+
+  @override
+  String get ihmStepFarms => '2 · QC-freigegebene Farmen';
+
+  @override
+  String get ihmLoadFarms => 'Farmen laden';
+
+  @override
+  String ihmFarmsLoaded(int count) {
+    return '$count Farmen geladen';
+  }
+
+  @override
+  String get ihmStepRun => '3 · Abgleich';
+
+  @override
+  String get ihmRunMatching => 'Abgleich starten';
+
+  @override
+  String get ihmDryRun => 'Probelauf (nichts schreiben)';
+
+  @override
+  String get ihmApplyLevels => 'Schreiben für:';
+
+  @override
+  String ihmApply(int count) {
+    return '$count Treffer schreiben';
+  }
+
+  @override
+  String get ihmApplyConfirmTitle => 'IHCafé-Kennungen schreiben?';
+
+  @override
+  String ihmApplyConfirmBody(int matches, int objects) {
+    return '$matches Treffer werden als signierte changeObjectData-Jobs geschrieben ($objects Objekte). Das lässt sich nicht automatisch rückgängig machen.';
+  }
+
+  @override
+  String get ihmTabLog => 'Log';
+
+  @override
+  String get ihmTabResults => 'Ergebnisse';
+
+  @override
+  String get ihmExportLog => 'Log exportieren';
+
+  @override
+  String get ihmExportCsv => 'Ergebnisse als CSV exportieren';
+
+  @override
+  String get ihmStop => 'Stopp';
+
+  @override
+  String get ihmAllLevels => 'Alle';
+
+  @override
+  String get ihmNoResults => 'Noch nichts vorhanden.';
+
+  @override
+  String get ihmWillWrite => 'schreibt';
+
+  @override
+  String get ihmNothingToWrite => 'nichts zu schreiben';
+
+  @override
+  String get ihmLevelAlreadyLinked => 'Bereits verknüpft';
+
+  @override
+  String get ihmLevelDni => 'DNI';
+
+  @override
+  String get ihmLevelDniNameMismatch => 'DNI, Name abweichend';
+
+  @override
+  String get ihmLevelNameMunicipio => 'Name + Municipio';
+
+  @override
+  String get ihmLevelNameFuzzy => 'Ähnlicher Name';
+
+  @override
+  String get ihmLevelNameOnly => 'Nur Name';
+
+  @override
+  String get ihmLevelConflict => 'Widerspruch';
+
+  @override
+  String get ihmLevelAmbiguous => 'Mehrdeutig';
+
+  @override
+  String get ihmLevelDuplicate => 'Doppelt';
+
+  @override
+  String get ihmLevelOutOfScope => 'Außerhalb des Exports';
+
+  @override
+  String get ihmLevelNone => 'Kein Treffer';
+
+  @override
+  String get qcPreviewTapForMap =>
+      'Vorschau ohne Karte · Tippen für Satellitenkarte';
+
+  @override
+  String get qcFarmOverviewTitle => 'Lage der Farm';
+
+  @override
+  String get qcLoadSatelliteMap => 'Satellitenkarte laden';
 }

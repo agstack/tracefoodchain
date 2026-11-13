@@ -4087,4 +4087,137 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get qcRebuildIndexFailed =>
       'Impossible de construire l\'index de recherche';
+
+  @override
+  String get ihmTitle => 'Appariement IHCafé (expérimental)';
+
+  @override
+  String get ihmIntro =>
+      'Compare les fermes validées par le contrôle qualité avec l\'export IHCafé et enregistre les identifiants IHCafé comme alternateIDs (producteur : clave + productor_id, ferme : finca_id). La simulation n\'écrit rien et journalise chaque décision.';
+
+  @override
+  String get ihmStepSource => '1 · Export IHCafé';
+
+  @override
+  String get ihmLoadFile => 'Charger un fichier (.zip/.json)';
+
+  @override
+  String get ihmUseStored => 'Utiliser l\'annuaire enregistré';
+
+  @override
+  String get ihmSourceNone => 'Rien de chargé';
+
+  @override
+  String ihmSourceLoaded(int count, String source) {
+    return '$count producteurs · $source';
+  }
+
+  @override
+  String get ihmInMemoryOnly => 'en mémoire uniquement, non enregistré';
+
+  @override
+  String get ihmStepFarms => '2 · Fermes validées (CQ)';
+
+  @override
+  String get ihmLoadFarms => 'Charger les fermes';
+
+  @override
+  String ihmFarmsLoaded(int count) {
+    return '$count fermes chargées';
+  }
+
+  @override
+  String get ihmStepRun => '3 · Appariement';
+
+  @override
+  String get ihmRunMatching => 'Lancer l\'appariement';
+
+  @override
+  String get ihmDryRun => 'Simulation (ne rien écrire)';
+
+  @override
+  String get ihmApplyLevels => 'Écrire pour :';
+
+  @override
+  String ihmApply(int count) {
+    return 'Écrire $count correspondances';
+  }
+
+  @override
+  String get ihmApplyConfirmTitle => 'Écrire les identifiants IHCafé ?';
+
+  @override
+  String ihmApplyConfirmBody(int matches, int objects) {
+    return '$matches correspondances seront écrites comme tâches changeObjectData signées ($objects objets). Cela ne peut pas être annulé automatiquement.';
+  }
+
+  @override
+  String get ihmTabLog => 'Journal';
+
+  @override
+  String get ihmTabResults => 'Résultats';
+
+  @override
+  String get ihmExportLog => 'Exporter le journal';
+
+  @override
+  String get ihmExportCsv => 'Exporter les résultats en CSV';
+
+  @override
+  String get ihmStop => 'Arrêter';
+
+  @override
+  String get ihmAllLevels => 'Tous';
+
+  @override
+  String get ihmNoResults => 'Rien pour l\'instant.';
+
+  @override
+  String get ihmWillWrite => 'écrit';
+
+  @override
+  String get ihmNothingToWrite => 'rien à écrire';
+
+  @override
+  String get ihmLevelAlreadyLinked => 'Déjà lié';
+
+  @override
+  String get ihmLevelDni => 'DNI';
+
+  @override
+  String get ihmLevelDniNameMismatch => 'DNI, nom différent';
+
+  @override
+  String get ihmLevelNameMunicipio => 'Nom + municipio';
+
+  @override
+  String get ihmLevelNameFuzzy => 'Nom similaire';
+
+  @override
+  String get ihmLevelNameOnly => 'Nom seulement';
+
+  @override
+  String get ihmLevelConflict => 'Conflit';
+
+  @override
+  String get ihmLevelAmbiguous => 'Ambigu';
+
+  @override
+  String get ihmLevelDuplicate => 'Doublon';
+
+  @override
+  String get ihmLevelOutOfScope => 'Hors de l\'export';
+
+  @override
+  String get ihmLevelNone => 'Aucune correspondance';
+
+  @override
+  String get qcPreviewTapForMap =>
+      'Aperçu sans carte · appuyez pour la carte satellite';
+
+  @override
+  String get qcFarmOverviewTitle => 'Vue d\'ensemble de la ferme';
+
+  @override
+  String get qcLoadSatelliteMap => 'Charger la carte satellite';
 }

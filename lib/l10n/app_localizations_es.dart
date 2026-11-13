@@ -4070,4 +4070,137 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get qcRebuildIndexFailed => 'No se pudo crear el índice de búsqueda';
+
+  @override
+  String get ihmTitle => 'Vinculación IHCafé (experimental)';
+
+  @override
+  String get ihmIntro =>
+      'Compara las fincas aprobadas en el control de calidad con la exportación de IHCafé y asigna los identificadores de IHCafé como alternateIDs (productor: clave + productor_id, finca: finca_id). La simulación no guarda nada y registra cada decisión.';
+
+  @override
+  String get ihmStepSource => '1 · Exportación IHCafé';
+
+  @override
+  String get ihmLoadFile => 'Cargar archivo (.zip/.json)';
+
+  @override
+  String get ihmUseStored => 'Usar directorio guardado';
+
+  @override
+  String get ihmSourceNone => 'Nada cargado todavía';
+
+  @override
+  String ihmSourceLoaded(int count, String source) {
+    return '$count productores · $source';
+  }
+
+  @override
+  String get ihmInMemoryOnly => 'solo en memoria, no se guarda';
+
+  @override
+  String get ihmStepFarms => '2 · Fincas aprobadas (CC)';
+
+  @override
+  String get ihmLoadFarms => 'Cargar fincas';
+
+  @override
+  String ihmFarmsLoaded(int count) {
+    return '$count fincas cargadas';
+  }
+
+  @override
+  String get ihmStepRun => '3 · Vinculación';
+
+  @override
+  String get ihmRunMatching => 'Iniciar vinculación';
+
+  @override
+  String get ihmDryRun => 'Simulación (no guardar nada)';
+
+  @override
+  String get ihmApplyLevels => 'Guardar para:';
+
+  @override
+  String ihmApply(int count) {
+    return 'Guardar $count vínculos';
+  }
+
+  @override
+  String get ihmApplyConfirmTitle => '¿Guardar identificadores IHCafé?';
+
+  @override
+  String ihmApplyConfirmBody(int matches, int objects) {
+    return 'Se guardarán $matches vínculos como trabajos changeObjectData firmados ($objects objetos). No se puede deshacer automáticamente.';
+  }
+
+  @override
+  String get ihmTabLog => 'Registro';
+
+  @override
+  String get ihmTabResults => 'Resultados';
+
+  @override
+  String get ihmExportLog => 'Exportar registro';
+
+  @override
+  String get ihmExportCsv => 'Exportar resultados como CSV';
+
+  @override
+  String get ihmStop => 'Detener';
+
+  @override
+  String get ihmAllLevels => 'Todos';
+
+  @override
+  String get ihmNoResults => 'Todavía no hay nada.';
+
+  @override
+  String get ihmWillWrite => 'guarda';
+
+  @override
+  String get ihmNothingToWrite => 'nada que guardar';
+
+  @override
+  String get ihmLevelAlreadyLinked => 'Ya vinculado';
+
+  @override
+  String get ihmLevelDni => 'DNI';
+
+  @override
+  String get ihmLevelDniNameMismatch => 'DNI, nombre distinto';
+
+  @override
+  String get ihmLevelNameMunicipio => 'Nombre + municipio';
+
+  @override
+  String get ihmLevelNameFuzzy => 'Nombre similar';
+
+  @override
+  String get ihmLevelNameOnly => 'Solo nombre';
+
+  @override
+  String get ihmLevelConflict => 'Conflicto';
+
+  @override
+  String get ihmLevelAmbiguous => 'Ambiguo';
+
+  @override
+  String get ihmLevelDuplicate => 'Duplicado';
+
+  @override
+  String get ihmLevelOutOfScope => 'Fuera de la exportación';
+
+  @override
+  String get ihmLevelNone => 'Sin coincidencia';
+
+  @override
+  String get qcPreviewTapForMap =>
+      'Vista previa sin mapa · toque para ver el mapa satelital';
+
+  @override
+  String get qcFarmOverviewTitle => 'Vista general de la finca';
+
+  @override
+  String get qcLoadSatelliteMap => 'Cargar mapa satelital';
 }

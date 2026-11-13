@@ -1,10 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show File;
+import 'dart:typed_data' show BytesBuilder;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trace_foodchain_app/l10n/app_localizations.dart';
+import 'package:trace_foodchain_app/services/ihcafe_export_reader.dart';
 import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 
 /// UI-Bausteine für das IHCafe-Produzentenverzeichnis (lokalisiert).
@@ -16,6 +17,17 @@ import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 ///
 /// Die Produzentensuche (showIhcafeProducerPicker) steht überall zur
 /// Verfügung, wo ein Verzeichnis lokal vorliegt.
+
+/// Liest eine per FilePicker (mit `withReadStream: true`) gewählte Datei
+/// vollständig ein - im Web über den Stream, sonst über den Pfad.
+Future<List<int>> readPickedFileBytes(PlatformFile file) async {
+  if (!kIsWeb && file.path != null) {
+    return File(file.path!).readAsBytes();
+  }
+  final builder = BytesBuilder(copy: false);
+  await file.readStream?.listen(builder.add).asFuture<void>();
+  return builder.takeBytes();
+}
 
 /// Statuskarte: zeigt ob das Verzeichnis lokal vorliegt und erlaubt Import
 /// bzw. Löschen.
@@ -71,7 +83,7 @@ class _IhcafeCatalogCardState extends State<IhcafeCatalogCard> {
         withReadStream: true,
         allowMultiple: false,
         type: FileType.custom,
-        allowedExtensions: ['json'],
+        allowedExtensions: ['json', 'zip'],
       );
       if (result == null) {
         setState(() => _busy = false);
@@ -79,16 +91,8 @@ class _IhcafeCatalogCardState extends State<IhcafeCatalogCard> {
       }
 
       final file = result.files.first;
-      final bytes = <int>[];
-      if (kIsWeb) {
-        await file.readStream
-            ?.listen((chunk) => bytes.addAll(chunk))
-            .asFuture();
-      } else {
-        bytes.addAll(await File(file.path!).readAsBytes());
-      }
-
-      final content = utf8.decode(bytes, allowMalformed: true);
+      final bytes = await readPickedFileBytes(file);
+      final content = readIhcafeExportFile(bytes, file.name).json;
       final meta = await _service.importExport(content);
       if (!mounted) return;
       setState(() {
