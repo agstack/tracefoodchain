@@ -4105,6 +4105,18 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String ihmRecordResults(int count) {
+    return '$count Ergebnisse melden';
+  }
+
+  @override
+  String get ihmRecordResultsHint =>
+      'Meldet alle Ergebnisse dieses Laufs an den IHCafé-Sync (auch \"kein Treffer\" und ungeklärte Fälle), ohne Kennungen zu schreiben. Beim Schreiben von Treffern geschieht das automatisch.';
+
+  @override
+  String get ihmRebuildSync => 'IHCafé-Sync-Index aufbauen';
+
+  @override
   String get ihmApplyConfirmTitle => 'IHCafé-Kennungen schreiben?';
 
   @override
@@ -4153,6 +4165,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get ihmLevelNameFuzzy => 'Ähnlicher Name';
+
+  @override
+  String get ihmLevelNameFinca => 'Name + Finca';
 
   @override
   String get ihmLevelNameOnly => 'Nur Name';

@@ -205,28 +205,19 @@ Future<ImportObjectGraph> buildImportObjects({
     farmer = setSpecificPropertyJSON(farmer, 'lastName', name.lastName, 'String');
     farmer = setSpecificPropertyJSON(farmer, 'userRole', 'Farmer', 'String');
 
-    // Bewusst KEIN nationalID aus der Excel-Spalte: der DNI der Quelldatei ist
-    // auf 3 signifikante Stellen gerundet. Ein falscher Ausweis ist schlechter
-    // als gar keiner - der belastbare Wert kommt aus dem IHCafe-Match.
+    // Bewusst KEIN nationalID: der DNI der Excel-Quelldatei ist auf 3
+    // signifikante Stellen gerundet, und aus dem IHCafe-Export wird die
+    // National ID grundsätzlich nicht übernommen (sie kommt nur vom Ausweis).
+    // Ein falscher Ausweis ist schlechter als gar keiner.
     final producer = ihcafeByPerson[personName];
     if (producer != null) {
-      if (producer.identidad.isNotEmpty) {
-        farmer['identity']['alternateIDs'].add({
-          'UID': producer.identidad,
-          'issuedBy': 'National ID',
-        });
-      }
       if (producer.clave.isNotEmpty) {
-        farmer['identity']['alternateIDs'].add({
-          'UID': producer.clave,
-          'issuedBy': 'IHCafe',
-        });
+        farmer['identity']['alternateIDs']
+            .add(ihcafeAlternateId(producer.clave, ihcafeIdClave));
       }
       if (producer.productorId != null) {
-        farmer['identity']['alternateIDs'].add({
-          'UID': '${producer.productorId}',
-          'issuedBy': 'IHCafe',
-        });
+        farmer['identity']['alternateIDs'].add(ihcafeAlternateId(
+            '${producer.productorId}', ihcafeIdProductorId));
       }
     }
 
@@ -268,10 +259,8 @@ Future<ImportObjectGraph> buildImportObjects({
       final fincaIds =
           producer.fincas.map((f) => f.fincaId).whereType<int>().toList();
       if (fincaIds.length == 1) {
-        farm['identity']['alternateIDs'].add({
-          'UID': '${fincaIds.first}',
-          'issuedBy': 'IHCafe',
-        });
+        farm['identity']['alternateIDs']
+            .add(ihcafeAlternateId('${fincaIds.first}', ihcafeIdFincaId));
       } else if (fincaIds.length > 1) {
         notes.add('${producer.nombreCompleto} hat ${fincaIds.length} Fincas '
             'bei IHCafe (${fincaIds.join(', ')}). Die finca_id wurde NICHT '

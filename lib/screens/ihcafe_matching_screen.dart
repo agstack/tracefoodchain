@@ -9,6 +9,8 @@ import 'package:trace_foodchain_app/services/ihcafe_export_reader.dart';
 import 'package:trace_foodchain_app/services/ihcafe_farm_matching.dart';
 import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 import 'package:trace_foodchain_app/services/ihcafe_qc_farm_loader.dart';
+import 'package:trace_foodchain_app/services/ihcafe_sync_service.dart';
+import 'package:trace_foodchain_app/services/role_management_service.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
 import 'package:trace_foodchain_app/widgets/ihcafe_producer_widgets.dart';
 
@@ -40,6 +42,7 @@ Color levelColor(IhcafeLinkLevel level) => switch (level) {
       IhcafeLinkLevel.dni => Colors.green.shade800,
       IhcafeLinkLevel.nameMunicipio => Colors.green.shade600,
       IhcafeLinkLevel.nameFuzzy => Colors.lime.shade800,
+      IhcafeLinkLevel.nameFinca => Colors.teal.shade600,
       IhcafeLinkLevel.dniNameMismatch => Colors.orange.shade800,
       IhcafeLinkLevel.nameOnly => Colors.orange.shade600,
       IhcafeLinkLevel.conflict => Colors.red.shade700,
@@ -56,6 +59,7 @@ String levelLabel(AppLocalizations l10n, IhcafeLinkLevel level) =>
       IhcafeLinkLevel.dniNameMismatch => l10n.ihmLevelDniNameMismatch,
       IhcafeLinkLevel.nameMunicipio => l10n.ihmLevelNameMunicipio,
       IhcafeLinkLevel.nameFuzzy => l10n.ihmLevelNameFuzzy,
+      IhcafeLinkLevel.nameFinca => l10n.ihmLevelNameFinca,
       IhcafeLinkLevel.nameOnly => l10n.ihmLevelNameOnly,
       IhcafeLinkLevel.conflict => l10n.ihmLevelConflict,
       IhcafeLinkLevel.ambiguous => l10n.ihmLevelAmbiguous,
@@ -332,10 +336,60 @@ class _IhcafeMatchingScreenState extends State<IhcafeMatchingScreen> {
       _write('Written: ${result.written} object(s), failed: ${result.failed}. '
           'Reload the farms and run again to verify.',
           result.failed == 0 ? Colors.green.shade800 : Colors.red);
+      // Alle Ergebnisse melden - auch "kein Treffer" und ungeklärte Fälle,
+      // die an den Objekten nicht ablesbar sind.
+      await _sendResults(catalog,
+          written: {for (final m in matches) m.farm.farmUid});
       setState(() {
         _results = const [];
         _dryRun = true;
       });
+    });
+  }
+
+  /// Meldet die Ergebnisse an den IHCafe-Sync, ohne Kennungen zu schreiben.
+  Future<void> _recordResults() async {
+    final l10n = AppLocalizations.of(context)!;
+    final catalog = _catalog;
+    if (catalog == null || _results.isEmpty || _dryRun) return;
+    await _guard(l10n.ihmRecordResults(_results.length),
+        () => _sendResults(catalog));
+  }
+
+  Future<void> _sendResults(IhcafeCatalog catalog,
+      {Set<String> written = const {}}) async {
+    final retryLabel =
+        AppLocalizations.of(context)!.ihmRecordResults(_results.length);
+    _section('Reporting ${_results.length} results to the IHCafé sync');
+    try {
+      final recorded = await IhcafeSyncService.recordMatchResults(
+        results: _results,
+        catalogMeta: catalog.meta,
+        written: written,
+        onProgress: (done, total) => _write('  $done / $total farms'),
+      );
+      _write('Reported $recorded farm result(s) (export '
+          '${catalog.meta.exportedAt.isEmpty ? '-' : catalog.meta.exportedAt}).',
+          Colors.green.shade800);
+    } catch (e) {
+      _write('Reporting failed: $e - the IDs written above are not affected; '
+          'report again with "$retryLabel".',
+          Colors.red);
+    }
+  }
+
+  /// Sync-Index aus allen aktiven Feldern aufbauen (nur SUPERADMIN).
+  Future<void> _rebuildSync() async {
+    final l10n = AppLocalizations.of(context)!;
+    await _guard(l10n.ihmRebuildSync, () async {
+      _section('Rebuilding the IHCafé sync index');
+      final totals = await IhcafeSyncService.rebuild(
+          onProgress: (n) => _write('  $n fields processed'));
+      _write('Done: ${totals['written']} written, ${totals['unchanged']} '
+          'unchanged, ${totals['withdrawn']} not QC-approved, '
+          '${totals['skipped']} in countries without IHCafé registry, '
+          '${totals['noCountry']} without recognisable country.',
+          Colors.green.shade800);
     });
   }
 
@@ -578,16 +632,16 @@ class _IhcafeMatchingScreenState extends State<IhcafeMatchingScreen> {
                     ),
                 ],
               ),
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 4,
                 children: [
                   Switch(
                     value: _dryRun,
                     onChanged: busy ? null : (v) => setState(() => _dryRun = v),
                   ),
-                  Flexible(
-                    child: Text(l10n.ihmDryRun,
-                        style: const TextStyle(color: Colors.black87)),
-                  ),
+                  Text(l10n.ihmDryRun,
+                      style: const TextStyle(color: Colors.black87)),
                   const SizedBox(width: 16),
                   ElevatedButton.icon(
                     onPressed:
@@ -599,9 +653,27 @@ class _IhcafeMatchingScreenState extends State<IhcafeMatchingScreen> {
                       backgroundColor: Colors.red.shade700,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: l10n.ihmRecordResultsHint,
+                    child: OutlinedButton.icon(
+                      onPressed: busy || _dryRun ? null : _recordResults,
+                      icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(l10n.ihmRecordResults(_results.length)),
+                    ),
+                  ),
                 ],
               ),
             ],
+            if (RoleManagementService().getCurrentUserRole() == 'SUPERADMIN')
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: busy ? null : _rebuildSync,
+                  icon: const Icon(Icons.sync, size: 18),
+                  label: Text(l10n.ihmRebuildSync),
+                ),
+              ),
           ],
         ),
       ),

@@ -20,6 +20,25 @@ const String ihcafeBoxName = 'ihcafeProducers';
 const String _kDataKey = 'data';
 const String _kMetaKey = 'meta';
 
+// ── Verweise auf IHCafe in identity.alternateIDs ────────────────────────────
+//
+// Aus dem Verzeichnis wandern ausschließlich diese Kennungen in openRAL-
+// Objekte: am Farmer clave und productor_id, an der Farm finca_id. Der DNI
+// ("identidad") wird bewusst NICHT übernommen - die National ID kommt immer
+// aus der eigenen Erfassung (Ausweis), nie aus dem IHCafe-Export.
+//
+// productor_id und finca_id sind beide nackte Ganzzahlen; `idName` sagt, um
+// welche Kennung es sich handelt.
+
+const String ihcafeIssuer = 'IHCafe';
+const String ihcafeIdClave = 'clave';
+const String ihcafeIdProductorId = 'productor_id';
+const String ihcafeIdFincaId = 'finca_id';
+
+/// Ein alternateID-Eintrag, der auf IHCafe verweist.
+Map<String, String> ihcafeAlternateId(String uid, String idName) =>
+    {'UID': uid, 'issuedBy': ihcafeIssuer, 'idName': idName};
+
 /// Eine Finca eines Produzenten.
 class IhcafeFinca {
   final int? fincaId;
@@ -79,10 +98,10 @@ class IhcafeFinca {
 class IhcafeProducer {
   final int? productorId;
 
-  /// IHCafe-interne Kennung, z.B. "04-04-06906".
+  /// IHCafe-interne Kennung, z.B. "99-99-00007".
   final String clave;
 
-  /// Vollständiger DNI im Format "0719-1993-00172".
+  /// Vollständiger DNI im Format "9999-1993-00172".
   final String identidad;
 
   final String nombreCompleto;
@@ -191,8 +210,8 @@ class IhcafeCatalogMeta {
 /// Vergleichsschlüssel für Personennamen: Großschreibung, ohne Akzente, ohne
 /// Satzzeichen, Mehrfach-Leerzeichen zusammengefasst.
 ///
-/// Die Quelldaten enthalten doppelte Leerzeichen ("ERWIN ROBERTO  SIERRA
-/// GARMENDIA"), daher ist das Zusammenfassen zwingend.
+/// Die Quelldaten enthalten doppelte Leerzeichen ("TOMAS EFRAIN  PRUEBA
+/// FICTICIO"), daher ist das Zusammenfassen zwingend.
 String personNameKey(String raw) {
   const diacritics = {
     'Á': 'A', 'À': 'A', 'Ä': 'A', 'Â': 'A',

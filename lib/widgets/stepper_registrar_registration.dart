@@ -353,16 +353,12 @@ class _StepperRegistrarRegistrationState
       if (_selectedIhcafeProducer != null) {
         final producer = _selectedIhcafeProducer!;
         if (producer.clave.isNotEmpty) {
-          farmer['identity']['alternateIDs'].add({
-            'UID': producer.clave,
-            'issuedBy': 'IHCafe',
-          });
+          farmer['identity']['alternateIDs']
+              .add(ihcafeAlternateId(producer.clave, ihcafeIdClave));
         }
         if (producer.productorId != null) {
-          farmer['identity']['alternateIDs'].add({
-            'UID': '${producer.productorId}',
-            'issuedBy': 'IHCafe',
-          });
+          farmer['identity']['alternateIDs'].add(ihcafeAlternateId(
+              '${producer.productorId}', ihcafeIdProductorId));
         }
         debugPrint('IHCafe reference set on farmer: clave=${producer.clave}, '
             'productor_id=${producer.productorId}');
@@ -474,10 +470,8 @@ class _StepperRegistrarRegistrationState
       // Verknüpfung zur IHCafe-Finca. Mehr wird von der Finca nicht
       // übernommen - Ort und Adresse stehen bereits in currentGeolocation.
       if (_selectedIhcafeFinca?.fincaId != null) {
-        farm['identity']['alternateIDs'].add({
-          'UID': '${_selectedIhcafeFinca!.fincaId}',
-          'issuedBy': 'IHCafe',
-        });
+        farm['identity']['alternateIDs'].add(ihcafeAlternateId(
+            '${_selectedIhcafeFinca!.fincaId}', ihcafeIdFincaId));
         debugPrint('IHCafe finca_id set on farm: '
             '${_selectedIhcafeFinca!.fincaId}');
       }
@@ -1859,14 +1853,14 @@ class _StepperRegistrarRegistrationState
   /// Eingabefelder. Die Felder bleiben editierbar - der Registrar kann also
   /// korrigieren, wenn die Stammdaten veraltet sind. Die Ausweis-Fotos bleiben
   /// unverändert Pflicht, die Auswahl ersetzt keine Identitätsprüfung.
+  ///
+  /// Die National ID wird bewusst NICHT aus `identidad` vorbelegt: sie wird
+  /// vom Ausweis abgetippt, nie aus dem IHCafe-Export übernommen.
   void _applyIhcafeProducer(IhcafeProducer producer, IhcafeFinca? finca) {
     final name = splitSpanishName(producer.nombreCompleto);
     setState(() {
       _farmerFirstNameController.text = name.firstName;
       _farmerLastNameController.text = name.lastName;
-      if (producer.identidad.isNotEmpty) {
-        _farmerNationalIDController.text = producer.identidad;
-      }
       // Ort aus der gewählten Finca vorbelegen, sofern noch nichts eingetragen
       // ist - vorhandene Eingaben werden nicht überschrieben.
       if (finca != null) {

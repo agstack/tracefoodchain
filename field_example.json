@@ -1,0 +1,88 @@
+{
+  "currentOwners": [
+    {
+      "UID": "<owner-uid>"
+    }
+  ],
+  "specificProperties": [
+    {
+      "name": "area",
+      "unit": "ha",
+      "value": ""
+    },
+    {
+      "name": "boundaries",
+      "unit": "geojson",
+      "value": "{\"coordinates\":[[-88.16104684168808,14.05108585174875],[-88.1610947018076,14.05080187859152],[-88.16113596177216,14.05043776157952],[-88.16068700144803,14.05039104338154],[-88.16051959531634,14.05092586506691],[-88.16016515993036,14.0507732343678],[-88.15988724896489,14.05057970018274],[-88.15970299834449,14.0511757036692],[-88.1598006314243,14.05124052667116],[-88.16010641507297,14.05147395445881],[-88.16047717907824,14.05168686522097],[-88.1605499426267,14.05104765800146],[-88.16092805740263,14.05133658466712],[-88.16104684168808,14.05108585174875]]}"
+    },
+    {
+      "name": "boundaryAccuracies",
+      "unit": "String",
+      "value": ""
+    },
+    {
+      "name": "soil type",
+      "unit": "soil_type",
+      "value": ""
+    },
+    {
+      "name": "soil value",
+      "unit": "soil_value_germany",
+      "value": ""
+    }
+  ],
+  "objectState": "undefined",
+  "currentGeolocation": {
+    "postalAddress": {
+      "cityName": "unknown",
+      "cityNumber": "unknown",
+      "streetName": "unknown",
+      "streetNumber": "unknown",
+      "country": "unknown"
+    },
+    "plusCode": "unknown",
+    "geoCoordinates": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "container": {
+      "UID": "unknown"
+    },
+    "3WordCode": "unknown"
+  },
+  "identity": {
+    "alternateIDs": [
+      {
+        "issuedBy": "Asset Registry",
+        "UID": "97d2c060d2144ea58d6cb54040b214aa13c35e350c99716bccf377634421c69d"
+      }
+    ],
+    "alternateNames": [],
+    "name": "Demo Farm – Plot 1",
+    "UID": "0141cbd3-a919-4855-aff7-6e09a675224d",
+    "siteTag": ""
+  },
+  "linkedObjectRef": [],
+  "methodHistoryRef": [
+    {
+      "RALType": "generateDigitalSibling",
+      "UID": "f4427a5e-a70c-46b2-acff-bb39e9efb822"
+    },
+    {
+      "UID": "c053b54f-3563-4d79-9264-102abf2fa8f3",
+      "RALType": "changeObjectData"
+    }
+  ],
+  "locationHistoryRef": [],
+  "ownerHistoryRef": [],
+  "definition": {
+    "definitionURL": " ",
+    "definitionText": "In an agricultural context, a 'field' refers to a specific area of land designated for the cultivation of crops or the grazing of livestock. Fields are typically delineated by natural boundaries like hedgerows, fences, or other markers, and they are managed by farmers to optimize the production of agricultural products. The size, shape, and use of a field can vary widely depending on the type of farming, the landscape, and the agricultural practices employed. Fields are fundamental units in farming operations, and they may be used for growing a single crop (monoculture) or multiple crops (polyculture), or for rotational grazing in the case of livestock farming. Soil preparation, irrigation, planting, and harvesting are all activities that take place within these fields."
+  },
+  "template": {
+    "objectStateTemplates": "generalObjectState",
+    "version": "1",
+    "RALType": "field"
+  },
+  "existenceStarts": "2026-03-23T10:12:32.209"
+}

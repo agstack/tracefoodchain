@@ -62,3 +62,16 @@ macos/Runner/GoogleServices-Info.plist
 android/app/google-service.json
 ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
+
+# Echte Produktions- und Partnerdaten - nie ins öffentliche Repo
+# (IHCafé-Exporte enthalten Namen und DNI von Produzenten)
+ihcafe_export*/
+ihcafe_export*.zip
+productores.json
+paraiso.json
+fincas.json
+# Firestore-Dumps und Excel-Quelldateien der Importe
+fields_geoid_geojson.json
+*_firestore_export*.json
+*.xlsx
+*.xls

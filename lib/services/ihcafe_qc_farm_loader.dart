@@ -37,12 +37,16 @@ String _addr(Map<String, dynamic>? obj, String key) =>
 String _text(dynamic v) =>
     (v == null || v == '-no data found-') ? '' : v.toString().trim();
 
-List<String> _altIds(Map<String, dynamic>? obj, String issuer) {
+List<String> _altIds(Map<String, dynamic>? obj, String issuer,
+    {bool onlyWithoutName = false}) {
   final list = obj?['identity']?['alternateIDs'];
   if (list is! List) return const [];
   return [
     for (final a in list)
-      if (a is Map && a['issuedBy'] == issuer && _text(a['UID']).isNotEmpty)
+      if (a is Map &&
+          a['issuedBy'] == issuer &&
+          _text(a['UID']).isNotEmpty &&
+          (!onlyWithoutName || _text(a['idName']).isEmpty))
         _text(a['UID']),
   ];
 }
@@ -90,6 +94,10 @@ FarmToMatch farmToMatchFromObjects(
     aldea: pick('cityName'),
     farmerIhcafeIds: _altIds(farmer, ihcafeIssuer),
     farmIhcafeIds: _altIds(farm, ihcafeIssuer),
+    farmerIhcafeIdsWithoutName:
+        _altIds(farmer, ihcafeIssuer, onlyWithoutName: true),
+    farmIhcafeIdsWithoutName:
+        _altIds(farm, ihcafeIssuer, onlyWithoutName: true),
   );
 }
 
@@ -231,19 +239,31 @@ Future<List<QcFarmRecord>> loadQcApprovedFarms({
   return records;
 }
 
-/// Fügt [adds] als alternateIDs hinzu, soweit noch nicht vorhanden. Liefert
-/// die tatsächlich hinzugefügten.
+/// Fügt [adds] als alternateIDs hinzu, soweit noch nicht vorhanden, und
+/// trägt bei vorhandenen IHCafe-Einträgen ein fehlendes `idName` nach.
+/// Liefert die tatsächlich geänderten.
 List<PlannedAltId> _addAltIds(
     Map<String, dynamic> obj, Iterable<PlannedAltId> adds) {
   final identity = obj['identity'] as Map;
   final list = (identity['alternateIDs'] as List?) ?? <dynamic>[];
   final added = <PlannedAltId>[];
   for (final a in adds) {
-    final exists = list.any(
-        (x) => x is Map && x['issuedBy'] == a.issuedBy && x['UID'] == a.uid);
-    if (!exists) {
+    final existing = list.whereType<Map>().where(
+        (x) => x['issuedBy'] == a.issuedBy && _text(x['UID']) == a.uid);
+    if (existing.isEmpty) {
       list.add(a.toJson());
       added.add(a);
+      continue;
+    }
+    if (a.issuedBy == ihcafeIssuer) {
+      var named = false;
+      for (final x in existing) {
+        if (_text(x['idName']).isEmpty) {
+          x['idName'] = a.label;
+          named = true;
+        }
+      }
+      if (named) added.add(a);
     }
   }
   identity['alternateIDs'] = list;
@@ -296,7 +316,8 @@ Future<({int written, int failed})> applyIhcafeMatches({
         jobProperties: {'ihcafeMatch': jobInfo(m)},
       );
       written++;
-      log('  + $what $uid: ${added.map((a) => '${a.label}=${a.uid}').join(', ')}');
+      log('  + $what $uid: ${added.map((a) => '${a.label}=${a.uid}'
+          '${a.onlyName ? ' (idName added)' : ''}').join(', ')}');
     } catch (e) {
       failed++;
       log('  ! $what $uid FAILED: $e');

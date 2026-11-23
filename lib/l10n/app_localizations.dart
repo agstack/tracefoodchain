@@ -7152,6 +7152,24 @@ abstract class AppLocalizations {
   /// **'Write {count} matches'**
   String ihmApply(int count);
 
+  /// No description provided for @ihmRecordResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Report {count} results'**
+  String ihmRecordResults(int count);
+
+  /// No description provided for @ihmRecordResultsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports every result of this run to the IHCafé sync (also \"no match\" and unresolved cases), without writing any IDs. Writing matches reports them automatically.'**
+  String get ihmRecordResultsHint;
+
+  /// No description provided for @ihmRebuildSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebuild IHCafé sync index'**
+  String get ihmRebuildSync;
+
   /// No description provided for @ihmApplyConfirmTitle.
   ///
   /// In en, this message translates to:
@@ -7247,6 +7265,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Similar name'**
   String get ihmLevelNameFuzzy;
+
+  /// No description provided for @ihmLevelNameFinca.
+  ///
+  /// In en, this message translates to:
+  /// **'Name + finca'**
+  String get ihmLevelNameFinca;
 
   /// No description provided for @ihmLevelNameOnly.
   ///

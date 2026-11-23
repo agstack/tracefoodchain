@@ -7,8 +7,9 @@
 /// Paths are JSONPath. List entries are addressed by their identifying key
 /// where one exists and is unique (`specificProperties[?(@.key=='firstName')]`,
 /// `alternateIDs[?(@.issuedBy=='National ID')]`), so a path stays meaningful
-/// even if entries are reordered. Lists without such a key are compared as a
-/// whole.
+/// even if entries are reordered. Several IDs of one issuer are told apart by
+/// `idName` (`alternateIDs[?(@.issuedBy=='IHCafe' && @.idName=='clave')]`).
+/// Lists without such a key are compared as a whole.
 library;
 
 /// Keys that change on every write and say nothing about the data itself.
@@ -25,6 +26,10 @@ const List<List<String>> _identifyingKeys = [
   ['issuedBy'],
   ['role'],
 ];
+
+/// Optional second key that narrows an identifying key down - an issuer may
+/// hand out several IDs (IHCafe: clave, productor_id, finca_id).
+const Map<String, String> _qualifyingKeys = {'issuedBy': 'idName'};
 
 /// Each entry: `path`, `oldValue`, `newValue` (null where the value did not
 /// exist on that side).
@@ -58,13 +63,11 @@ void _diff(
   if (oldValue is List && newValue is List) {
     final idKeys = _identifyingKeysFor(oldValue, newValue);
     if (idKeys != null) {
-      // specificProperties mix "key" and "name" entries - one id space.
-      String? keyOf(Map e) => idKeys.firstWhere((k) => e[k] != null);
       final oldById = {for (final e in oldValue) _idOf(e, idKeys): e as Map};
       final newById = {for (final e in newValue) _idOf(e, idKeys): e as Map};
       for (final id in {...oldById.keys, ...newById.keys}) {
-        final key = keyOf(newById[id] ?? oldById[id]!);
-        _diff("$path[?(@.$key=='$id')]", oldById[id], newById[id], changes);
+        final filter = _filterOf(newById[id] ?? oldById[id]!, idKeys);
+        _diff('$path[?($filter)]', oldById[id], newById[id], changes);
       }
       return;
     }
@@ -78,8 +81,26 @@ void _diff(
   });
 }
 
-String _idOf(dynamic entry, List<String> idKeys) =>
-    (entry as Map)[idKeys.firstWhere((k) => entry[k] != null)].toString();
+/// specificProperties mix "key" and "name" entries - one id space.
+String _keyOf(Map entry, List<String> idKeys) =>
+    idKeys.firstWhere((k) => entry[k] != null);
+
+String _idOf(dynamic entry, List<String> idKeys) {
+  final e = entry as Map;
+  final key = _keyOf(e, idKeys);
+  final qualifier = _qualifyingKeys[key];
+  final qualified = qualifier == null ? null : e[qualifier];
+  return qualified == null ? '${e[key]}' : '${e[key]}\u0000$qualified';
+}
+
+String _filterOf(Map entry, List<String> idKeys) {
+  final key = _keyOf(entry, idKeys);
+  final qualifier = _qualifyingKeys[key];
+  final qualified = qualifier == null ? null : entry[qualifier];
+  return qualified == null
+      ? "@.$key=='${entry[key]}'"
+      : "@.$key=='${entry[key]}' && @.$qualifier=='$qualified'";
+}
 
 /// The key group that identifies every entry of both lists uniquely, if any.
 List<String>? _identifyingKeysFor(List oldList, List newList) {

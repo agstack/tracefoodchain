@@ -431,8 +431,8 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
 
       if (_ihcafeConfirmed.isEmpty) {
         _log('No confirmed IHCafé matches applied - run "Match against '
-            'IHCafé" first if you want the identidad and the IHCafé IDs on '
-            'the objects.', level: _LogLevel.warning);
+            'IHCafé" first if you want the IHCafé IDs on the objects.',
+            level: _LogLevel.warning);
       } else {
         _log('Applying ${_ihcafeConfirmed.length} confirmed IHCafé match(es).',
             level: _LogLevel.success);
@@ -607,7 +607,7 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
           _log('│  import municipio : ${m.municipality}');
           _log('│  reason           : ${m.reason}');
           if (m.best != null) {
-            _log('│  → identidad      : ${m.best!.identidad}');
+            _log('│  identidad (info) : ${m.best!.identidad}');
             _log('│  → clave          : ${m.best!.clave}');
             _log('│  → location       : ${m.best!.locationLabel}');
             _log('│  → vigente        : ${m.best!.esVigente}');
@@ -627,9 +627,10 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
       _log('');
       _logDivider();
       _log('Matching complete. ${_ihcafeConfirmed.length} confirmed match(es) '
-          'will be applied on the next "Build objects (dry run)": identidad as '
-          'National ID, clave and productor_id on the farmer, finca_id on the '
-          'farm - all issuedBy "IHCafe". Nothing is persisted.',
+          'will be applied on the next "Build objects (dry run)": clave and '
+          'productor_id on the farmer, finca_id on the farm - all issuedBy '
+          '"IHCafe" with idName. The identidad is NOT taken over as National '
+          'ID. Nothing is persisted.',
           level: _LogLevel.success);
       _logDivider();
     } catch (e, st) {

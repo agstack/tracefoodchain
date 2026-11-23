@@ -3,9 +3,9 @@ import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 
 /// Gleicht importierte Personen mit dem IHCafe-Verzeichnis ab.
 ///
-/// Zweck ist vor allem, den vollständigen DNI ("identidad") zu gewinnen - in
-/// der Excel-Quelldatei ist er auf drei signifikante Stellen gerundet und damit
-/// unbrauchbar.
+/// Zweck ist, die IHCafe-Kennungen (clave, productor_id, finca_id) an Farmer
+/// und Farm zu hängen. Der DNI ("identidad") wird dabei NICHT übernommen -
+/// die National ID kommt nur vom Ausweis.
 
 enum IhcafeMatchQuality {
   /// Genau ein Kandidat, dessen Finca im selben Municipio liegt.

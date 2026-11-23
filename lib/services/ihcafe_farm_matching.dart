@@ -6,8 +6,12 @@ import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 ///
 /// Ziel: an Farmer und Farm die IHCafe-Kennungen als alternateIDs setzen -
 /// am Farmer `clave` und `productor_id`, an der Farm die `finca_id`, jeweils
-/// mit `issuedBy: 'IHCafe'` (dieselbe Konvention wie bei der Registrierung
-/// über das Verzeichnis und beim Fast Upload).
+/// mit `issuedBy: 'IHCafe'` und `idName` (dieselbe Konvention wie bei der
+/// Registrierung über das Verzeichnis und beim Fast Upload, siehe
+/// [ihcafeAlternateId]). Der DNI wird nie übernommen.
+///
+/// Vorhandene IHCafe-Einträge ohne `idName` (aus der Zeit vor diesem Feld)
+/// werden beim Schreiben nachgetragen.
 ///
 /// Diese Datei ist reine Logik ohne Firebase, damit sie testbar bleibt. Das
 /// Laden der Farmen und das Schreiben liegen in `ihcafe_qc_farm_loader.dart`.
@@ -18,11 +22,12 @@ import 'package:trace_foodchain_app/services/ihcafe_producer_service.dart';
 /// 3. Name exakt (bzw. gleiche Namensbestandteile) und Municipio bestätigt.
 /// 4. Name unscharf (Tippfehler, fehlende Zweitnamen) und im Municipio
 ///    eindeutig.
+/// 4b. Name im Municipio mehrdeutig, aber nur ein Kandidat hat eine Finca,
+///    deren Name zu Farmname oder Aldea der Farm passt.
 /// 5. Name eindeutig im ganzen Export, Municipio passt aber nicht.
 /// Alles, was mehrdeutig ist oder einem anderen Kriterium widerspricht, wird
 /// gemeldet statt geraten.
 
-const String ihcafeIssuer = 'IHCafe';
 const String nationalIdIssuer = 'National ID';
 
 enum IhcafeLinkLevel {
@@ -41,6 +46,10 @@ enum IhcafeLinkLevel {
 
   /// Unscharfer Name, im Municipio aber eindeutig.
   nameFuzzy,
+
+  /// Name im Municipio mehrdeutig, aber nur bei einem Kandidaten passt der
+  /// Finca-Name zu Farmname oder Aldea der Farm.
+  nameFinca,
 
   /// Name im Export eindeutig, Municipio fehlt oder passt nicht.
   nameOnly,
@@ -75,6 +84,7 @@ const Set<IhcafeLinkLevel> applicableLevels = {
   IhcafeLinkLevel.dniNameMismatch,
   IhcafeLinkLevel.nameMunicipio,
   IhcafeLinkLevel.nameFuzzy,
+  IhcafeLinkLevel.nameFinca,
   IhcafeLinkLevel.nameOnly,
 };
 
@@ -97,6 +107,10 @@ class FarmToMatch {
   final List<String> farmerIhcafeIds;
   final List<String> farmIhcafeIds;
 
+  /// Teilmenge davon ohne `idName` - wird beim Schreiben nachgetragen.
+  final List<String> farmerIhcafeIdsWithoutName;
+  final List<String> farmIhcafeIdsWithoutName;
+
   const FarmToMatch({
     required this.farmUid,
     required this.farmName,
@@ -108,6 +122,8 @@ class FarmToMatch {
     this.aldea = '',
     this.farmerIhcafeIds = const [],
     this.farmIhcafeIds = const [],
+    this.farmerIhcafeIdsWithoutName = const [],
+    this.farmIhcafeIdsWithoutName = const [],
   });
 }
 
@@ -115,10 +131,17 @@ class FarmToMatch {
 class PlannedAltId {
   final String uid;
   final String issuedBy;
-  final String label; // 'clave', 'productor_id', 'finca_id'
-  const PlannedAltId(this.uid, this.label, {this.issuedBy = ihcafeIssuer});
+  final String label; // 'clave', 'productor_id', 'finca_id' -> idName
 
-  Map<String, String> toJson() => {'UID': uid, 'issuedBy': issuedBy};
+  /// Die Kennung steht schon am Objekt, nur `idName` fehlt noch.
+  final bool onlyName;
+
+  const PlannedAltId(this.uid, this.label,
+      {this.issuedBy = ihcafeIssuer, this.onlyName = false});
+
+  Map<String, String> toJson() => issuedBy == ihcafeIssuer
+      ? ihcafeAlternateId(uid, label)
+      : {'UID': uid, 'issuedBy': issuedBy};
 }
 
 class IhcafeFarmMatch {
@@ -257,6 +280,69 @@ NameSimilarity compareNames(List<String> a, List<String> b) {
     short.length >= 2 && matched == short.length,
     fuzzy,
   );
+}
+
+// ── Finca-Name ─────────────────────────────────────────────────────────────
+//
+// Der Export hat keine Koordinaten, Flächen oder Adressen; nombre_finca ist
+// meist ein Ortsname ("LAS VEGAS DE VERACRUZ TROJES", "LA BENDICION") und
+// vielfach vergeben. Er taugt daher nur zur Entscheidung zwischen wenigen
+// Kandidaten, nie als eigenständiges Kriterium.
+
+/// Füllwörter, die in Finca- und Ortsnamen nichts unterscheiden.
+const Set<String> _placeStopwords = {
+  'FINCA', 'LA', 'EL', 'LOS', 'LAS', 'DE', 'DEL', 'Y', 'N', 'I', 'NI',
+};
+
+/// Unterscheidende Bestandteile eines Ortsnamens; [drop] (z.B. Municipio und
+/// Departamento der Finca) fällt mit heraus.
+List<String> _placeTokens(String raw, [Iterable<String> drop = const []]) {
+  final dropTokens = {
+    for (final d in drop) ..._tokens(d),
+  };
+  return _tokens(raw)
+      .where((t) => !_placeStopwords.contains(t) && !dropTokens.contains(t))
+      .toList();
+}
+
+/// Jeder Bestandteil von [small] kommt (ggf. mit Tippfehler) in [big] vor.
+bool _allIn(List<String> small, List<String> big) =>
+    small.isNotEmpty &&
+    small.every((t) => big.any((b) => _tokenEquals(b, t)));
+
+/// Begründung, warum [x] zur Farm [f] passt - oder null.
+///
+/// Verglichen wird der Finca-Name mit dem Farmnamen (in beide Richtungen
+/// enthalten) und die Aldea der Farm mit Finca-Name bzw. Finca-Aldea. Ist der
+/// Farmname nur der Personenname (so bei Importen), zählt er nicht.
+String? fincaEvidence(IhcafeFinca x, FarmToMatch f) {
+  final fincaTokens =
+      _placeTokens(x.nombreFinca ?? '', [x.municipio, x.departamento]);
+  final aldeaTokens = _placeTokens(f.aldea);
+
+  if (aldeaTokens.isNotEmpty) {
+    final fincaAldea = _placeTokens(x.aldea ?? '');
+    if (fincaAldea.isNotEmpty &&
+        _allIn(aldeaTokens, fincaAldea) &&
+        _allIn(fincaAldea, aldeaTokens)) {
+      return 'finca ${x.fincaId} aldea "${x.aldea}" = farm aldea';
+    }
+    if (_allIn(aldeaTokens, fincaTokens)) {
+      return 'finca ${x.fincaId} "${x.nombreFinca}" contains farm aldea '
+          '"${f.aldea}"';
+    }
+  }
+
+  final farmIsPerson =
+      personNameKey(f.farmName) == personNameKey(f.farmerName);
+  final farmTokens = farmIsPerson ? const <String>[] : _placeTokens(f.farmName);
+  if (farmTokens.isNotEmpty &&
+      fincaTokens.isNotEmpty &&
+      (_allIn(farmTokens, fincaTokens) || _allIn(fincaTokens, farmTokens))) {
+    return 'finca ${x.fincaId} "${x.nombreFinca}" fits farm name '
+        '"${f.farmName}"';
+  }
+  return null;
 }
 
 // ── Matcher ────────────────────────────────────────────────────────────────
@@ -458,6 +544,14 @@ class IhcafeFarmMatcher {
         for (final p in geo.take(5)) {
           reasons.add('  candidate ${_describe(p)}');
         }
+        final tie = _tieBreakByFinca(
+            geo.where((p) => !contradictsDni(p)).toList(), f, munKey);
+        if (tie != null) {
+          reasons.add('-> ${_describe(tie.producer)}: ${tie.evidence}, '
+              'no other candidate has a fitting finca');
+          return _finish(f, IhcafeLinkLevel.nameFinca, tie.producer, reasons,
+              nameScore: 1, preferredFinca: tie.finca);
+        }
         return IhcafeFarmMatch(
             farm: f,
             level: IhcafeLinkLevel.ambiguous,
@@ -508,6 +602,15 @@ class IhcafeFarmMatcher {
         for (final h in usable.take(5)) {
           reasons.add('  candidate ${_describe(h.$1)} '
               '${(h.$2.score * 100).round()}%');
+        }
+        final tie = _tieBreakByFinca(
+            usable.map((h) => h.$1).toList(), f, munKey);
+        if (tie != null) {
+          final sim = usable.firstWhere((h) => h.$1 == tie.producer).$2;
+          reasons.add('-> ${_describe(tie.producer)}: ${tie.evidence}, '
+              'no other candidate has a fitting finca');
+          return _finish(f, IhcafeLinkLevel.nameFinca, tie.producer, reasons,
+              nameScore: sim.score, preferredFinca: tie.finca);
         }
         return IhcafeFarmMatch(
             farm: f,
@@ -607,6 +710,32 @@ class IhcafeFarmMatcher {
     );
   }
 
+  /// Unter mehrdeutigen Kandidaten den einzigen, der eine zur Farm passende
+  /// Finca im Municipio hat (siehe [fincaEvidence]). Passen bei ihm mehrere
+  /// Fincas, bleibt [finca] null und [chooseFinca] entscheidet.
+  ({IhcafeProducer producer, IhcafeFinca? finca, String evidence})?
+      _tieBreakByFinca(
+          List<IhcafeProducer> candidates, FarmToMatch f, String munKey) {
+    if (munKey.isEmpty || candidates.length < 2) return null;
+    final fits = <(IhcafeProducer, IhcafeFinca, String)>[];
+    for (final p in candidates) {
+      for (final x in p.fincas) {
+        if (x.fincaId == null || personNameKey(x.municipio) != munKey) {
+          continue;
+        }
+        final e = fincaEvidence(x, f);
+        if (e != null) fits.add((p, x, e));
+      }
+    }
+    final producers = fits.map((e) => e.$1).toSet();
+    if (producers.length != 1) return null;
+    return (
+      producer: producers.single,
+      finca: fits.length == 1 ? fits.single.$2 : null,
+      evidence: fits.first.$3,
+    );
+  }
+
   /// Ergänzt Finca-Auswahl und geplante alternateIDs.
   IhcafeFarmMatch _finish(
     FarmToMatch f,
@@ -614,6 +743,7 @@ class IhcafeFarmMatcher {
     IhcafeProducer p,
     List<String> reasons, {
     double nameScore = 0,
+    IhcafeFinca? preferredFinca,
   }) {
     final match = IhcafeFarmMatch(
       farm: f,
@@ -623,30 +753,45 @@ class IhcafeFarmMatcher {
       reasons: reasons,
     );
 
-    // Farmer: clave und productor_id, soweit noch nicht vorhanden.
+    // Farmer: clave und productor_id, soweit noch nicht vorhanden - bzw.
+    // idName nachtragen, wenn die Kennung ohne steht.
     if (f.farmerUid != null) {
-      if (p.clave.isNotEmpty && !f.farmerIhcafeIds.contains(p.clave)) {
-        match.farmerAdds.add(PlannedAltId(p.clave, 'clave'));
+      void plan(String uid, String label) {
+        if (uid.isEmpty) return;
+        if (!f.farmerIhcafeIds.contains(uid)) {
+          match.farmerAdds.add(PlannedAltId(uid, label));
+        } else if (f.farmerIhcafeIdsWithoutName.contains(uid)) {
+          reasons.add('farmer carries $uid without idName -> "$label"');
+          match.farmerAdds.add(PlannedAltId(uid, label, onlyName: true));
+        }
       }
-      final pid = p.productorId == null ? '' : '${p.productorId}';
-      if (pid.isNotEmpty && !f.farmerIhcafeIds.contains(pid)) {
-        match.farmerAdds.add(PlannedAltId(pid, 'productor_id'));
-      }
+
+      plan(p.clave, ihcafeIdClave);
+      plan(p.productorId == null ? '' : '${p.productorId}', ihcafeIdProductorId);
     }
 
     // Farm: finca_id, wenn eindeutig bestimmbar.
-    final finca = chooseFinca(p, f, reasons);
+    final finca = preferredFinca ?? chooseFinca(p, f, reasons);
+    if (preferredFinca != null) {
+      reasons.add('finca: ${preferredFinca.fincaId} picked by finca name');
+    }
     if (finca != null) {
       match.finca = finca;
       final id = '${finca.fincaId}';
       if (f.farmIhcafeIds.contains(id)) {
-        reasons.add('farm already carries finca_id $id');
+        if (f.farmIhcafeIdsWithoutName.contains(id)) {
+          reasons.add('farm carries finca_id $id without idName -> add it');
+          match.farmAdds
+              .add(PlannedAltId(id, ihcafeIdFincaId, onlyName: true));
+        } else {
+          reasons.add('farm already carries finca_id $id');
+        }
       } else {
         if (f.farmIhcafeIds.isNotEmpty) {
           reasons.add('note: farm already carries other IHCafe id(s) '
               '${f.farmIhcafeIds.join(', ')}');
         }
-        match.farmAdds.add(PlannedAltId(id, 'finca_id'));
+        match.farmAdds.add(PlannedAltId(id, ihcafeIdFincaId));
       }
     }
 
@@ -691,9 +836,9 @@ class IhcafeFarmMatcher {
           '${where(narrowed.first)}');
       return narrowed.first;
     }
+    final pool = narrowed.isEmpty ? fincas : narrowed;
     final aldeaKey = personNameKey(f.aldea);
     if (aldeaKey.isNotEmpty) {
-      final pool = narrowed.isEmpty ? fincas : narrowed;
       final byAldea =
           pool.where((x) => personNameKey(x.aldea ?? '') == aldeaKey).toList();
       if (byAldea.length == 1) {
@@ -701,6 +846,16 @@ class IhcafeFarmMatcher {
             '${where(byAldea.first)}');
         return byAldea.first;
       }
+    }
+    // Finca-Name gegen Farmname bzw. Aldea der Farm.
+    final byName = [
+      for (final x in pool)
+        if (fincaEvidence(x, f) case final e?) (x, e),
+    ];
+    if (byName.length == 1) {
+      log.add('finca: ${fincas.length} fincas, finca name picks '
+          '${where(byName.single.$1)} (${byName.single.$2})');
+      return byName.single.$1;
     }
     log.add('finca: ${fincas.length} fincas (${fincas.map(where).join('; ')}) '
         '- not decidable, finca_id NOT set');
@@ -752,7 +907,7 @@ void resolveCollisions(List<IhcafeFarmMatch> results) {
     if (farmsByFinca['$id']!.length > 1) {
       r.reasons.add('finca_id $id would go to '
           '${farmsByFinca['$id']!.length} farms - finca_id NOT set');
-      r.farmAdds.removeWhere((a) => a.label == 'finca_id');
+      r.farmAdds.removeWhere((a) => a.label == ihcafeIdFincaId);
       r.finca = null;
     }
   }

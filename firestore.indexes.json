@@ -85,6 +85,39 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "TFC_ihcafe_sync",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "needsPush", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_ihcafe_sync",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "matchState", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_ihcafe_sync",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "countryCode", "order": "ASCENDING" },
+        { "fieldPath": "matchState", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "TFC_ihcafe_sync",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "matchState", "order": "ASCENDING" },
+        { "fieldPath": "matchedAgainstExport", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "TFC_qc_index",
       "queryScope": "COLLECTION",
       "fields": [

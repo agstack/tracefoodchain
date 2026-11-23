@@ -4144,6 +4144,19 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String ihmRecordResults(int count) {
+    return 'Signaler $count résultats';
+  }
+
+  @override
+  String get ihmRecordResultsHint =>
+      'Signale tous les résultats de cette exécution à la synchronisation IHCafé (y compris \"aucune correspondance\" et les cas non résolus), sans écrire d\'identifiants. L\'écriture des correspondances les signale automatiquement.';
+
+  @override
+  String get ihmRebuildSync =>
+      'Reconstruire l\'index de synchronisation IHCafé';
+
+  @override
   String get ihmApplyConfirmTitle => 'Écrire les identifiants IHCafé ?';
 
   @override
@@ -4192,6 +4205,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get ihmLevelNameFuzzy => 'Nom similaire';
+
+  @override
+  String get ihmLevelNameFinca => 'Nom + finca';
 
   @override
   String get ihmLevelNameOnly => 'Nom seulement';

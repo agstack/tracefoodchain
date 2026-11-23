@@ -58,6 +58,26 @@ void main() {
           r"$.identity.alternateIDs[?(@.issuedBy=='National ID')].UID");
     });
 
+    test('several IDs of one issuer are addressed by issuer and idName', () {
+      Map<String, dynamic> withIhcafe(List<Map<String, String>> ids) =>
+          _farmer()
+            ..['identity']['alternateIDs'] = [
+              {'issuedBy': 'National ID', 'UID': '0801-1990-12345'},
+              ...ids,
+            ];
+      final older = withIhcafe([
+        {'issuedBy': 'IHCafe', 'idName': 'clave', 'UID': '99-99-00001'},
+      ]);
+      final newer = withIhcafe([
+        {'issuedBy': 'IHCafe', 'idName': 'clave', 'UID': '99-99-00001'},
+        {'issuedBy': 'IHCafe', 'idName': 'productor_id', 'UID': '1'},
+      ]);
+      final changes = diffObjectVersions(older, newer);
+      expect(changes.single['path'],
+          r"$.identity.alternateIDs[?(@.issuedBy=='IHCafe' && @.idName=='productor_id')]");
+      expect(changes.single['oldValue'], isNull);
+    });
+
     test('replaced photo shows the new image reference', () {
       final newer = _farmer();
       (newer['linkedObjectRef'] as List).first['UID'] = 'img2';
