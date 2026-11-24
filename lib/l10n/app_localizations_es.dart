@@ -4478,4 +4478,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String qcNotConfirmedBody(int count) {
     return 'La decisión está guardada en este equipo, pero la nube todavía no la ha confirmado para $count objetos, por eso el registro sigue en la lista de revisión. Por favor, no cierre la aplicación ni recargue la página. En la pantalla de inicio, toque el indicador de sincronización y luego «Sincronizar ahora». Si después el registro sigue en la lista de revisión, contacte al soporte.';
   }
+
+  @override
+  String get logoutPendingTitle => 'Todavía no se ha subido todo';
+
+  @override
+  String logoutPendingBody(int count) {
+    return '$count elementos de este equipo todavía no están en la nube. Cerrar sesión no los borra, pero quedan solo en este navegador o equipo y se suben únicamente cuando vuelva a iniciar sesión aquí. Por favor, sincronice primero.';
+  }
+
+  @override
+  String get logoutAnyway => 'Cerrar sesión de todos modos';
 }

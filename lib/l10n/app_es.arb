@@ -2416,5 +2416,8 @@
   "qcRegisteringFieldsProgress": "Registrando las parcelas en el Asset Registry ({done}/{total})...",
   "qcConfirmingInCloud": "Esperando que la nube confirme la decisión...",
   "qcNotConfirmedTitle": "No confirmado por la nube",
-  "qcNotConfirmedBody": "La decisión está guardada en este equipo, pero la nube todavía no la ha confirmado para {count} objetos, por eso el registro sigue en la lista de revisión. Por favor, no cierre la aplicación ni recargue la página. En la pantalla de inicio, toque el indicador de sincronización y luego «Sincronizar ahora». Si después el registro sigue en la lista de revisión, contacte al soporte."
+  "qcNotConfirmedBody": "La decisión está guardada en este equipo, pero la nube todavía no la ha confirmado para {count} objetos, por eso el registro sigue en la lista de revisión. Por favor, no cierre la aplicación ni recargue la página. En la pantalla de inicio, toque el indicador de sincronización y luego «Sincronizar ahora». Si después el registro sigue en la lista de revisión, contacte al soporte.",
+  "logoutPendingTitle": "Todavía no se ha subido todo",
+  "logoutPendingBody": "{count} elementos de este equipo todavía no están en la nube. Cerrar sesión no los borra, pero quedan solo en este navegador o equipo y se suben únicamente cuando vuelva a iniciar sesión aquí. Por favor, sincronice primero.",
+  "logoutAnyway": "Cerrar sesión de todos modos"
 }

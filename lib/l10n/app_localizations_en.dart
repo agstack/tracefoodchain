@@ -4412,4 +4412,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String qcNotConfirmedBody(int count) {
     return 'The decision is saved on this device, but the cloud has not yet confirmed it for $count objects, so the registration stays in the queue. Please do not close the app or reload the page. On the start page, tap the sync indicator and then \"Sync now\". If the registration is still in the queue afterwards, please contact support.';
   }
+
+  @override
+  String get logoutPendingTitle => 'Not everything has been uploaded yet';
+
+  @override
+  String logoutPendingBody(int count) {
+    return '$count items on this device have not reached the cloud yet. Logging out does not delete them, but they stay only in this browser or on this device and are uploaded only when you sign in here again. Please sync first.';
+  }
+
+  @override
+  String get logoutAnyway => 'Log out anyway';
 }

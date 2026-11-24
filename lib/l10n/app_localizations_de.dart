@@ -4458,4 +4458,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String qcNotConfirmedBody(int count) {
     return 'Die Entscheidung ist auf diesem Gerät gespeichert, aber die Cloud hat sie für $count Objekte noch nicht bestätigt. Die Registrierung bleibt deshalb in der Prüfliste. Bitte die App nicht schließen und die Seite nicht neu laden. Auf der Startseite die Sync-Anzeige antippen und dann „Jetzt synchronisieren“ wählen. Steht die Registrierung danach immer noch in der Prüfliste, bitte den Support kontaktieren.';
   }
+
+  @override
+  String get logoutPendingTitle => 'Noch nicht alles hochgeladen';
+
+  @override
+  String logoutPendingBody(int count) {
+    return '$count Einträge auf diesem Gerät sind noch nicht in der Cloud. Abmelden löscht sie nicht, aber sie bleiben dann nur in diesem Browser bzw. auf diesem Gerät und werden erst hochgeladen, wenn du dich hier wieder anmeldest. Bitte zuerst synchronisieren.';
+  }
+
+  @override
+  String get logoutAnyway => 'Trotzdem abmelden';
 }

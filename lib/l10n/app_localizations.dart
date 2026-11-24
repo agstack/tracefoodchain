@@ -7775,6 +7775,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The decision is saved on this device, but the cloud has not yet confirmed it for {count} objects, so the registration stays in the queue. Please do not close the app or reload the page. On the start page, tap the sync indicator and then \"Sync now\". If the registration is still in the queue afterwards, please contact support.'**
   String qcNotConfirmedBody(int count);
+
+  /// No description provided for @logoutPendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not everything has been uploaded yet'**
+  String get logoutPendingTitle;
+
+  /// No description provided for @logoutPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items on this device have not reached the cloud yet. Logging out does not delete them, but they stay only in this browser or on this device and are uploaded only when you sign in here again. Please sync first.'**
+  String logoutPendingBody(int count);
+
+  /// No description provided for @logoutAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out anyway'**
+  String get logoutAnyway;
 }
 
 class _AppLocalizationsDelegate

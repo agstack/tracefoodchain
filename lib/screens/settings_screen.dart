@@ -18,6 +18,7 @@ import 'package:trace_foodchain_app/services/asset_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
 import 'package:trace_foodchain_app/services/permission_service.dart';
 import 'package:trace_foodchain_app/widgets/sync_control_card.dart';
+import 'package:trace_foodchain_app/widgets/logout_pending_guard.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Globale Variable zum Speichern des Modus
@@ -222,6 +223,12 @@ class SettingsScreen extends StatelessWidget {
             title: const Text("Log out"),
             onTap: appState.isConnected
                 ? () async {
+                    // Noch nicht Hochgeladenes bliebe sonst unbemerkt nur in
+                    // diesem Browser bzw. auf diesem Gerät.
+                    if (!await confirmLogoutWithPendingUploads(context)) {
+                      return;
+                    }
+                    if (!context.mounted) return;
                     // Verwende die zentrale signOut-Methode aus AppState
                     // Diese schließt automatisch die Hive-Datenbank
                     final appState =

@@ -2388,5 +2388,8 @@
   "qcRegisteringFieldsProgress": "Enregistrement des parcelles dans l'Asset Registry ({done}/{total})...",
   "qcConfirmingInCloud": "En attente de la confirmation de la décision par le cloud...",
   "qcNotConfirmedTitle": "Non confirmé par le cloud",
-  "qcNotConfirmedBody": "La décision est enregistrée sur cet appareil, mais le cloud ne l'a pas encore confirmée pour {count} objets ; l'enregistrement reste donc dans la file. Veuillez ne pas fermer l'application ni recharger la page. Sur la page d'accueil, touchez l'indicateur de synchronisation puis « Synchroniser maintenant ». Si l'enregistrement est toujours dans la file ensuite, contactez le support."
+  "qcNotConfirmedBody": "La décision est enregistrée sur cet appareil, mais le cloud ne l'a pas encore confirmée pour {count} objets ; l'enregistrement reste donc dans la file. Veuillez ne pas fermer l'application ni recharger la page. Sur la page d'accueil, touchez l'indicateur de synchronisation puis « Synchroniser maintenant ». Si l'enregistrement est toujours dans la file ensuite, contactez le support.",
+  "logoutPendingTitle": "Tout n'a pas encore été envoyé",
+  "logoutPendingBody": "{count} éléments de cet appareil ne sont pas encore dans le cloud. La déconnexion ne les supprime pas, mais ils restent uniquement dans ce navigateur ou sur cet appareil et ne sont envoyés que lorsque vous vous reconnectez ici. Veuillez d'abord synchroniser.",
+  "logoutAnyway": "Se déconnecter quand même"
 }

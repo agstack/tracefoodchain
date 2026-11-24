@@ -4497,4 +4497,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String qcNotConfirmedBody(int count) {
     return 'La décision est enregistrée sur cet appareil, mais le cloud ne l\'a pas encore confirmée pour $count objets ; l\'enregistrement reste donc dans la file. Veuillez ne pas fermer l\'application ni recharger la page. Sur la page d\'accueil, touchez l\'indicateur de synchronisation puis « Synchroniser maintenant ». Si l\'enregistrement est toujours dans la file ensuite, contactez le support.';
   }
+
+  @override
+  String get logoutPendingTitle => 'Tout n\'a pas encore été envoyé';
+
+  @override
+  String logoutPendingBody(int count) {
+    return '$count éléments de cet appareil ne sont pas encore dans le cloud. La déconnexion ne les supprime pas, mais ils restent uniquement dans ce navigateur ou sur cet appareil et ne sont envoyés que lorsque vous vous reconnectez ici. Veuillez d\'abord synchroniser.';
+  }
+
+  @override
+  String get logoutAnyway => 'Se déconnecter quand même';
 }

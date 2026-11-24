@@ -15,6 +15,7 @@ import '../widgets/field_boundary_recorder.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/sync_control_card.dart';
+import '../widgets/logout_pending_guard.dart';
 import '../services/background_sync_service.dart';
 import '../services/sync_settings_service.dart';
 import '../screens/registrar_qc_screen.dart';
@@ -228,7 +229,11 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
       ),
     );
 
-    if (shouldLogout == true && mounted) {
+    if (shouldLogout != true || !mounted) return;
+    // Noch nicht Hochgeladenes bliebe sonst unbemerkt nur in diesem Browser.
+    if (!await confirmLogoutWithPendingUploads(context)) return;
+
+    if (mounted) {
       // Verwende die zentrale signOut-Methode aus AppState
       final appState = Provider.of<AppState>(context, listen: false);
       await appState.signOut();
