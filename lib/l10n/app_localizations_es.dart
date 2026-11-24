@@ -2990,7 +2990,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get consentFormPhoto2 =>
-      'Foto del Formulario de Consentimiento 2 (opcional)';
+      'Foto del Formulario de Consentimiento 2 (reverso)';
 
   @override
   String get consentFormPhoto2Optional =>
@@ -4218,4 +4218,264 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get qcLoadSatelliteMap => 'Cargar mapa satelital';
+
+  @override
+  String get qcFieldDecisionApprove => 'Aprobar';
+
+  @override
+  String get qcFieldDecisionDefer => 'Posponer';
+
+  @override
+  String get qcFieldDecisionReject => 'Rechazar';
+
+  @override
+  String get qcFieldDeferredHint =>
+      'Esta parcela permanece en la cola y puede corregirse y aprobarse más tarde. El productor, la finca y las demás parcelas se deciden sin ella.';
+
+  @override
+  String get qcFieldRejectedHint =>
+      'Esta parcela se rechaza definitivamente y su área se descuenta de la finca. Úselo solo si no se puede corregir (duplicado, finca equivocada, no es café). Para errores de mapeo, posponga la parcela o reemplace el polígono.';
+
+  @override
+  String qcDecisionSummary(int approve, int defer, int reject) {
+    return 'Parcelas: $approve aprobar · $defer posponer · $reject rechazar';
+  }
+
+  @override
+  String get qcSaveDecision => 'Guardar decisión';
+
+  @override
+  String get qcRejectAll => 'Rechazar todo';
+
+  @override
+  String get qcFieldsReason => 'Motivo de las parcelas pospuestas o rechazadas';
+
+  @override
+  String get qcNothingToDecide =>
+      'Nada que guardar: el productor y la finca ya están aprobados y todas las parcelas están pospuestas.';
+
+  @override
+  String get qcPartialDecisionSaved =>
+      'Decisión guardada. Las parcelas pospuestas permanecen en la cola.';
+
+  @override
+  String get qcPrecheckTitle => 'Verificación previa automática';
+
+  @override
+  String get qcPrecheckRun => 'Iniciar verificación';
+
+  @override
+  String get qcPrecheckRerun => 'Verificar de nuevo';
+
+  @override
+  String qcPrecheckRunAll(int count) {
+    return 'Verificar los mostrados ($count)';
+  }
+
+  @override
+  String qcPrecheckRunAllConfirm(int count) {
+    return 'Las fotos de $count registros serán analizadas por IA (Gemini en Vertex AI, región UE), sin metadatos y sin los datos ingresados. Los resultados son solo indicaciones; usted sigue decidiendo y firmando. ¿Continuar?';
+  }
+
+  @override
+  String get qcPrecheckRunning => 'Verificación en curso...';
+
+  @override
+  String qcPrecheckProgress(int done, int total) {
+    return 'Verificación: $done de $total';
+  }
+
+  @override
+  String get qcPrecheckFailed => 'La verificación falló';
+
+  @override
+  String get qcPrecheckNotRun => 'aún no realizada';
+
+  @override
+  String get qcPrecheckGreen => 'Verificación en verde';
+
+  @override
+  String get qcPrecheckYellow => 'Verificación: revisar avisos';
+
+  @override
+  String get qcPrecheckRed => 'Verificación: problemas encontrados';
+
+  @override
+  String get qcPrecheckCheckOk => 'Verificación: sin observaciones';
+
+  @override
+  String qcPrecheckAdoptGreen(int count) {
+    return 'Marcar $count puntos en verde';
+  }
+
+  @override
+  String get qcPrecheckOnlyGreen => 'Solo verificación en verde';
+
+  @override
+  String get qcPrecheckRulesOnly =>
+      'Solo reglas: la parte de IA no está configurada.';
+
+  @override
+  String get qcPrecheckDisclaimer =>
+      'La verificación solo indica dónde mirar con atención. Usted decide y firma.';
+
+  @override
+  String get qcPrNameMissing => 'Falta el nombre o el apellido';
+
+  @override
+  String get qcPrIdMissing => 'Falta el número de identidad';
+
+  @override
+  String get qcPrIdWrongLength => 'El número de identidad no tiene 13 dígitos';
+
+  @override
+  String get qcPrIdImplausible =>
+      'Número de identidad inusual (código de municipio o año)';
+
+  @override
+  String get qcPrPhotoMissing => 'Falta la foto';
+
+  @override
+  String get qcPrPhotoNotUploaded => 'Foto aún no subida';
+
+  @override
+  String get qcPrAiUnavailable => 'Foto no verificada por IA';
+
+  @override
+  String get qcPrPhotoUnusable => 'No se pudo cargar la foto';
+
+  @override
+  String get qcPrNotAnIdCard => 'La foto no muestra una tarjeta de identidad';
+
+  @override
+  String get qcPrIdBackSide =>
+      'La foto muestra el reverso de la identidad, no el frente';
+
+  @override
+  String get qcPrPhotoUnreadable => 'Foto difícil de leer';
+
+  @override
+  String get qcPrIdUnreadable => 'Número de identidad ilegible en la foto';
+
+  @override
+  String get qcPrIdTypo =>
+      'El número difiere de la foto en 1-2 dígitos (¿error de tipeo?)';
+
+  @override
+  String get qcPrIdMismatch => 'El número de identidad no coincide con la foto';
+
+  @override
+  String get qcPrNamesUnreadable => 'Nombres ilegibles en la foto';
+
+  @override
+  String get qcPrNameMismatch => 'Los nombres no coinciden con la identidad';
+
+  @override
+  String get qcPrNamePartialMatch => 'Solo una parte de los nombres coincide';
+
+  @override
+  String get qcPrConsentBackMissing => 'Falta el reverso del consentimiento';
+
+  @override
+  String get qcPrConsentPagesIdentical =>
+      'Ambas fotos muestran la misma página';
+
+  @override
+  String get qcPrNotConsentForm => 'La foto no muestra el consentimiento';
+
+  @override
+  String get qcPrCheckboxesNotFound =>
+      'No se encontraron casillas de aceptación';
+
+  @override
+  String get qcPrCheckboxesNotTicked =>
+      'No todas las casillas de aceptación están marcadas';
+
+  @override
+  String get qcPrSignatureMissing => 'No se encontró firma ni huella';
+
+  @override
+  String get qcPrPolygonMissing => 'Sin límite de parcela utilizable';
+
+  @override
+  String get qcPrPolygonSelfIntersecting =>
+      'El límite de la parcela se cruza a sí mismo';
+
+  @override
+  String get qcPrPolygonTiny => 'La parcela mide menos de 0,01 ha';
+
+  @override
+  String get qcPrPhotoWithoutLocation => 'Foto de parcela sin ubicación';
+
+  @override
+  String get qcPrPhotoFarFromPlot => 'Foto tomada a más de 300 m de la parcela';
+
+  @override
+  String get qcPrPhotoNearPlot => 'Foto tomada a 50-300 m de la parcela';
+
+  @override
+  String get qcPrNoCrop => 'La foto no muestra una parcela con cultivo';
+
+  @override
+  String get qcPrCoffeeNotRecognized => 'No se reconocen plantas de café';
+
+  @override
+  String get qcPrPrecheckFailed => 'La verificación falló para este punto';
+
+  @override
+  String get nationalIdRequired => 'Número de identidad obligatorio';
+
+  @override
+  String get nationalIdWrongLength =>
+      'El número de identidad debe tener exactamente 13 dígitos (sin contar guiones ni espacios).';
+
+  @override
+  String get nationalIdImplausible =>
+      'Este número de identidad parece inusual (código de municipio o año). Compárelo con la tarjeta.';
+
+  @override
+  String get idCheckTitle => 'Revise la identidad';
+
+  @override
+  String get idOcrNoNumber =>
+      'No se pudo leer ningún número en la foto. ¿Se ve el frente de la tarjeta nítido y completo?';
+
+  @override
+  String idOcrMismatch(String typed, String read) {
+    return 'Ingresado: $typed - la foto parece mostrar: $read.';
+  }
+
+  @override
+  String get idOcrNameMismatch =>
+      'No se encontraron el nombre y apellido ingresados en la foto de la identidad.';
+
+  @override
+  String get idOcrUseRead => 'Usar número de la foto';
+
+  @override
+  String get idOcrKeep => 'Mantener lo ingresado';
+
+  @override
+  String get idOcrRetake => 'Tomar foto de nuevo';
+
+  @override
+  String get consentFormPhoto2Required =>
+      'Fotografíe también el reverso del consentimiento.';
+
+  @override
+  String qcRegisteringFieldsProgress(int done, int total) {
+    return 'Registrando las parcelas en el Asset Registry ($done/$total)...';
+  }
+
+  @override
+  String get qcConfirmingInCloud =>
+      'Esperando que la nube confirme la decisión...';
+
+  @override
+  String get qcNotConfirmedTitle => 'No confirmado por la nube';
+
+  @override
+  String qcNotConfirmedBody(int count) {
+    return 'La decisión está guardada en este equipo, pero la nube todavía no la ha confirmado para $count objetos, por eso el registro sigue en la lista de revisión. Por favor, no cierre la aplicación ni recargue la página. En la pantalla de inicio, toque el indicador de sincronización y luego «Sincronizar ahora». Si después el registro sigue en la lista de revisión, contacte al soporte.';
+  }
 }

@@ -16,6 +16,8 @@ import '../services/open_ral_service.dart';
 import '../services/firebase_storage_service.dart';
 import 'ihcafe_producer_widgets.dart';
 import '../helpers/json_full_double_to_int.dart';
+import '../helpers/national_id.dart';
+import '../services/id_card_ocr_service.dart';
 import '../helpers/sort_json_alphabetically.dart';
 import '../models/country_config.dart';
 import '../providers/app_state.dart';
@@ -90,6 +92,13 @@ class _StepperRegistrarRegistrationState
   // Web only: the bytes have to be kept, because localPath is a blob URL that
   // cannot be read back once the camera is disposed.
   Uint8List? _nationalIDPhotoBytes;
+
+  /// Texterkennung des Ausweisfotos auf dem Gerät (nur Android/iOS) - für
+  /// den Hinweis, wenn Nummer oder Namen nicht zum Foto passen. Wird nicht
+  /// gespeichert. [_idOcrFuture] läuft noch, wenn der Registrar schnell weiter
+  /// tippt.
+  IdCardOcrResult? _idOcr;
+  Future<IdCardOcrResult?>? _idOcrFuture;
   final ImagePicker _imagePicker = ImagePicker();
   camera_plugin.CameraController? _cameraController;
   List<camera_plugin.CameraDescription>? _cameras;
@@ -186,10 +195,11 @@ class _StepperRegistrarRegistrationState
   /// Beispiele in den Eingabefeldern stammen aus Honduras.
   bool get _isHonduras => _country == null || _country!.code == 'HN';
 
-  void _nextStep() {
+  Future<void> _nextStep() async {
     if (_currentStep == 0) {
       // Validiere Farmer-Daten
-      if (!_validateFarmerData()) return;
+      if (!await _validateFarmerData()) return;
+      if (!mounted) return;
       setState(() => _currentStep = 1);
     } else if (_currentStep == 1) {
       // Validiere Consent Form
@@ -208,7 +218,7 @@ class _StepperRegistrarRegistrationState
     }
   }
 
-  bool _validateFarmerData() {
+  Future<bool> _validateFarmerData() async {
     final l10n = AppLocalizations.of(context)!;
     if (_country == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -224,6 +234,8 @@ class _StepperRegistrarRegistrationState
       );
       return false;
     }
+    if (!await _validateNationalId()) return false;
+    if (!mounted) return false;
     // Validate National ID Photo is taken (only mandatory in release mode)
     if (!kDebugMode && _nationalIDPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,7 +246,155 @@ class _StepperRegistrarRegistrationState
       );
       return false;
     }
-    return true;
+    return _confirmIdPhotoMatches();
+  }
+
+  /// Ausweisnummer: in Honduras Pflicht und genau 13 Ziffern (Bindestriche
+  /// und Leerzeichen zählen nicht). Eine Nummer, deren Teile unplausibel
+  /// sind, darf der Registrar nach einem Hinweis trotzdem übernehmen.
+  Future<bool> _validateNationalId() async {
+    final l10n = AppLocalizations.of(context)!;
+    final raw = _farmerNationalIDController.text.trim();
+    void error(String text) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(text), backgroundColor: Colors.orange));
+
+    if (!_isHonduras) return true;
+    switch (checkHondurasId(raw)) {
+      case NationalIdFormat.missing:
+        // Like the photos: only mandatory in release mode.
+        if (kDebugMode) return true;
+        error(l10n.nationalIdRequired);
+        return false;
+      case NationalIdFormat.wrongLength:
+        error(l10n.nationalIdWrongLength);
+        return false;
+      case NationalIdFormat.implausible:
+        return await _confirm(
+          title: l10n.idCheckTitle,
+          body: l10n.nationalIdImplausible,
+          confirmLabel: l10n.idOcrKeep,
+        );
+      case NationalIdFormat.ok:
+        return true;
+    }
+  }
+
+  /// Stufe 1 der QC-Vorprüfung: passt das Foto zur Eingabe? Liest die
+  /// Texterkennung eine andere Nummer oder die Namen nicht, fragt der Dialog
+  /// nach - übernehmen, Foto neu aufnehmen oder Eingabe behalten.
+  Future<bool> _confirmIdPhotoMatches() async {
+    final l10n = AppLocalizations.of(context)!;
+    final ocr = _idOcr ?? await _idOcrFuture;
+    if (ocr == null || !mounted) return true;
+
+    final typedId = normalizeNationalId(_farmerNationalIDController.text);
+    final issues = <String>[];
+    String? readId;
+    if (ocr.idCandidates.isEmpty) {
+      issues.add(l10n.idOcrNoNumber);
+    } else if (typedId.isNotEmpty && !ocr.containsId(typedId)) {
+      readId = ocr.idCandidates.first;
+      issues.add(l10n.idOcrMismatch(typedId, readId));
+    }
+    if (!ocr.containsNames(_farmerFirstNameController.text,
+        _farmerLastNameController.text)) {
+      issues.add(l10n.idOcrNameMismatch);
+    }
+    if (issues.isEmpty) return true;
+
+    final choice = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.idCheckTitle,
+            style: const TextStyle(color: Colors.black)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final issue in issues)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber,
+                        color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(issue,
+                          style: const TextStyle(color: Colors.black87)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'retake'),
+            child: Text(l10n.idOcrRetake),
+          ),
+          if (readId != null && ocr.idCandidates.length == 1)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'useRead'),
+              child: Text(l10n.idOcrUseRead),
+            ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'keep'),
+            child: Text(l10n.idOcrKeep),
+          ),
+        ],
+      ),
+    );
+    switch (choice) {
+      case 'useRead':
+        setState(() => _farmerNationalIDController.text = readId!);
+        return false; // Registrar sieht die übernommene Nummer, dann weiter.
+      case 'retake':
+        await _takeIDPhoto();
+        return false;
+      case 'keep':
+        return true;
+    }
+    return false;
+  }
+
+  /// Startet die Texterkennung für ein neues Ausweisfoto.
+  void _startIdOcr(String path) {
+    _idOcr = null;
+    final future = IdCardOcrService.read(path);
+    _idOcrFuture = future;
+    future.then((result) {
+      // Ein inzwischen neu aufgenommenes Foto hat Vorrang.
+      if (mounted && identical(_idOcrFuture, future)) _idOcr = result;
+    });
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String body,
+    required String confirmLabel,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: const TextStyle(color: Colors.black)),
+        content: Text(body, style: const TextStyle(color: Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result == true;
   }
 
   bool _validateConsentFormData() {
@@ -244,6 +404,16 @@ class _StepperRegistrarRegistrationState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.consentFormPhotoRequired),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
+    // Vorder- und Rückseite der Einwilligung sind beide Pflicht.
+    if (!kDebugMode && _consentFormPhoto2 == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.consentFormPhoto2Required),
           backgroundColor: Colors.orange,
         ),
       );
@@ -337,11 +507,15 @@ class _StepperRegistrarRegistrationState
       farmer = setSpecificPropertyJSON(farmer, 'userRole', 'Farmer', 'String');
       debugPrint('userRole set');
 
-      if (_farmerNationalIDController.text.isNotEmpty) {
+      if (_farmerNationalIDController.text.trim().isNotEmpty) {
         debugPrint('Setting nationalID in alternateIDs...');
-        // National ID wird nur in alternateIDs gespeichert (nicht in specificProperties)
+        // National ID wird nur in alternateIDs gespeichert (nicht in specificProperties).
+        // Honduras: nur die 13 Ziffern, ohne Bindestriche und Leerzeichen.
+        final nationalId = _isHonduras
+            ? normalizeNationalId(_farmerNationalIDController.text)
+            : _farmerNationalIDController.text.trim();
         farmer['identity']['alternateIDs'].add({
-          'UID': _farmerNationalIDController.text,
+          'UID': nationalId,
           'issuedBy': 'National ID',
         });
         debugPrint('nationalID set in alternateIDs');
@@ -1017,6 +1191,7 @@ class _StepperRegistrarRegistrationState
             _nationalIDPhotoPosition = photoPosition;
           }
         });
+        if (!isConsentForm) _startIdOcr(localPath);
 
         debugPrint(
             '${isConsentForm2 ? "Consent Form 2" : isConsentForm ? "Consent Form" : "National ID"} Photo saved locally: $localPath');
@@ -1756,7 +1931,7 @@ class _StepperRegistrarRegistrationState
           decoration: BoxDecoration(
             border: Border.all(
               color: _consentFormPhoto2 == null
-                  ? Colors.grey.shade400
+                  ? (kDebugMode ? Colors.orange : Colors.red)
                   : Colors.green,
               width: 2,
             ),
@@ -1772,7 +1947,7 @@ class _StepperRegistrarRegistrationState
                         ? Icons.add_photo_alternate_outlined
                         : Icons.check_circle,
                     color: _consentFormPhoto2 == null
-                        ? Colors.grey.shade600
+                        ? (kDebugMode ? Colors.orange : Colors.red)
                         : Colors.green,
                   ),
                   const SizedBox(width: 12),
@@ -2000,7 +2175,7 @@ class _StepperRegistrarRegistrationState
             labelText: l10n.nationalID,
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.badge),
-            hintText: _isHonduras ? 'e.g., 0801-1990-12345' : null,
+            hintText: _isHonduras ? 'e.g., 0801199012345' : null,
           ),
         ),
         const SizedBox(height: 16),

@@ -5271,7 +5271,7 @@ abstract class AppLocalizations {
   /// No description provided for @consentFormPhoto2.
   ///
   /// In en, this message translates to:
-  /// **'Consent Form Photo 2 (optional)'**
+  /// **'Consent Form Photo 2 (back side)'**
   String get consentFormPhoto2;
 
   /// No description provided for @consentFormPhoto2Optional.
@@ -7325,6 +7325,456 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load satellite map'**
   String get qcLoadSatelliteMap;
+
+  /// No description provided for @qcFieldDecisionApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get qcFieldDecisionApprove;
+
+  /// No description provided for @qcFieldDecisionDefer.
+  ///
+  /// In en, this message translates to:
+  /// **'Defer'**
+  String get qcFieldDecisionDefer;
+
+  /// No description provided for @qcFieldDecisionReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get qcFieldDecisionReject;
+
+  /// No description provided for @qcFieldDeferredHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This plot stays in the queue and can be corrected and approved later. Farmer, farm and the other plots are decided without it.'**
+  String get qcFieldDeferredHint;
+
+  /// No description provided for @qcFieldRejectedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This plot is rejected for good and its area is removed from the farm. Only use this if it cannot be corrected (duplicate, wrong farm, not a coffee plot). For mapping errors, defer it or replace the polygon.'**
+  String get qcFieldRejectedHint;
+
+  /// No description provided for @qcDecisionSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Plots: {approve} approve · {defer} defer · {reject} reject'**
+  String qcDecisionSummary(int approve, int defer, int reject);
+
+  /// No description provided for @qcSaveDecision.
+  ///
+  /// In en, this message translates to:
+  /// **'Save decision'**
+  String get qcSaveDecision;
+
+  /// No description provided for @qcRejectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject all'**
+  String get qcRejectAll;
+
+  /// No description provided for @qcFieldsReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for deferred or rejected plots'**
+  String get qcFieldsReason;
+
+  /// No description provided for @qcNothingToDecide.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to save - farmer and farm are already approved and all plots are deferred.'**
+  String get qcNothingToDecide;
+
+  /// No description provided for @qcPartialDecisionSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Decision saved. Deferred plots stay in the queue.'**
+  String get qcPartialDecisionSaved;
+
+  /// No description provided for @qcPrecheckTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic precheck'**
+  String get qcPrecheckTitle;
+
+  /// No description provided for @qcPrecheckRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run precheck'**
+  String get qcPrecheckRun;
+
+  /// No description provided for @qcPrecheckRerun.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get qcPrecheckRerun;
+
+  /// No description provided for @qcPrecheckRunAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck shown ({count})'**
+  String qcPrecheckRunAll(int count);
+
+  /// No description provided for @qcPrecheckRunAllConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'The photos of {count} registrations will be analysed by AI (Gemini on Vertex AI, EU region) - without metadata and without the entered data. Results are only hints; you still decide and sign. Continue?'**
+  String qcPrecheckRunAllConfirm(int count);
+
+  /// No description provided for @qcPrecheckRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck running...'**
+  String get qcPrecheckRunning;
+
+  /// No description provided for @qcPrecheckProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck: {done} of {total}'**
+  String qcPrecheckProgress(int done, int total);
+
+  /// No description provided for @qcPrecheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck failed'**
+  String get qcPrecheckFailed;
+
+  /// No description provided for @qcPrecheckNotRun.
+  ///
+  /// In en, this message translates to:
+  /// **'not run yet'**
+  String get qcPrecheckNotRun;
+
+  /// No description provided for @qcPrecheckGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck green'**
+  String get qcPrecheckGreen;
+
+  /// No description provided for @qcPrecheckYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck: check hints'**
+  String get qcPrecheckYellow;
+
+  /// No description provided for @qcPrecheckRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck: problems found'**
+  String get qcPrecheckRed;
+
+  /// No description provided for @qcPrecheckCheckOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck: no findings'**
+  String get qcPrecheckCheckOk;
+
+  /// No description provided for @qcPrecheckAdoptGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Tick {count} green checks'**
+  String qcPrecheckAdoptGreen(int count);
+
+  /// No description provided for @qcPrecheckOnlyGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck green only'**
+  String get qcPrecheckOnlyGreen;
+
+  /// No description provided for @qcPrecheckRulesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules only - the AI part is not configured.'**
+  String get qcPrecheckRulesOnly;
+
+  /// No description provided for @qcPrecheckDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'The precheck only shows where to look closely. You decide and sign.'**
+  String get qcPrecheckDisclaimer;
+
+  /// No description provided for @qcPrNameMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'First or last name missing'**
+  String get qcPrNameMissing;
+
+  /// No description provided for @qcPrIdMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'ID number missing'**
+  String get qcPrIdMissing;
+
+  /// No description provided for @qcPrIdWrongLength.
+  ///
+  /// In en, this message translates to:
+  /// **'ID number does not have 13 digits'**
+  String get qcPrIdWrongLength;
+
+  /// No description provided for @qcPrIdImplausible.
+  ///
+  /// In en, this message translates to:
+  /// **'ID number looks unusual (municipality code or year)'**
+  String get qcPrIdImplausible;
+
+  /// No description provided for @qcPrPhotoMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo missing'**
+  String get qcPrPhotoMissing;
+
+  /// No description provided for @qcPrPhotoNotUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo not uploaded yet'**
+  String get qcPrPhotoNotUploaded;
+
+  /// No description provided for @qcPrAiUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo not checked by AI'**
+  String get qcPrAiUnavailable;
+
+  /// No description provided for @qcPrPhotoUnusable.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo could not be loaded'**
+  String get qcPrPhotoUnusable;
+
+  /// No description provided for @qcPrNotAnIdCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo does not show an ID card'**
+  String get qcPrNotAnIdCard;
+
+  /// No description provided for @qcPrIdBackSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo shows the back of the ID card, not the front'**
+  String get qcPrIdBackSide;
+
+  /// No description provided for @qcPrPhotoUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo hard to read'**
+  String get qcPrPhotoUnreadable;
+
+  /// No description provided for @qcPrIdUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'ID number on the photo not legible'**
+  String get qcPrIdUnreadable;
+
+  /// No description provided for @qcPrIdTypo.
+  ///
+  /// In en, this message translates to:
+  /// **'ID number differs from the photo in 1-2 digits (typo?)'**
+  String get qcPrIdTypo;
+
+  /// No description provided for @qcPrIdMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'ID number does not match the photo'**
+  String get qcPrIdMismatch;
+
+  /// No description provided for @qcPrNamesUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Names on the photo not legible'**
+  String get qcPrNamesUnreadable;
+
+  /// No description provided for @qcPrNameMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Names do not match the ID card'**
+  String get qcPrNameMismatch;
+
+  /// No description provided for @qcPrNamePartialMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Only some of the names match the ID card'**
+  String get qcPrNamePartialMatch;
+
+  /// No description provided for @qcPrConsentBackMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Back of the consent form missing'**
+  String get qcPrConsentBackMissing;
+
+  /// No description provided for @qcPrConsentPagesIdentical.
+  ///
+  /// In en, this message translates to:
+  /// **'Both consent photos show the same page'**
+  String get qcPrConsentPagesIdentical;
+
+  /// No description provided for @qcPrNotConsentForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo does not show the consent form'**
+  String get qcPrNotConsentForm;
+
+  /// No description provided for @qcPrCheckboxesNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No acceptance checkboxes found'**
+  String get qcPrCheckboxesNotFound;
+
+  /// No description provided for @qcPrCheckboxesNotTicked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not all acceptance checkboxes are ticked'**
+  String get qcPrCheckboxesNotTicked;
+
+  /// No description provided for @qcPrSignatureMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No signature or fingerprint found'**
+  String get qcPrSignatureMissing;
+
+  /// No description provided for @qcPrPolygonMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No usable field boundary'**
+  String get qcPrPolygonMissing;
+
+  /// No description provided for @qcPrPolygonSelfIntersecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Field boundary intersects itself'**
+  String get qcPrPolygonSelfIntersecting;
+
+  /// No description provided for @qcPrPolygonTiny.
+  ///
+  /// In en, this message translates to:
+  /// **'Field is smaller than 0.01 ha'**
+  String get qcPrPolygonTiny;
+
+  /// No description provided for @qcPrPhotoWithoutLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Field photo has no location'**
+  String get qcPrPhotoWithoutLocation;
+
+  /// No description provided for @qcPrPhotoFarFromPlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Field photo taken more than 300 m from the plot'**
+  String get qcPrPhotoFarFromPlot;
+
+  /// No description provided for @qcPrPhotoNearPlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Field photo taken 50-300 m from the plot'**
+  String get qcPrPhotoNearPlot;
+
+  /// No description provided for @qcPrNoCrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo does not show a plot with crop'**
+  String get qcPrNoCrop;
+
+  /// No description provided for @qcPrCoffeeNotRecognized.
+  ///
+  /// In en, this message translates to:
+  /// **'Coffee plants not recognised'**
+  String get qcPrCoffeeNotRecognized;
+
+  /// No description provided for @qcPrPrecheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Precheck failed for this item'**
+  String get qcPrPrecheckFailed;
+
+  /// No description provided for @nationalIdRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'National ID number required'**
+  String get nationalIdRequired;
+
+  /// No description provided for @nationalIdWrongLength.
+  ///
+  /// In en, this message translates to:
+  /// **'The ID number must have exactly 13 digits (hyphens and spaces are ignored).'**
+  String get nationalIdWrongLength;
+
+  /// No description provided for @nationalIdImplausible.
+  ///
+  /// In en, this message translates to:
+  /// **'This ID number looks unusual (municipality code or year). Please compare it with the ID card.'**
+  String get nationalIdImplausible;
+
+  /// No description provided for @idCheckTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check the ID'**
+  String get idCheckTitle;
+
+  /// No description provided for @idOcrNoNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'No ID number could be read from the photo. Is the front of the card sharp and fully visible?'**
+  String get idOcrNoNumber;
+
+  /// No description provided for @idOcrMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Entered: {typed} - the photo seems to show: {read}.'**
+  String idOcrMismatch(String typed, String read);
+
+  /// No description provided for @idOcrNameMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The entered first and last name were not found on the ID photo.'**
+  String get idOcrNameMismatch;
+
+  /// No description provided for @idOcrUseRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Use number from photo'**
+  String get idOcrUseRead;
+
+  /// No description provided for @idOcrKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep entry'**
+  String get idOcrKeep;
+
+  /// No description provided for @idOcrRetake.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake photo'**
+  String get idOcrRetake;
+
+  /// No description provided for @consentFormPhoto2Required.
+  ///
+  /// In en, this message translates to:
+  /// **'Please also photograph the back of the consent form.'**
+  String get consentFormPhoto2Required;
+
+  /// No description provided for @qcRegisteringFieldsProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Registering plots in the Asset Registry ({done}/{total})...'**
+  String qcRegisteringFieldsProgress(int done, int total);
+
+  /// No description provided for @qcConfirmingInCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the cloud to confirm the decision...'**
+  String get qcConfirmingInCloud;
+
+  /// No description provided for @qcNotConfirmedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed by the cloud'**
+  String get qcNotConfirmedTitle;
+
+  /// No description provided for @qcNotConfirmedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The decision is saved on this device, but the cloud has not yet confirmed it for {count} objects, so the registration stays in the queue. Please do not close the app or reload the page. On the start page, tap the sync indicator and then \"Sync now\". If the registration is still in the queue afterwards, please contact support.'**
+  String qcNotConfirmedBody(int count);
 }
 
 class _AppLocalizationsDelegate

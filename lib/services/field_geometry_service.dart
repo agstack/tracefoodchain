@@ -121,13 +121,49 @@ Future<Map<String, dynamic>> saveFieldGeometry({
   return updated;
 }
 
-double _readArea(Map<String, dynamic> field) {
-  final raw = getSpecificPropertyfromJSON(field, 'area');
+double _readArea(Map<String, dynamic> field) => _readHectares(field, 'area');
+
+double _readHectares(Map<String, dynamic> obj, String key) {
+  final raw = getSpecificPropertyfromJSON(obj, key);
   if (raw is num) return raw.toDouble();
   if (raw is String && raw != '-no data found-') {
     return double.tryParse(raw) ?? 0.0;
   }
   return 0.0;
+}
+
+/// Fläche eines Feldes in Hektar, 0 wenn nicht erfasst.
+double fieldAreaHa(Map<String, dynamic> field) => _readArea(field);
+
+/// Die Farm mit um [delta] Hektar geänderter Gesamtfläche (nie negativ).
+Map<String, dynamic> farmWithAdjustedTotalArea(
+    Map<String, dynamic> farm, double delta) {
+  final newTotal = _readHectares(farm, 'totalAreaHa') + delta;
+  return setSpecificPropertyJSON(
+      farm, 'totalAreaHa', newTotal < 0 ? 0.0 : newTotal, 'double');
+}
+
+/// Zieht die Gesamtfläche einer Farm um [delta] Hektar nach - als eigener,
+/// signierter changeObjectData-Job mit [changeReason].
+///
+/// Setzt auf der aktuellen Fassung auf (lokal vor Cloud): direkt nach einem
+/// QC-Job ist die Cloud noch nicht nachgezogen, und deren ältere Fassung würde
+/// sonst die Entscheidung überschreiben.
+Future<void> adjustFarmTotalArea(
+  String farmUid,
+  double delta, {
+  required String changeReason,
+}) async {
+  if (delta == 0) return;
+  final farm = await getCurrentObjectVersion(farmUid);
+  if (farm.isEmpty) {
+    debugPrint('Field geometry: farm $farmUid not found, area not adjusted');
+    return;
+  }
+  await changeObjectData(farmWithAdjustedTotalArea(deepCopyMap(farm), delta),
+      syncFromCloud: false,
+      changeReason: changeReason,
+      changeContext: changeContextQcCorrection);
 }
 
 String _appendNote(Map<String, dynamic> field, String note) {
@@ -171,25 +207,15 @@ Future<void> _updateFarmTotalArea(
     }
 
     final farm = Map<String, dynamic>.from(farmDoc.data()!);
-    final rawTotal = getSpecificPropertyfromJSON(farm, 'totalAreaHa');
-    double total = 0.0;
-    if (rawTotal is num) {
-      total = rawTotal.toDouble();
-    } else if (rawTotal is String && rawTotal != '-no data found-') {
-      total = double.tryParse(rawTotal) ?? 0.0;
-    }
-
-    final newTotal = total + delta;
-    final updatedFarm = setSpecificPropertyJSON(
-        farm, 'totalAreaHa', newTotal < 0 ? 0.0 : newTotal, 'double');
+    final updatedFarm = farmWithAdjustedTotalArea(farm, delta);
 
     await changeObjectData(updatedFarm,
         syncFromCloud: false,
         changeReason: 'Total area adjusted after boundary correction of field '
             '${field['identity']?['name'] ?? field['identity']?['UID']}',
         changeContext: changeContextQcCorrection);
-    debugPrint('Field geometry: farm $farmUid total area '
-        '$total -> $newTotal ha');
+    debugPrint('Field geometry: farm $farmUid total area adjusted by '
+        '$delta ha');
   } catch (e) {
     debugPrint('Field geometry: could not adjust farm total area: $e');
   }

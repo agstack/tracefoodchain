@@ -1,4 +1,4 @@
-const String APP_VERSION = 'version 2.0.2+40 (2026-11-13)';
+const String APP_VERSION = 'version 2.0.4+42 (2026-11-24)';
 
 // DEBUG ONLY: Überschreibt die Rollen-basierte Navigation für UI-Tests.
 // Gültige Werte: '' (deaktiviert), 'registrar', 'Farmer', 'Trader', 'Processor', 'Importer'

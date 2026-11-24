@@ -35,6 +35,7 @@ import '../services/field_geometry_service.dart';
 import '../services/object_correction_service.dart';
 import '../services/permission_service.dart';
 import '../services/qc_index_service.dart';
+import '../services/qc_precheck_service.dart';
 import '../widgets/field_polygon_editor.dart';
 import '../widgets/map_type_selector.dart';
 import '../widgets/qc_correction_dialog.dart';
@@ -44,6 +45,7 @@ import '../widgets/qc_shape_preview.dart';
 import '../utils/gps_quality.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
+import '../utils/leave_guard.dart';
 
 /// Screen für QC-Review und Genehmigung von registrierten Farmen, Farmern und Feldern
 class RegistrarQCScreen extends StatefulWidget {
@@ -80,6 +82,45 @@ class _QcCheck {
   String get objectType => object['template']?['RALType']?.toString() ?? '';
   String get id => '$objectUid|$check';
   bool get isPhoto => check != _qcPolygonCheck;
+}
+
+/// Was mit einem offenen Feld passiert, wenn das Bündel freigegeben wird.
+enum _FieldDecision {
+  /// Wird mit Farmer und Farm freigegeben (Vorgabe).
+  approve,
+
+  /// Bleibt `qcPending` und damit in der Warteschlange - mit der dann
+  /// freigegebenen Farm als Kontext. Der Normalfall für Kartierfehler.
+  defer,
+
+  /// Endgültig abgelehnt (`qcRejected`) - es gibt keinen Weg zurück, deshalb
+  /// nur für Felder, die sich nicht korrigieren lassen.
+  reject,
+}
+
+/// Die Freigabe eines Bündels, aufgeteilt nach Feldentscheidungen.
+///
+/// Freigegebene und abgelehnte Objekte gehen in je einen eigenen QC-Job: der
+/// Job trägt nur eine `qcDecision`, und die gilt für den IHCafé-Sync und die
+/// Vertrauensprüfung als letzte QC-Entscheidung jedes seiner Objekte.
+/// Zurückgestellte Felder stehen in keinem Job.
+class _QcDecisionPlan {
+  _QcDecisionPlan({
+    required this.approved,
+    required this.rejectedFields,
+    required this.deferredFields,
+  });
+
+  /// Offene Farmer, Farm und die freizugebenden Felder.
+  final List<Map<String, dynamic>> approved;
+  final List<Map<String, dynamic>> rejectedFields;
+  final List<Map<String, dynamic>> deferredFields;
+
+  int get approvedFieldCount =>
+      approved.where((o) => o['template']?['RALType'] == 'field').length;
+
+  bool get isPartial => rejectedFields.isNotEmpty || deferredFields.isNotEmpty;
+  bool get isEmpty => approved.isEmpty && rejectedFields.isEmpty;
 }
 
 /// Eine Farm samt Farmer und offenen Feldern - die Einheit, die im QC am Stück
@@ -313,9 +354,35 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   /// Der Zeitpunkt geht mit in den signierten QC-Job.
   final Map<String, Map<String, DateTime>> _checks = {};
 
+  /// Gewählte Entscheidung je offenem Feld (Feld-UID). Fehlt ein Eintrag, wird
+  /// das Feld mit dem Bündel freigegeben.
+  final Map<String, _FieldDecision> _fieldDecisions = {};
+
   /// Foto-Abfragen je Objekt und Rolle. Ohne Cache würde jedes Abhaken die
   /// Karte neu bauen und alle Fotos erneut aus Firestore laden.
   final Map<String, Future<Map<String, dynamic>?>> _photoFutures = {};
+
+  /// Automatische Vorprüfung je Bündel (Bündel-Key -> Ergebnis). Sie
+  /// entscheidet nichts, sie zeigt nur, wo genau hinzusehen ist.
+  final Map<String, QcPrecheck> _prechecks = {};
+
+  /// Bündel, deren Vorprüfung gerade läuft.
+  final Set<String> _precheckRunning = {};
+
+  /// Prüfpunkte, die per "grüne Punkte übernehmen" abgehakt wurden - das
+  /// steht so im signierten QC-Job (Bündel-Key -> Prüfpunkt-IDs).
+  final Map<String, Set<String>> _checkedViaPrecheck = {};
+
+  /// Nur Bündel zeigen, deren Vorprüfung durchgehend grün ist.
+  bool _onlyPrecheckGreen = false;
+
+  /// Wer die Vorprüfung starten darf - wie in der Cloud Function qcPrecheck.
+  static const Set<String> _precheckRoles = {
+    'SUPERADMIN',
+    'tfcAdmin',
+    'countryCoordinator',
+    'registrarCoordinator',
+  };
 
   /// Bündel, das nach einem Sprung aus der Übersichtskarte aufgeklappt wird.
   String? _focusBundleKey;
@@ -472,22 +539,22 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     super.dispose();
   }
 
-  /// Drops a decided bundle from the in-memory queue.
+  /// Applies a decision to the in-memory queue.
   ///
   /// Its objects have just left `qcPending`, so a full reload would return this
-  /// exact list minus that bundle - at the price of the whole query chain
-  /// again. [decided] are the written object versions: another bundle may share
-  /// the farmer (second farm of the same person) and must show the new state.
-  void _removeBundleLocally(
+  /// exact list minus them - at the price of the whole query chain again.
+  /// [decided] are the written object versions: another bundle may share the
+  /// farmer (second farm of the same person) and must show the new state. A
+  /// bundle with deferred fields stays, with farmer and farm as context.
+  void _applyDecisionLocally(
       _QcBundle bundle, List<Map<String, dynamic>> decided) {
     if (!mounted) return;
     final decidedUids = decided.map(_QcBundle.uidOf).toSet();
 
     setState(() {
-      _bundles = _bundles.where((b) => b.key != bundle.key).toList();
-      for (final other in _bundles) {
+      for (final b in _bundles) {
         for (final obj in decided) {
-          other.replaceObject(obj);
+          b.replaceObject(obj);
         }
       }
       // Ein Bündel, in dem dadurch nichts Offenes mehr steht, ist erledigt.
@@ -498,8 +565,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           .toList();
       for (final uid in decidedUids) {
         _registrarCache.remove(uid);
+        _fieldDecisions.remove(uid);
       }
-      _checks.remove(bundle.key);
+      if (_bundles.any((b) => b.key == bundle.key)) {
+        _checks[bundle.key]
+            ?.removeWhere((id, _) => decidedUids.contains(id.split('|').first));
+      } else {
+        _checks.remove(bundle.key);
+      }
 
       // Deciding the last entry of the registrar currently filtered on would
       // otherwise leave an empty list behind with no visible reason.
@@ -590,6 +663,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     _bundles = [];
     if (!keepReviewState) {
       _checks.clear();
+      _fieldDecisions.clear();
       _photoFutures.clear();
       _knownRegistrars.clear();
       _indexUnavailable = false;
@@ -729,6 +803,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         _bundles = [..._bundles, ...newBundles];
         _loadingMore = false;
       });
+      unawaited(_loadStoredPrechecks(newBundles));
     } catch (e) {
       debugPrint('Error loading pending registrations from cloud: $e');
       if (mounted) setState(() => _loadingMore = false);
@@ -1209,6 +1284,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
         _bundles = [..._bundles, ...collected];
         _loadingMore = false;
       });
+      unawaited(_loadStoredPrechecks(collected));
     } catch (e) {
       if (generation != _queryGeneration) return;
       // Meist fehlt ein zusammengesetzter Index - die Meldung enthält den
@@ -1496,6 +1572,10 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       if (query.isNotEmpty && !_matchesSearch(bundle, query)) {
         return false;
       }
+      if (_onlyPrecheckGreen &&
+          _prechecks[bundle.key]?.overall != PrecheckStatus.green) {
+        return false;
+      }
       return true;
     }).toList();
 
@@ -1546,12 +1626,57 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return bundle.searchIndex.contains(query);
   }
 
-  /// Die Prüfpunkte eines Bündels: je offenem Objekt ein Punkt pro Pflichtfoto
-  /// und pro verknüpftem optionalen Foto, bei Feldern zusätzlich die Freigabe
-  /// der Polygongeometrie.
-  List<_QcCheck> _requiredChecks(_QcBundle bundle) {
-    final checks = <_QcCheck>[];
+  _FieldDecision _fieldDecision(Map<String, dynamic> field) =>
+      _fieldDecisions[_QcBundle.uidOf(field)] ?? _FieldDecision.approve;
+
+  void _setFieldDecision(Map<String, dynamic> field, _FieldDecision decision) {
+    setState(() {
+      final uid = _QcBundle.uidOf(field);
+      if (decision == _FieldDecision.approve) {
+        _fieldDecisions.remove(uid);
+      } else {
+        _fieldDecisions[uid] = decision;
+      }
+    });
+  }
+
+  /// Teilt die offenen Objekte eines Bündels nach den Feldentscheidungen auf.
+  /// Farmer und Farm werden immer freigegeben - ein Feld lässt sich nicht ohne
+  /// sie freigeben, sie aber ohne jedes einzelne Feld.
+  _QcDecisionPlan _planFor(_QcBundle bundle) {
+    final approved = <Map<String, dynamic>>[];
+    final rejected = <Map<String, dynamic>>[];
+    final deferred = <Map<String, dynamic>>[];
     for (final obj in bundle.pendingMembers) {
+      if (obj['template']?['RALType'] != 'field') {
+        approved.add(obj);
+        continue;
+      }
+      switch (_fieldDecision(obj)) {
+        case _FieldDecision.approve:
+          approved.add(obj);
+        case _FieldDecision.defer:
+          deferred.add(obj);
+        case _FieldDecision.reject:
+          rejected.add(obj);
+      }
+    }
+    return _QcDecisionPlan(
+      approved: approved,
+      rejectedFields: rejected,
+      deferredFields: deferred,
+    );
+  }
+
+  /// Die Prüfpunkte der [objects] - vor einer Freigabe müssen die der
+  /// freizugebenden Objekte abgehakt sein ([_QcDecisionPlan.approved]);
+  /// zurückgestellte und abgelehnte Felder brauchen keine.
+  ///
+  /// Je Objekt ein Punkt pro Pflichtfoto und pro verknüpftem optionalen Foto,
+  /// bei Feldern zusätzlich die Freigabe der Polygongeometrie.
+  List<_QcCheck> _checksFor(Iterable<Map<String, dynamic>> objects) {
+    final checks = <_QcCheck>[];
+    for (final obj in objects) {
       final ralType = obj['template']?['RALType']?.toString() ?? '';
       for (final role in _qcPhotoRoles[ralType] ?? const <String>[]) {
         if (requiredPhotoRoles.contains(role) || _hasLinkedPhoto(obj, role)) {
@@ -1577,6 +1702,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
   void _setChecked(_QcBundle bundle, _QcCheck check, bool value) {
     setState(() {
+      _checkedViaPrecheck[bundle.key]?.remove(check.id);
       final checks = _checks.putIfAbsent(bundle.key, () => {});
       if (value) {
         checks[check.id] = DateTime.now().toUtc();
@@ -1586,229 +1712,577 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     });
   }
 
-  /// Entscheidet ein Bündel als Ganzes und schreibt die Entscheidung samt
-  /// Checkliste als einen signierten QC-Job.
+  /// Entscheidet ein Bündel und schreibt die Entscheidung samt Checkliste als
+  /// signierte QC-Jobs.
+  ///
+  /// [approve] false lehnt alle offenen Objekte des Bündels ab - die
+  /// Feldentscheidungen spielen dann keine Rolle. Bei der Freigabe gehen
+  /// Farmer, Farm und die freizugebenden Felder in einen Job "approved", die
+  /// abzulehnenden Felder in einen zweiten Job "rejected" (siehe
+  /// [_QcDecisionPlan]); zurückgestellte Felder bleiben offen und damit in der
+  /// Warteschlange.
+  ///
+  /// Als erledigt gilt eine Entscheidung erst, wenn die Cloud sie übernommen
+  /// hat ([_confirmInCloud]). Bis dahin warnt der Browser vor dem Neuladen,
+  /// und was die Cloud nicht bestätigt, bleibt in der Prüfliste.
   Future<void> _decideBundle(_QcBundle bundle, {required bool approve}) async {
     final l10n = AppLocalizations.of(context)!;
-    final checks = _requiredChecks(bundle);
-    if (approve && !checks.every((c) => _isChecked(bundle, c))) return;
+    final plan = _planFor(bundle);
+    final toApprove = approve ? plan.approved : <Map<String, dynamic>>[];
+    final toReject = approve ? plan.rejectedFields : bundle.pendingMembers;
+    final deferred = approve ? plan.deferredFields : <Map<String, dynamic>>[];
+    if (toApprove.isEmpty && toReject.isEmpty) return;
 
-    final notes = await showDialog<String>(
+    final approveChecks = _checksFor(toApprove);
+    if (!approveChecks.every((c) => _isChecked(bundle, c))) return;
+
+    final logData = <String, dynamic>{
+      'bundle': bundle.key,
+      'approve': '${toApprove.length}',
+      'reject': '${toReject.length}',
+      'defer': '${deferred.length}',
+    };
+
+    final partial = approve && plan.isPartial;
+    final result = await showDialog<_ApprovalResult>(
       context: context,
       builder: (context) => _ApprovalDialog(
-        isApproval: approve,
-        objectType: bundle.pendingFields.isNotEmpty ? 'field' : 'farm',
+        isApproval: toApprove.isNotEmpty,
+        objectType: plan.approvedFieldCount > 0 && toApprove.isNotEmpty
+            ? 'field'
+            : 'farm',
+        summary: partial
+            ? l10n.qcDecisionSummary(plan.approvedFieldCount,
+                deferred.length, toReject.length)
+            : null,
+        askFieldsReason: partial && toApprove.isNotEmpty,
       ),
     );
-    if (notes == null) return; // Abgebrochen
+    if (result == null) {
+      cloudLogService.info('QC decision: cancelled', data: logData);
+      return;
+    }
 
+    final notes = result.notes;
+    // Ohne Freigabe gibt es nur das eine Textfeld - das ist dann der Grund.
+    final fieldsReason = toApprove.isEmpty ? notes : result.fieldsReason;
+    final decided = <Map<String, dynamic>>[];
+    // Was die Cloud am Ende zeigen muss: Zustand und QC-Job je Objekt.
+    final expected = <String, ({String state, String jobUid})>{};
+    Object? failure;
+
+    cloudLogService.info('QC decision: start', data: logData);
+    // Ab hier ginge beim Neuladen der Seite die Entscheidung verloren.
+    enableLeaveGuard();
     _setBusy(l10n.qcSavingDecision);
 
     try {
-      final newState = approve ? 'active' : 'qcRejected';
-      final noteKey = approve ? 'approvalNotes' : 'rejectionReason';
-      final jobNotes = <String>[if (notes.isNotEmpty) notes];
-      final outputs = <Map<String, dynamic>>[];
+      try {
+        if (toApprove.isNotEmpty) {
+          final jobNotes = <String>[
+            if (notes.isNotEmpty) notes,
+            if (deferred.isNotEmpty)
+              'Deferred plots (remain in QC): ${_objectNames(deferred)}'
+                  '${fieldsReason.isNotEmpty ? ' - $fieldsReason' : ''}',
+            if (toReject.isNotEmpty)
+              'Rejected plots (separate QC job): ${_objectNames(toReject)}',
+          ];
 
-      for (final member in bundle.pendingMembers) {
-        final uid = _QcBundle.uidOf(member);
-        // Auf der aktuellen Fassung aufsetzen, nicht auf der Kopie der Karte:
-        // eine Polygonkorrektur hat inzwischen etwa die Gesamtfläche der Farm
-        // geändert, und die würde sonst wieder überschrieben.
-        final current = await getCurrentObjectVersion(uid);
-        Map<String, dynamic> updated =
-            deepCopyMap(current.isNotEmpty ? current : member);
-        String objectNotes = notes;
-
-        if (approve && updated['template']?['RALType'] == 'field') {
-          // Separate step: this call goes to an external registry and is the
-          // slowest part of an approval.
-          _setBusy(l10n.qcRegisteringInAssetRegistry);
-          final geoIdResult = await _registerFieldInAssetRegistry(updated);
-          if (geoIdResult['geoId'] != null) {
-            final identity = updated['identity'] as Map;
-            identity['alternateIDs'] = [
-              ...(identity['alternateIDs'] as List? ?? const []),
-              {'UID': geoIdResult['geoId'], 'issuedBy': 'Asset Registry'},
-            ];
-          } else if (geoIdResult['error'] != null) {
-            final errorNote = l10n.assetRegistryRegistrationFailed(
-                geoIdResult['error'] ?? 'Unknown error');
-            objectNotes =
-                objectNotes.isEmpty ? errorNote : '$objectNotes\n$errorNote';
-            jobNotes.add('${updated['identity']?['name'] ?? uid}: $errorNote');
+          // Auf der aktuellen Fassung aufsetzen, nicht auf der Kopie der
+          // Karte: eine Polygonkorrektur hat inzwischen etwa die Gesamtfläche
+          // der Farm geändert, und die würde sonst wieder überschrieben.
+          final current = <Map<String, dynamic>>[];
+          for (final member in toApprove) {
+            final latest = await getCurrentObjectVersion(_QcBundle.uidOf(member));
+            current.add(deepCopyMap(latest.isNotEmpty ? latest : member));
           }
+
+          // Die externe Registry ist der langsamste Teil - begrenzt in der
+          // Dauer, damit die Freigabe nicht an ihr hängen bleibt.
+          final fields = current
+              .where((o) => o['template']?['RALType'] == 'field')
+              .toList();
+          final geoIds = await _registerFieldsInAssetRegistry(
+            fields,
+            onProgress: (done, total) =>
+                _setBusy(l10n.qcRegisteringFieldsProgress(done, total)),
+          );
+          final registryErrors =
+              geoIds.values.where((r) => r.error != null).length;
+          cloudLogService.info('QC decision: asset registry done', data: {
+            ...logData,
+            'fields': '${fields.length}',
+            'errors': '$registryErrors',
+          });
           _setBusy(l10n.qcSavingDecision);
+
+          final outputs = <Map<String, dynamic>>[];
+          for (var updated in current) {
+            final uid = _QcBundle.uidOf(updated);
+            String objectNotes = notes;
+            final registration = geoIds[uid];
+            if (registration?.geoId case final geoId?) {
+              final identity = updated['identity'] as Map;
+              final altIds = identity['alternateIDs'] as List? ?? const [];
+              final known = altIds.any((a) =>
+                  a is Map &&
+                  a['issuedBy'] == 'Asset Registry' &&
+                  a['UID'] == geoId);
+              if (!known) {
+                identity['alternateIDs'] = [
+                  ...altIds,
+                  {'UID': geoId, 'issuedBy': 'Asset Registry'},
+                ];
+              }
+            } else if (registration?.error case final error?) {
+              final errorNote = l10n.assetRegistryRegistrationFailed(error);
+              objectNotes =
+                  objectNotes.isEmpty ? errorNote : '$objectNotes\n$errorNote';
+              jobNotes
+                  .add('${updated['identity']?['name'] ?? uid}: $errorNote');
+            }
+
+            updated['objectState'] = 'active';
+            updated = setSpecificPropertyJSON(
+                updated, 'approvalNotes', objectNotes, 'String');
+            outputs.add(updated);
+          }
+
+          final jobUid = await _writeQcJob(
+            bundle,
+            outputs,
+            newState: 'active',
+            decision: 'approved',
+            notes: jobNotes.join('\n'),
+            checks: approveChecks,
+          );
+          for (final o in outputs) {
+            expected[_QcBundle.uidOf(o)] = (state: 'active', jobUid: jobUid);
+          }
+          decided.addAll(outputs);
         }
 
-        updated['objectState'] = newState;
-        updated = setSpecificPropertyJSON(updated, noteKey, objectNotes, 'String');
-        outputs.add(updated);
+        if (toReject.isNotEmpty) {
+          final outputs = <Map<String, dynamic>>[];
+          for (final member in toReject) {
+            final uid = _QcBundle.uidOf(member);
+            final current = await getCurrentObjectVersion(uid);
+            Map<String, dynamic> updated =
+                deepCopyMap(current.isNotEmpty ? current : member);
+            updated['objectState'] = 'qcRejected';
+            updated = setSpecificPropertyJSON(
+                updated, 'rejectionReason', fieldsReason, 'String');
+            outputs.add(updated);
+          }
+
+          final jobUid = await _writeQcJob(
+            bundle,
+            outputs,
+            newState: 'qcRejected',
+            decision: 'rejected',
+            notes: fieldsReason,
+            checks: _checksFor(toReject),
+          );
+          for (final o in outputs) {
+            expected[_QcBundle.uidOf(o)] =
+                (state: 'qcRejected', jobUid: jobUid);
+          }
+          decided.addAll(outputs);
+          decided.addAll(await _deductRejectedFieldAreas(outputs));
+        }
+      } catch (e) {
+        // Ein bereits geschriebener Job (Freigabe vor fehlgeschlagener
+        // Ablehnung) bleibt gültig - er wird unten trotzdem bestätigt.
+        failure = e;
+        debugPrint('Error deciding QC bundle ${bundle.key}: $e');
+        cloudLogService.error('QC decision: failed', data: {
+          ...logData,
+          'error': '$e',
+          'jobsWritten': '${expected.values.map((e) => e.jobUid).toSet().length}',
+        });
       }
 
-      // Die verknüpften Fotos teilen das Schicksal ihres Objekts und gehen mit
-      // in denselben Job.
-      _setBusy(l10n.qcUpdatingPhotos);
-      outputs.addAll(await _linkedImagesWithState(outputs, newState));
+      var unconfirmed = <String>{};
+      if (expected.isNotEmpty) {
+        _setBusy(l10n.qcConfirmingInCloud);
+        unconfirmed = await _confirmInCloud(expected);
+      }
 
-      final ticked = _checks[bundle.key] ?? const <String, DateTime>{};
-      final checklist = [
-        for (final check in checks)
-          {
-            'objectUID': check.objectUid,
-            'objectType': check.objectType,
-            'check': check.check,
-            'checked': ticked.containsKey(check.id),
-            'checkedAt': ticked[check.id]?.toIso8601String() ?? '',
-          },
-      ];
+      // Nur was die Cloud übernommen hat, verlässt die Prüfliste. Die neuen
+      // Farmflächen haben keinen eigenen Zustand zu bestätigen.
+      final confirmed = decided
+          .where((o) => !unconfirmed.contains(_QcBundle.uidOf(o)))
+          .toList();
+      if (confirmed.isNotEmpty) {
+        repaintContainerList.value = true;
+        _applyDecisionLocally(bundle, confirmed);
+      }
 
-      _setBusy(l10n.qcSavingDecision);
-      // Push only. The QC screen reads its data straight from Firestore and is
-      // used online, so pulling the whole cloud state back down afterwards adds
-      // nothing but wait time before the UI is usable again.
-      await performQualityControl(
-        newObjectVersions: outputs,
-        decision: approve ? 'approved' : 'rejected',
-        notes: jobNotes.join('\n'),
-        checklist: checklist,
-        subjectUID: bundle.key,
-        syncFromCloud: false,
-      );
+      if (expected.isNotEmpty) {
+        if (unconfirmed.isEmpty) {
+          cloudLogService.info('QC decision: confirmed by cloud', data: {
+            ...logData,
+            'jobs': expected.values.map((e) => e.jobUid).toSet().join(','),
+          });
+        } else {
+          cloudLogService.error('QC decision: not confirmed by cloud', data: {
+            ...logData,
+            'jobs': expected.values.map((e) => e.jobUid).toSet().join(','),
+            'unconfirmed': unconfirmed.join(','),
+          });
+        }
+      }
 
-      repaintContainerList.value = true;
-      _removeBundleLocally(bundle, outputs);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(approve
-                ? l10n.registrationApproved
-                : l10n.registrationRejected),
-            backgroundColor: approve ? Colors.green : Colors.orange,
+      if (!mounted) return;
+      if (unconfirmed.isNotEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => PointerInterceptor(
+            child: AlertDialog(
+              title: Text(l10n.qcNotConfirmedTitle,
+                  style: const TextStyle(color: Colors.black)),
+              content: Text(l10n.qcNotConfirmedBody(unconfirmed.length),
+                  style: const TextStyle(color: Colors.black87)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l10n.ok),
+                ),
+              ],
+            ),
           ),
         );
-      }
-    } catch (e) {
-      debugPrint('Error deciding QC bundle ${bundle.key}: $e');
-      if (mounted) {
+      } else if (failure != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Error: $failure'),
             backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(deferred.isNotEmpty
+                ? l10n.qcPartialDecisionSaved
+                : toApprove.isNotEmpty
+                    ? l10n.registrationApproved
+                    : l10n.registrationRejected),
+            backgroundColor:
+                toApprove.isNotEmpty ? Colors.green : Colors.orange,
           ),
         );
       }
     } finally {
+      disableLeaveGuard();
       _setBusy(null);
     }
   }
 
-  /// Registriert ein Field-Objekt bei der Asset Registry und gibt die GeoID zurück
-  /// Rückgabe: {'geoId': String?, 'error': String?}
-  Future<Map<String, String?>> _registerFieldInAssetRegistry(
-      Map<String, dynamic> fieldObject) async {
-    UserRegistryService? userRegistryService;
-    AssetRegistryService? assetRegistryService;
+  /// Lädt die geschriebenen QC-Jobs sofort hoch und prüft in Firestore, ob die
+  /// Cloud sie übernommen hat: jedes Objekt in [expected] muss dort den
+  /// erwarteten Zustand haben und den QC-Job in seiner Methodenhistorie tragen.
+  ///
+  /// Der Hintergrund-Upload allein reicht nicht: im Web gibt es keine
+  /// automatischen Wiederholungen, und eine abgelehnte Methode (Konflikt,
+  /// Signatur) bleibt sonst unbemerkt nur auf dem Gerät. Läuft gerade ein
+  /// anderer Sync, wird nach kurzer Pause erneut versucht.
+  ///
+  /// Gibt die UIDs zurück, die nach allen Versuchen nicht bestätigt sind.
+  Future<Set<String>> _confirmInCloud(
+      Map<String, ({String state, String jobUid})> expected) async {
+    var pending = expected.keys.toSet();
+    for (int attempt = 0; attempt < 6 && pending.isNotEmpty; attempt++) {
+      if (attempt > 0) await Future.delayed(const Duration(seconds: 3));
+      try {
+        await cloudSyncService.syncMethods('tracefoodchain.org',
+            syncFromCloud: false, ignorePause: true);
+      } catch (e) {
+        debugPrint('QC: push before confirmation failed: $e');
+      }
+
+      final checks = await Future.wait(pending.map((uid) async {
+        try {
+          // Vom Server, nicht aus dem Firestore-Cache: der kennt die lokal
+          // gespeicherte Fassung nicht, könnte aber eine ältere liefern.
+          final doc = await FirebaseFirestore.instance
+              .collection('TFC_objects')
+              .doc(uid)
+              .get(const GetOptions(source: Source.server));
+          final data = doc.data();
+          final want = expected[uid]!;
+          final history = data?['methodHistoryRef'];
+          final ok = data != null &&
+              data['objectState'] == want.state &&
+              history is List &&
+              history.any((h) => h is Map && h['UID'] == want.jobUid);
+          return ok ? null : uid;
+        } catch (e) {
+          debugPrint('QC: could not confirm $uid: $e');
+          return uid;
+        }
+      }));
+      pending = checks.whereType<String>().toSet();
+    }
+    return pending;
+  }
+
+  /// Schreibt einen QC-Job über [outputs] samt ihrer verknüpften Fotos - die
+  /// teilen das Schicksal ihres Objekts - und der Checkliste aus [checks].
+  /// Gibt die UID des Jobs zurück.
+  Future<String> _writeQcJob(
+    _QcBundle bundle,
+    List<Map<String, dynamic>> outputs, {
+    required String newState,
+    required String decision,
+    required String notes,
+    required List<_QcCheck> checks,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    _setBusy(l10n.qcUpdatingPhotos);
+    final withPhotos = [
+      ...outputs,
+      ...await _linkedImagesWithState(outputs, newState),
+    ];
+
+    final ticked = _checks[bundle.key] ?? const <String, DateTime>{};
+    final precheck = _prechecks[bundle.key];
+    final viaPrecheck = _checkedViaPrecheck[bundle.key] ?? const <String>{};
+    final checklist = [
+      for (final check in checks)
+        {
+          'objectUID': check.objectUid,
+          'objectType': check.objectType,
+          'check': check.check,
+          'checked': ticked.containsKey(check.id),
+          'checkedAt': ticked[check.id]?.toIso8601String() ?? '',
+          // Automatische Vorprüfung: Ampel und Gründe, und ob der Prüfer den
+          // Punkt von ihr übernommen hat. Die Entscheidung bleibt seine.
+          if (precheck?.checks[check.id] case final pc?) ...{
+            'precheckStatus': pc.status.name,
+            'precheckReasons': pc.reasons,
+            'precheckModel': precheck!.model ?? '',
+            'checkedVia':
+                viaPrecheck.contains(check.id) ? 'precheck' : 'manual',
+          },
+        },
+    ];
+
+    _setBusy(l10n.qcSavingDecision);
+    // Push only. The QC screen reads its data straight from Firestore and is
+    // used online, so pulling the whole cloud state back down afterwards adds
+    // nothing but wait time before the UI is usable again.
+    final job = await performQualityControl(
+      newObjectVersions: withPhotos,
+      decision: decision,
+      notes: notes,
+      checklist: checklist,
+      subjectUID: bundle.key,
+      syncFromCloud: false,
+    );
+    return getObjectMethodUID(job);
+  }
+
+  /// Zieht die Fläche abgelehnter Felder von ihrer Farm ab - die Erfassung
+  /// führt `totalAreaHa` als Summe der Feldflächen. Farmen, die selbst
+  /// abgelehnt wurden, bleiben unverändert. Gibt die neuen Farmfassungen
+  /// zurück.
+  ///
+  /// Läuft erst nach dem Ablehnungs-Job: ohne ihn wäre das Feld noch offen,
+  /// und seine Fläche gehört dann weiter zur Farm.
+  Future<List<Map<String, dynamic>>> _deductRejectedFieldAreas(
+      List<Map<String, dynamic>> rejected) async {
+    final rejectedUids = rejected.map(_QcBundle.uidOf).toSet();
+    final areaByFarm = <String, double>{};
+    final namesByFarm = <String, List<Map<String, dynamic>>>{};
+    for (final obj in rejected) {
+      if (obj['template']?['RALType'] != 'field') continue;
+      final farmUid = _farmUidOfField(obj);
+      if (farmUid == null || rejectedUids.contains(farmUid)) continue;
+      areaByFarm[farmUid] = (areaByFarm[farmUid] ?? 0) + fieldAreaHa(obj);
+      (namesByFarm[farmUid] ??= []).add(obj);
+    }
+
+    final updatedFarms = <Map<String, dynamic>>[];
+    for (final MapEntry(key: farmUid, value: area) in areaByFarm.entries) {
+      if (area <= 0) continue;
+      try {
+        await adjustFarmTotalArea(
+          farmUid,
+          -area,
+          changeReason: 'Total area reduced by ${area.toStringAsFixed(4)} ha '
+              'after QC rejection of plots ${_objectNames(namesByFarm[farmUid]!)}',
+        );
+        final farm = await getCurrentObjectVersion(farmUid);
+        if (farm.isNotEmpty) updatedFarms.add(farm);
+      } catch (e) {
+        // Die Ablehnung ist bereits signiert und gültig - nur die Summe hinkt.
+        debugPrint('QC: could not adjust total area of farm $farmUid: $e');
+      }
+    }
+    return updatedFarms;
+  }
+
+  /// Namen (bzw. UIDs) für Job-Notizen - englisch wie alle openRAL-Texte.
+  String _objectNames(List<Map<String, dynamic>> objects) => objects
+      .map((o) =>
+          o['identity']?['name']?.toString().trim().isNotEmpty == true
+              ? '${o['identity']['name']} (${_QcBundle.uidOf(o)})'
+              : _QcBundle.uidOf(o))
+      .join(', ');
+
+  /// Gleichzeitige Anfragen an die Asset Registry.
+  static const int _assetRegistryConcurrency = 4;
+
+  /// Zeitlimit je Anfrage an User und Asset Registry.
+  static const Duration _assetRegistryRequestTimeout = Duration(seconds: 20);
+
+  /// Gesamtfrist für die Registrierung aller Felder einer Entscheidung.
+  static const Duration _assetRegistryDeadline = Duration(seconds: 90);
+
+  /// Registriert die [fields] bei der Asset Registry und gibt je Feld-UID die
+  /// GeoID oder einen Fehler zurück.
+  ///
+  /// Ein Login für alle Felder, [_assetRegistryConcurrency] Registrierungen
+  /// gleichzeitig und eine Gesamtfrist: vorher lief je Feld Login,
+  /// Registrierung und Logout nacheinander, bei großen Farmen viele Minuten
+  /// lang, und ein Neuladen der Seite in dieser Zeit verwarf die ganze
+  /// Freigabe. Felder ohne Antwort bis zur Frist bekommen einen Fehler und
+  /// werden trotzdem freigegeben - wie bisher bei einem Registry-Fehler.
+  Future<Map<String, ({String? geoId, String? error})>>
+      _registerFieldsInAssetRegistry(
+    List<Map<String, dynamic>> fields, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final results = <String, ({String? geoId, String? error})>{};
+    if (fields.isEmpty) return results;
+
+    void failAll(String error) {
+      for (final field in fields) {
+        results.putIfAbsent(
+            _QcBundle.uidOf(field), () => (geoId: null, error: error));
+      }
+    }
+
+    final userRegistry =
+        UserRegistryService(timeout: _assetRegistryRequestTimeout);
+
+    // Erst ein kurzer Health-Check beider Dienste: ist einer nicht erreichbar,
+    // kostet das einige Sekunden statt eines Timeouts je Feld.
+    final available = await Future.wait([
+      userRegistry.isAvailable(),
+      AssetRegistryService.isAvailable(),
+    ]);
+    if (available.contains(false)) {
+      final unavailable = [
+        if (!available[0]) 'User Registry',
+        if (!available[1]) 'Asset Registry',
+      ].join(', ');
+      cloudLogService.warn('QC decision: registry health check failed',
+          data: {'unavailable': unavailable, 'fields': '${fields.length}'});
+      failAll('$unavailable not reachable (health check failed)');
+      return results;
+    }
 
     try {
-      // Extrahiere Feldgrenzen aus dem Field-Objekt
-      final boundariesJson =
-          getSpecificPropertyfromJSON(fieldObject, 'boundaries');
-      if (boundariesJson == null) {
-        return {'geoId': null, 'error': 'No boundaries found in field object'};
-      }
-
-      // Parse boundaries (sollte WKT-Format sein)
-      String wktCoordinates;
-      try {
-        final boundaries = jsonDecode(boundariesJson);
-        if (boundaries['coordinates'] != null) {
-          // Konvertiere GeoJSON zu WKT
-          wktCoordinates = _convertGeoJSONToWKT(boundaries['coordinates']);
-        } else {
-          return {'geoId': null, 'error': 'Invalid boundaries format'};
-        }
-      } catch (e) {
-        return {'geoId': null, 'error': 'Failed to parse boundaries: $e'};
-      }
-
-      // Initialisiere User Registry Service
-      userRegistryService = UserRegistryService();
-      await userRegistryService.initialize();
-
-      // Hole Credentials aus .env
+      await userRegistry.initialize();
       final userEmail = dotenv.env['USER_REGISTRY_EMAIL'] ?? '';
       final userPassword = dotenv.env['USER_REGISTRY_PASSWORD'] ?? '';
-
       if (userEmail.isEmpty || userPassword.isEmpty) {
-        return {
-          'geoId': null,
-          'error': 'User Registry credentials not configured'
-        };
+        failAll('User Registry credentials not configured');
+        return results;
+      }
+      final loggedIn = await userRegistry.login(
+          email: userEmail, password: userPassword);
+      if (!loggedIn) {
+        failAll('User Registry login failed');
+        return results;
+      }
+      final assetRegistry = await AssetRegistryService.withUserRegistry(
+        userRegistryService: userRegistry,
+        timeout: _assetRegistryRequestTimeout,
+      );
+
+      final queue = [...fields];
+      int done = 0;
+      onProgress?.call(0, fields.length);
+      Future<void> worker() async {
+        while (queue.isNotEmpty) {
+          final field = queue.removeAt(0);
+          final result = await _registerFieldBoundary(assetRegistry, field);
+          results[_QcBundle.uidOf(field)] = result;
+          onProgress?.call(++done, fields.length);
+        }
       }
 
-      // Login
-      final loginSuccess = await userRegistryService.login(
-        email: userEmail,
-        password: userPassword,
-      );
+      await Future.wait([
+        for (int i = 0;
+            i < math.min(_assetRegistryConcurrency, fields.length);
+            i++)
+          worker(),
+      ]).timeout(_assetRegistryDeadline, onTimeout: () => const []);
+    } catch (e) {
+      debugPrint('Error registering fields in Asset Registry: $e');
+      failAll(e.toString());
+    } finally {
+      try {
+        await userRegistry.logout().timeout(const Duration(seconds: 5));
+      } catch (e) {
+        debugPrint('Error logging out from User Registry: $e');
+      }
+    }
 
-      if (!loginSuccess) {
-        return {'geoId': null, 'error': 'User Registry login failed'};
+    failAll('No answer from the Asset Registry within '
+        '${_assetRegistryDeadline.inSeconds} s');
+    // Eine Kopie: Anfragen, die nach der Frist noch eintreffen, dürfen das
+    // Ergebnis nicht mehr verändern.
+    return Map.of(results);
+  }
+
+  /// Registriert eine Feldgrenze und gibt GeoID oder Fehler zurück.
+  Future<({String? geoId, String? error})> _registerFieldBoundary(
+      AssetRegistryService assetRegistry, Map<String, dynamic> field) async {
+    try {
+      final boundariesJson = getSpecificPropertyfromJSON(field, 'boundaries');
+      if (boundariesJson == null) {
+        return (geoId: null, error: 'No boundaries found in field object');
       }
 
-      // Erstelle Asset Registry Service
-      assetRegistryService = await AssetRegistryService.withUserRegistry(
-        userRegistryService: userRegistryService,
-      );
+      final String wkt;
+      try {
+        final boundaries = jsonDecode(boundariesJson);
+        if (boundaries['coordinates'] == null) {
+          return (geoId: null, error: 'Invalid boundaries format');
+        }
+        wkt = _convertGeoJSONToWKT(boundaries['coordinates']);
+      } catch (e) {
+        return (geoId: null, error: 'Failed to parse boundaries: $e');
+      }
 
-      // Registriere Field Boundary
-      final registerResponse = await assetRegistryService.registerFieldBoundary(
-        s2Index: '8, 13',
-        wkt: wktCoordinates,
-      );
-
-      String? geoId;
-      if (registerResponse.statusCode == 200) {
+      final response =
+          await assetRegistry.registerFieldBoundary(s2Index: '8, 13', wkt: wkt);
+      if (response.statusCode == 200) {
         // Neu registriert
-        final responseData =
-            jsonDecode(registerResponse.body) as Map<String, dynamic>;
-        geoId = responseData['geoid'] as String?;
-        if (geoId != null) {
-          return {'geoId': geoId, 'error': null};
-        } else {
-          return {'geoId': null, 'error': 'No geoID in response'};
-        }
-      } else if (registerResponse.statusCode == 400) {
-        // Bereits registriert
-        final responseData =
-            jsonDecode(registerResponse.body) as Map<String, dynamic>;
-        final matchedGeoIds = responseData['matched geo ids'] as List<dynamic>?;
-        if (matchedGeoIds != null && matchedGeoIds.isNotEmpty) {
-          geoId = matchedGeoIds.first as String;
-          return {'geoId': geoId, 'error': null};
-        } else {
-          return {'geoId': null, 'error': 'No matched geo ids in response'};
-        }
-      } else {
-        return {
-          'geoId': null,
-          'error': 'Asset Registry API error: ${registerResponse.statusCode}'
-        };
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final geoId = data['geoid'] as String?;
+        return geoId != null
+            ? (geoId: geoId, error: null)
+            : (geoId: null, error: 'No geoID in response');
       }
+      if (response.statusCode == 400) {
+        // Bereits registriert
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final matched = data['matched geo ids'] as List<dynamic>?;
+        return matched != null && matched.isNotEmpty
+            ? (geoId: matched.first as String, error: null)
+            : (geoId: null, error: 'No matched geo ids in response');
+      }
+      return (
+        geoId: null,
+        error: 'Asset Registry API error: ${response.statusCode}'
+      );
     } catch (e) {
       debugPrint('Error registering field in Asset Registry: $e');
-      return {'geoId': null, 'error': e.toString()};
-    } finally {
-      // Logout
-      if (userRegistryService != null) {
-        try {
-          await userRegistryService.logout();
-        } catch (e) {
-          debugPrint('Error logging out from User Registry: $e');
-        }
-      }
+      return (geoId: null, error: e.toString());
     }
   }
 
@@ -1896,6 +2370,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           _buildLocationRow(l10n),
           _buildSearchField(l10n),
           _buildSortAndRegistrarRow(l10n),
+          _buildPrecheckRow(l10n),
           const SizedBox(height: 8),
           _buildResultCount(l10n),
 
@@ -2058,6 +2533,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
       // otherwise an active filter looks like an empty queue.
       final hasActiveFilter = _registrarFilter != 'all' ||
           _teamOnly ||
+          _onlyPrecheckGreen ||
           _searchQuery.trim().isNotEmpty;
       return Center(
         child: Column(
@@ -2338,6 +2814,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     setState(() {
       _focusBundleKey = null;
       _teamOnly = false;
+      _onlyPrecheckGreen = false;
       _registrarFilter = 'all';
       _countryFilter = null;
       _stateFilter = null;
@@ -2722,12 +3199,347 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     return DateFormat.yMd(locale).add_Hm().format(local);
   }
 
+  // ---------------------------------------------------------------- Vorprüfung
+
+  bool get _mayRunPrecheck =>
+      _precheckRoles.contains(RoleManagementService().getCurrentUserRole());
+
+  /// Liest gespeicherte Vorprüfungen - kostet keine KI-Aufrufe.
+  Future<void> _loadStoredPrechecks(List<_QcBundle> bundles) async {
+    if (bundles.isEmpty) return;
+    try {
+      final loaded =
+          await QcPrecheckService.load(bundles.map((b) => b.key).toList());
+      if (!mounted || loaded.isEmpty) return;
+      setState(() => _prechecks.addAll(loaded));
+    } catch (e) {
+      debugPrint('QC precheck: could not load stored results: $e');
+    }
+  }
+
+  /// Startet die Vorprüfung für [bundles]. Unveränderte Bündel liefert die
+  /// Cloud aus dem Speicher; [force] prüft trotzdem neu.
+  Future<void> _runPrecheck(List<_QcBundle> bundles,
+      {bool force = false}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final keys = bundles
+        .map((b) => b.key)
+        .where((k) => !_precheckRunning.contains(k))
+        .toList();
+    if (keys.isEmpty) return;
+    setState(() => _precheckRunning.addAll(keys));
+    try {
+      final results = await QcPrecheckService.run(
+        keys,
+        force: force,
+        onProgress: keys.length <= 1
+            ? null
+            : (done) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(SnackBar(
+                    content: Text(l10n.qcPrecheckProgress(done, keys.length)),
+                    duration: const Duration(seconds: 2),
+                  ));
+              },
+      );
+      if (mounted) setState(() => _prechecks.addAll(results));
+    } catch (e) {
+      debugPrint('QC precheck failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${l10n.qcPrecheckFailed}: $e'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _precheckRunning.removeAll(keys));
+    }
+  }
+
+  /// Bündel der Liste ohne abgeschlossene Vorprüfung.
+  List<_QcBundle> get _bundlesWithoutPrecheck => _filteredBundles
+      .where((b) => _prechecks[b.key]?.complete != true)
+      .toList();
+
+  /// Vorprüfung für alle angezeigten Bündel ohne abgeschlossenes Ergebnis.
+  Future<void> _runPrecheckForShown() async {
+    final l10n = AppLocalizations.of(context)!;
+    final todo = _bundlesWithoutPrecheck;
+    if (todo.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.qcPrecheckTitle,
+            style: const TextStyle(color: Colors.black)),
+        content: Text(l10n.qcPrecheckRunAllConfirm(todo.length),
+            style: const TextStyle(color: Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.qcPrecheckRun),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _runPrecheck(todo);
+  }
+
+  /// Hakt alle Prüfpunkte ab, die die Vorprüfung grün bewertet hat. Gelbe und
+  /// rote bleiben dem Prüfer; abgehakte Punkte lassen sich wieder abwählen.
+  void _adoptGreenChecks(_QcBundle bundle, List<_QcCheck> checks) {
+    final precheck = _prechecks[bundle.key];
+    if (precheck == null) return;
+    setState(() {
+      final ticked = _checks.putIfAbsent(bundle.key, () => {});
+      final via = _checkedViaPrecheck.putIfAbsent(bundle.key, () => {});
+      final now = DateTime.now().toUtc();
+      for (final check in checks) {
+        if (precheck.checks[check.id]?.status != PrecheckStatus.green) {
+          continue;
+        }
+        if (ticked.containsKey(check.id)) continue;
+        ticked[check.id] = now;
+        via.add(check.id);
+      }
+    });
+  }
+
+  Color _precheckColor(PrecheckStatus status) => switch (status) {
+        PrecheckStatus.green => Colors.green[700]!,
+        PrecheckStatus.yellow => Colors.orange[800]!,
+        PrecheckStatus.red => Colors.red[700]!,
+      };
+
+  IconData _precheckIcon(PrecheckStatus status) => switch (status) {
+        PrecheckStatus.green => Icons.verified_outlined,
+        PrecheckStatus.yellow => Icons.error_outline,
+        PrecheckStatus.red => Icons.report_gmailerrorred,
+      };
+
+  String _precheckStatusLabel(PrecheckStatus status, AppLocalizations l10n) =>
+      switch (status) {
+        PrecheckStatus.green => l10n.qcPrecheckGreen,
+        PrecheckStatus.yellow => l10n.qcPrecheckYellow,
+        PrecheckStatus.red => l10n.qcPrecheckRed,
+      };
+
+  String _precheckReason(String code, AppLocalizations l10n) =>
+      switch (code) {
+        'nameMissing' => l10n.qcPrNameMissing,
+        'idMissing' => l10n.qcPrIdMissing,
+        'idWrongLength' => l10n.qcPrIdWrongLength,
+        'idImplausible' => l10n.qcPrIdImplausible,
+        'photoMissing' => l10n.qcPrPhotoMissing,
+        'photoNotUploaded' => l10n.qcPrPhotoNotUploaded,
+        'aiUnavailable' => l10n.qcPrAiUnavailable,
+        'photoUnusable' => l10n.qcPrPhotoUnusable,
+        'notAnIdCard' => l10n.qcPrNotAnIdCard,
+        'idBackSide' => l10n.qcPrIdBackSide,
+        'photoUnreadable' => l10n.qcPrPhotoUnreadable,
+        'idUnreadable' => l10n.qcPrIdUnreadable,
+        'idTypo' => l10n.qcPrIdTypo,
+        'idMismatch' => l10n.qcPrIdMismatch,
+        'namesUnreadable' => l10n.qcPrNamesUnreadable,
+        'nameMismatch' => l10n.qcPrNameMismatch,
+        'namePartialMatch' => l10n.qcPrNamePartialMatch,
+        'consentBackMissing' => l10n.qcPrConsentBackMissing,
+        'consentPagesIdentical' => l10n.qcPrConsentPagesIdentical,
+        'notConsentForm' => l10n.qcPrNotConsentForm,
+        'checkboxesNotFound' => l10n.qcPrCheckboxesNotFound,
+        'checkboxesNotTicked' => l10n.qcPrCheckboxesNotTicked,
+        'signatureMissing' => l10n.qcPrSignatureMissing,
+        'polygonMissing' => l10n.qcPrPolygonMissing,
+        'polygonSelfIntersecting' => l10n.qcPrPolygonSelfIntersecting,
+        'polygonTiny' => l10n.qcPrPolygonTiny,
+        'photoWithoutLocation' => l10n.qcPrPhotoWithoutLocation,
+        'photoFarFromPlot' => l10n.qcPrPhotoFarFromPlot,
+        'photoNearPlot' => l10n.qcPrPhotoNearPlot,
+        'noCrop' => l10n.qcPrNoCrop,
+        'coffeeNotRecognized' => l10n.qcPrCoffeeNotRecognized,
+        'precheckFailed' => l10n.qcPrPrecheckFailed,
+        _ => code,
+      };
+
+  /// Ampel und Gründe unter einem Prüfpunkt.
+  Widget _buildPrecheckLine(PrecheckCheck precheck, AppLocalizations l10n) {
+    final color = _precheckColor(precheck.status);
+    final text = precheck.reasons.isEmpty
+        ? l10n.qcPrecheckCheckOk
+        : precheck.reasons.map((r) => _precheckReason(r, l10n)).join(' · ');
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(_precheckIcon(precheck.status), size: 14, color: color),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(text, style: TextStyle(color: color, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kurzstatus der Vorprüfung in der Kopfzeile der Karte.
+  Widget _buildPrecheckBadge(_QcBundle bundle, AppLocalizations l10n) {
+    if (_precheckRunning.contains(bundle.key)) {
+      return _buildCardMeta(Icons.hourglass_top, l10n.qcPrecheckRunning);
+    }
+    final precheck = _prechecks[bundle.key];
+    if (precheck == null) return const SizedBox.shrink();
+    final color = _precheckColor(precheck.overall);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(_precheckIcon(precheck.overall), size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          _precheckStatusLabel(precheck.overall, l10n),
+          style: TextStyle(
+              fontSize: 12, color: color, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  /// Vorprüfung in der aufgeklappten Karte: Status, Start/Neu, und die
+  /// grünen Prüfpunkte auf einmal übernehmen.
+  Widget _buildPrecheckPanel(
+      _QcBundle bundle, List<_QcCheck> checks, AppLocalizations l10n) {
+    final precheck = _prechecks[bundle.key];
+    final running = _precheckRunning.contains(bundle.key);
+    if (precheck == null && !_mayRunPrecheck) return const SizedBox.shrink();
+
+    final adoptable = precheck == null
+        ? 0
+        : checks
+            .where((c) =>
+                precheck.checks[c.id]?.status == PrecheckStatus.green &&
+                !_isChecked(bundle, c))
+            .length;
+    final Color color = precheck == null
+        ? Colors.blueGrey
+        : _precheckColor(precheck.overall);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        border: Border.all(color: color.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                  precheck == null
+                      ? Icons.auto_awesome_outlined
+                      : _precheckIcon(precheck.overall),
+                  color: color,
+                  size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  precheck == null
+                      ? '${l10n.qcPrecheckTitle}: ${l10n.qcPrecheckNotRun}'
+                      : '${l10n.qcPrecheckTitle}: '
+                          '${_precheckStatusLabel(precheck.overall, l10n)}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: color),
+                ),
+              ),
+              if (running)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else if (_mayRunPrecheck)
+                TextButton.icon(
+                  onPressed: () =>
+                      _runPrecheck([bundle], force: precheck != null),
+                  icon: Icon(
+                      precheck == null ? Icons.play_arrow : Icons.refresh,
+                      size: 18),
+                  label: Text(precheck == null
+                      ? l10n.qcPrecheckRun
+                      : l10n.qcPrecheckRerun),
+                ),
+            ],
+          ),
+          if (precheck != null && !precheck.aiUsed)
+            _buildHintLine(Icons.info_outline, l10n.qcPrecheckRulesOnly),
+          Text(
+            l10n.qcPrecheckDisclaimer,
+            style: TextStyle(color: Colors.grey[700], fontSize: 12),
+          ),
+          if (adoptable > 0) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _adoptGreenChecks(bundle, checks),
+              icon: Icon(Icons.done_all, color: Colors.green[700]),
+              label: Text(l10n.qcPrecheckAdoptGreen(adoptable),
+                  style: TextStyle(color: Colors.green[800])),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Filter "nur grün" und Vorprüfung für alle angezeigten Bündel.
+  Widget _buildPrecheckRow(AppLocalizations l10n) {
+    if (_isLoading || _bundles.isEmpty) return const SizedBox.shrink();
+    final todo = _mayRunPrecheck ? _bundlesWithoutPrecheck.length : 0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          FilterChip(
+            avatar: Icon(Icons.verified_outlined,
+                size: 16, color: Colors.green[700]),
+            label: Text(l10n.qcPrecheckOnlyGreen,
+                style: const TextStyle(fontSize: 12)),
+            selected: _onlyPrecheckGreen,
+            onSelected: (v) => setState(() => _onlyPrecheckGreen = v),
+          ),
+          if (todo > 0)
+            TextButton.icon(
+              onPressed:
+                  _precheckRunning.isEmpty ? _runPrecheckForShown : null,
+              icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+              label: Text(l10n.qcPrecheckRunAll(todo)),
+            ),
+          if (_precheckRunning.isNotEmpty)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// Eine Farm mit Farmer und offenen Feldern als eine Prüfeinheit: Details,
   /// Fotos und Karten wie bisher, dazu je Objekt die Prüfpunkte. Freigeben
   /// lässt sich erst, wenn alle Punkte abgehakt sind.
   Widget _buildBundleCard(_QcBundle bundle) {
     final l10n = AppLocalizations.of(context)!;
-    final checks = _requiredChecks(bundle);
+    final plan = _planFor(bundle);
+    final checks = _checksFor(plan.approved);
     final done = checks.where((c) => _isChecked(bundle, c)).length;
     final complete = done == checks.length;
     final pendingFields = bundle.pendingFields;
@@ -2773,6 +3585,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                   complete ? Icons.check_circle_outline : Icons.checklist,
                   l10n.qcChecklistProgress(done, checks.length),
                 ),
+                _buildPrecheckBadge(bundle, l10n),
               ],
             ),
           ],
@@ -2785,6 +3598,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               children: [
                 if (bundle.farm == null)
                   _buildHintLine(Icons.link_off, l10n.qcNoLinkedFarm),
+                _buildPrecheckPanel(bundle, checks, l10n),
                 _buildBundleMapSection(bundle),
                 if (bundle.farmer != null)
                   _buildMemberSection(
@@ -2816,32 +3630,53 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
                         '${l10n.field}: ${field['identity']?['name'] ?? '-'}',
                   ),
                 const Divider(height: 24),
+                if (plan.isPartial && !plan.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      l10n.qcDecisionSummary(plan.approvedFieldCount,
+                          plan.deferredFields.length,
+                          plan.rejectedFields.length),
+                      style: const TextStyle(
+                          color: Colors.black87, fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 Row(
                   children: [
                     Expanded(
-                      child: complete
-                          ? const SizedBox.shrink()
-                          : Text(
-                              l10n.qcChecklistIncomplete,
+                      child: plan.isEmpty
+                          ? Text(
+                              l10n.qcNothingToDecide,
                               style: TextStyle(
                                   color: Colors.grey[700], fontSize: 12),
-                            ),
+                            )
+                          : complete
+                              ? const SizedBox.shrink()
+                              : Text(
+                                  l10n.qcChecklistIncomplete,
+                                  style: TextStyle(
+                                      color: Colors.grey[700], fontSize: 12),
+                                ),
                     ),
                     TextButton.icon(
                       onPressed: () => _decideBundle(bundle, approve: false),
                       icon: const Icon(Icons.close),
-                      label: Text(l10n.rejectRegistration),
+                      label: Text(bundle.pendingMembers.length > 1
+                          ? l10n.qcRejectAll
+                          : l10n.rejectRegistration),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.red,
                       ),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
-                      onPressed: complete
+                      onPressed: complete && !plan.isEmpty
                           ? () => _decideBundle(bundle, approve: true)
                           : null,
                       icon: const Icon(Icons.check),
-                      label: Text(l10n.approveRegistration),
+                      label: Text(plan.isPartial
+                          ? l10n.qcSaveDecision
+                          : l10n.approveRegistration),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -2872,12 +3707,27 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
     final ralType = obj['template']?['RALType']?.toString() ?? '';
     final pending = _QcBundle.isPending(obj);
     final ownChecks = checks.where((c) => c.objectUid == uid).toList();
+    final fieldDecision =
+        pending && ralType == 'field' ? _fieldDecision(obj) : null;
+    final borderColor = switch (fieldDecision) {
+      _FieldDecision.defer => Colors.grey,
+      _FieldDecision.reject => Colors.red,
+      _ => color,
+    };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(
+            color: borderColor.withOpacity(fieldDecision == null ||
+                    fieldDecision == _FieldDecision.approve
+                ? 0.4
+                : 0.8),
+            width: fieldDecision == null ||
+                    fieldDecision == _FieldDecision.approve
+                ? 1
+                : 2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -2905,6 +3755,14 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
               _buildStateChip(obj, l10n),
             ],
           ),
+          if (fieldDecision != null) ...[
+            const SizedBox(height: 8),
+            _buildFieldDecisionChips(obj, fieldDecision, l10n),
+            if (fieldDecision == _FieldDecision.defer)
+              _buildHintLine(Icons.schedule, l10n.qcFieldDeferredHint),
+            if (fieldDecision == _FieldDecision.reject)
+              _buildHintLine(Icons.warning_amber, l10n.qcFieldRejectedHint),
+          ],
           const SizedBox(height: 12),
           if (!pending) _buildHintLine(Icons.info_outline, l10n.qcNotPartOfReview),
           _hasGeoData(obj)
@@ -2926,6 +3784,39 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Auswahl, was mit einem offenen Feld bei der Freigabe des Bündels passiert.
+  Widget _buildFieldDecisionChips(Map<String, dynamic> field,
+      _FieldDecision selected, AppLocalizations l10n) {
+    Widget chip(_FieldDecision value, String label, IconData icon,
+            Color color) =>
+        ChoiceChip(
+          visualDensity: VisualDensity.compact,
+          avatar: Icon(icon,
+              size: 16, color: selected == value ? Colors.white : color),
+          label: Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: selected == value ? Colors.white : Colors.black87)),
+          selected: selected == value,
+          selectedColor: color,
+          showCheckmark: false,
+          onSelected: (_) => _setFieldDecision(field, value),
+        );
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        chip(_FieldDecision.approve, l10n.qcFieldDecisionApprove, Icons.check,
+            Colors.green),
+        chip(_FieldDecision.defer, l10n.qcFieldDecisionDefer, Icons.schedule,
+            Colors.blueGrey),
+        chip(_FieldDecision.reject, l10n.qcFieldDecisionReject, Icons.close,
+            Colors.red),
+      ],
     );
   }
 
@@ -2986,6 +3877,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   Widget _buildCheckTile(_QcBundle bundle, _QcCheck check) {
     final l10n = AppLocalizations.of(context)!;
 
+    final precheck = _prechecks[bundle.key]?.checks[check.id];
     Widget tile({required bool enabled, String? hint, Widget? action}) =>
         CheckboxListTile(
           dense: true,
@@ -2998,10 +3890,18 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
             _checkLabel(check, l10n),
             style: const TextStyle(color: Colors.black87, fontSize: 13),
           ),
-          subtitle: hint == null
+          subtitle: hint == null && precheck == null
               ? null
-              : Text(hint,
-                  style: TextStyle(color: Colors.orange[900], fontSize: 12)),
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (hint != null)
+                      Text(hint,
+                          style: TextStyle(
+                              color: Colors.orange[900], fontSize: 12)),
+                    if (precheck != null) _buildPrecheckLine(precheck, l10n),
+                  ],
+                ),
           secondary: action,
         );
 
@@ -4663,14 +5563,26 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
   }
 }
 
+/// Eingaben des Entscheidungsdialogs. [fieldsReason] ist leer, wenn der Dialog
+/// nicht danach gefragt hat.
+typedef _ApprovalResult = ({String notes, String fieldsReason});
+
 /// Dialog für Genehmigung oder Ablehnung mit Notizen/Grund
 class _ApprovalDialog extends StatefulWidget {
   final bool isApproval;
   final String? objectType;
 
+  /// Aufteilung der Felder bei einer Teilfreigabe.
+  final String? summary;
+
+  /// Zusätzliches Feld für den Grund zurückgestellter/abgelehnter Felder.
+  final bool askFieldsReason;
+
   const _ApprovalDialog({
     required this.isApproval,
     this.objectType,
+    this.summary,
+    this.askFieldsReason = false,
   });
 
   @override
@@ -4679,10 +5591,12 @@ class _ApprovalDialog extends StatefulWidget {
 
 class _ApprovalDialogState extends State<_ApprovalDialog> {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _fieldsReasonController = TextEditingController();
 
   @override
   void dispose() {
     _controller.dispose();
+    _fieldsReasonController.dispose();
     super.dispose();
   }
 
@@ -4694,13 +5608,26 @@ class _ApprovalDialogState extends State<_ApprovalDialog> {
     return PointerInterceptor(
         child: AlertDialog(
       title: Text(
-        widget.isApproval ? l10n.approveRegistration : l10n.rejectRegistration,
+        widget.summary != null
+            ? l10n.qcSaveDecision
+            : widget.isApproval
+                ? l10n.approveRegistration
+                : l10n.rejectRegistration,
         style: const TextStyle(color: Colors.black),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.summary != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                widget.summary!,
+                style: const TextStyle(
+                    color: Colors.black87, fontWeight: FontWeight.w600),
+              ),
+            ),
           // Info-Box für Field-Objekte bei Approval
           if (widget.isApproval && widget.objectType == 'field')
             Container(
@@ -4742,6 +5669,21 @@ class _ApprovalDialogState extends State<_ApprovalDialog> {
             ),
             maxLines: 3,
           ),
+          if (widget.askFieldsReason) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _fieldsReasonController,
+              style: const TextStyle(color: Colors.black),
+              decoration: InputDecoration(
+                labelText: l10n.qcFieldsReason,
+                labelStyle: const TextStyle(color: Colors.black87),
+                hintText: l10n.pleaseProvideReason,
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                border: const OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
         ],
       ),
       actions: [
@@ -4750,14 +5692,19 @@ class _ApprovalDialogState extends State<_ApprovalDialog> {
           child: Text(l10n.cancel),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.pop(context, _controller.text),
+          onPressed: () => Navigator.pop<_ApprovalResult>(context, (
+            notes: _controller.text.trim(),
+            fieldsReason: _fieldsReasonController.text.trim(),
+          )),
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isApproval ? Colors.green : Colors.red,
             foregroundColor: Colors.white,
           ),
-          child: Text(widget.isApproval
-              ? l10n.approveRegistration
-              : l10n.rejectRegistration),
+          child: Text(widget.summary != null
+              ? l10n.qcSaveDecision
+              : widget.isApproval
+                  ? l10n.approveRegistration
+                  : l10n.rejectRegistration),
         ),
       ],
     ));

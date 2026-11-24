@@ -95,6 +95,6 @@ For support, please open an issue in the GitHub repository or contact the develo
 
 ## Project Status
 
-Current Version: 2.0.2+40 (2026-11-13)
+Current Version: 2.0.4+42 (2026-11-24)
 
 The project is under active development. Check the [releases page](https://github.com/agstack/tracefoodchain/releases) for the latest updates.

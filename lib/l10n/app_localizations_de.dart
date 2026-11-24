@@ -2976,7 +2976,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Einverständniserklärung erneut fotografieren';
 
   @override
-  String get consentFormPhoto2 => 'Einverständniserklärung Foto 2 (optional)';
+  String get consentFormPhoto2 => 'Einverständniserklärung Foto 2 (Rückseite)';
 
   @override
   String get consentFormPhoto2Optional =>
@@ -4196,4 +4196,266 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get qcLoadSatelliteMap => 'Satellitenkarte laden';
+
+  @override
+  String get qcFieldDecisionApprove => 'Freigeben';
+
+  @override
+  String get qcFieldDecisionDefer => 'Zurückstellen';
+
+  @override
+  String get qcFieldDecisionReject => 'Ablehnen';
+
+  @override
+  String get qcFieldDeferredHint =>
+      'Dieses Feld bleibt in der Warteschlange und kann später korrigiert und freigegeben werden. Farmer, Farm und die übrigen Felder werden ohne es entschieden.';
+
+  @override
+  String get qcFieldRejectedHint =>
+      'Dieses Feld wird endgültig abgelehnt, seine Fläche wird von der Farm abgezogen. Nur verwenden, wenn es nicht korrigierbar ist (Duplikat, falsche Farm, kein Kaffee). Bei Kartierfehlern zurückstellen oder das Polygon ersetzen.';
+
+  @override
+  String qcDecisionSummary(int approve, int defer, int reject) {
+    return 'Felder: $approve freigeben · $defer zurückstellen · $reject ablehnen';
+  }
+
+  @override
+  String get qcSaveDecision => 'Entscheidung speichern';
+
+  @override
+  String get qcRejectAll => 'Alles ablehnen';
+
+  @override
+  String get qcFieldsReason =>
+      'Grund für zurückgestellte oder abgelehnte Felder';
+
+  @override
+  String get qcNothingToDecide =>
+      'Nichts zu speichern - Farmer und Farm sind bereits freigegeben und alle Felder zurückgestellt.';
+
+  @override
+  String get qcPartialDecisionSaved =>
+      'Entscheidung gespeichert. Zurückgestellte Felder bleiben in der Warteschlange.';
+
+  @override
+  String get qcPrecheckTitle => 'Automatische Vorprüfung';
+
+  @override
+  String get qcPrecheckRun => 'Vorprüfung starten';
+
+  @override
+  String get qcPrecheckRerun => 'Neu prüfen';
+
+  @override
+  String qcPrecheckRunAll(int count) {
+    return 'Angezeigte vorprüfen ($count)';
+  }
+
+  @override
+  String qcPrecheckRunAllConfirm(int count) {
+    return 'Die Fotos von $count Registrierungen werden per KI ausgewertet (Gemini auf Vertex AI, EU-Region) - ohne Metadaten und ohne die erfassten Daten. Die Ergebnisse sind nur Hinweise; entscheiden und signieren tust weiterhin du. Fortfahren?';
+  }
+
+  @override
+  String get qcPrecheckRunning => 'Vorprüfung läuft...';
+
+  @override
+  String qcPrecheckProgress(int done, int total) {
+    return 'Vorprüfung: $done von $total';
+  }
+
+  @override
+  String get qcPrecheckFailed => 'Vorprüfung fehlgeschlagen';
+
+  @override
+  String get qcPrecheckNotRun => 'noch nicht gelaufen';
+
+  @override
+  String get qcPrecheckGreen => 'Vorprüfung grün';
+
+  @override
+  String get qcPrecheckYellow => 'Vorprüfung: Hinweise prüfen';
+
+  @override
+  String get qcPrecheckRed => 'Vorprüfung: Probleme gefunden';
+
+  @override
+  String get qcPrecheckCheckOk => 'Vorprüfung: ohne Befund';
+
+  @override
+  String qcPrecheckAdoptGreen(int count) {
+    return '$count grüne Prüfpunkte abhaken';
+  }
+
+  @override
+  String get qcPrecheckOnlyGreen => 'Nur Vorprüfung grün';
+
+  @override
+  String get qcPrecheckRulesOnly =>
+      'Nur Regeln - der KI-Teil ist nicht eingerichtet.';
+
+  @override
+  String get qcPrecheckDisclaimer =>
+      'Die Vorprüfung zeigt nur, wo genau hinzusehen ist. Entscheiden und signieren tust du.';
+
+  @override
+  String get qcPrNameMissing => 'Vor- oder Nachname fehlt';
+
+  @override
+  String get qcPrIdMissing => 'Ausweisnummer fehlt';
+
+  @override
+  String get qcPrIdWrongLength => 'Ausweisnummer hat nicht 13 Ziffern';
+
+  @override
+  String get qcPrIdImplausible =>
+      'Ausweisnummer ungewöhnlich (Gemeindecode oder Jahr)';
+
+  @override
+  String get qcPrPhotoMissing => 'Foto fehlt';
+
+  @override
+  String get qcPrPhotoNotUploaded => 'Foto noch nicht hochgeladen';
+
+  @override
+  String get qcPrAiUnavailable => 'Foto nicht per KI geprüft';
+
+  @override
+  String get qcPrPhotoUnusable => 'Foto ließ sich nicht laden';
+
+  @override
+  String get qcPrNotAnIdCard => 'Foto zeigt keinen Ausweis';
+
+  @override
+  String get qcPrIdBackSide =>
+      'Foto zeigt die Rückseite des Ausweises, nicht die Vorderseite';
+
+  @override
+  String get qcPrPhotoUnreadable => 'Foto schwer lesbar';
+
+  @override
+  String get qcPrIdUnreadable => 'Ausweisnummer auf dem Foto nicht lesbar';
+
+  @override
+  String get qcPrIdTypo =>
+      'Ausweisnummer weicht in 1-2 Ziffern vom Foto ab (Tippfehler?)';
+
+  @override
+  String get qcPrIdMismatch => 'Ausweisnummer passt nicht zum Foto';
+
+  @override
+  String get qcPrNamesUnreadable => 'Namen auf dem Foto nicht lesbar';
+
+  @override
+  String get qcPrNameMismatch => 'Namen passen nicht zum Ausweis';
+
+  @override
+  String get qcPrNamePartialMatch => 'Nur ein Teil der Namen passt zum Ausweis';
+
+  @override
+  String get qcPrConsentBackMissing => 'Rückseite der Einwilligung fehlt';
+
+  @override
+  String get qcPrConsentPagesIdentical =>
+      'Beide Einwilligungsfotos zeigen dieselbe Seite';
+
+  @override
+  String get qcPrNotConsentForm => 'Foto zeigt keine Einwilligung';
+
+  @override
+  String get qcPrCheckboxesNotFound => 'Keine Zustimmungs-Kästchen gefunden';
+
+  @override
+  String get qcPrCheckboxesNotTicked =>
+      'Nicht alle Zustimmungs-Kästchen angekreuzt';
+
+  @override
+  String get qcPrSignatureMissing =>
+      'Keine Unterschrift und kein Fingerabdruck gefunden';
+
+  @override
+  String get qcPrPolygonMissing => 'Keine verwendbare Feldgrenze';
+
+  @override
+  String get qcPrPolygonSelfIntersecting => 'Feldgrenze schneidet sich selbst';
+
+  @override
+  String get qcPrPolygonTiny => 'Feld ist kleiner als 0,01 ha';
+
+  @override
+  String get qcPrPhotoWithoutLocation => 'Feldfoto ohne Standort';
+
+  @override
+  String get qcPrPhotoFarFromPlot =>
+      'Feldfoto mehr als 300 m vom Feld entfernt aufgenommen';
+
+  @override
+  String get qcPrPhotoNearPlot =>
+      'Feldfoto 50-300 m vom Feld entfernt aufgenommen';
+
+  @override
+  String get qcPrNoCrop => 'Foto zeigt kein Feld mit Kultur';
+
+  @override
+  String get qcPrCoffeeNotRecognized => 'Kaffeepflanzen nicht erkannt';
+
+  @override
+  String get qcPrPrecheckFailed => 'Vorprüfung für diesen Punkt fehlgeschlagen';
+
+  @override
+  String get nationalIdRequired => 'Ausweisnummer erforderlich';
+
+  @override
+  String get nationalIdWrongLength =>
+      'Die Ausweisnummer muss genau 13 Ziffern haben (Bindestriche und Leerzeichen zählen nicht).';
+
+  @override
+  String get nationalIdImplausible =>
+      'Diese Ausweisnummer sieht ungewöhnlich aus (Gemeindecode oder Jahr). Bitte mit dem Ausweis vergleichen.';
+
+  @override
+  String get idCheckTitle => 'Bitte Ausweis prüfen';
+
+  @override
+  String get idOcrNoNumber =>
+      'Auf dem Foto ließ sich keine Ausweisnummer lesen. Ist die Vorderseite scharf und vollständig zu sehen?';
+
+  @override
+  String idOcrMismatch(String typed, String read) {
+    return 'Eingegeben: $typed - auf dem Foto steht offenbar: $read.';
+  }
+
+  @override
+  String get idOcrNameMismatch =>
+      'Der eingegebene Vor- und Nachname wurde auf dem Ausweisfoto nicht gefunden.';
+
+  @override
+  String get idOcrUseRead => 'Nummer vom Foto übernehmen';
+
+  @override
+  String get idOcrKeep => 'Eingabe behalten';
+
+  @override
+  String get idOcrRetake => 'Foto neu aufnehmen';
+
+  @override
+  String get consentFormPhoto2Required =>
+      'Bitte auch die Rückseite der Einwilligung fotografieren.';
+
+  @override
+  String qcRegisteringFieldsProgress(int done, int total) {
+    return 'Registriere Felder in der Asset Registry ($done/$total)...';
+  }
+
+  @override
+  String get qcConfirmingInCloud =>
+      'Warte auf Bestätigung der Entscheidung durch die Cloud...';
+
+  @override
+  String get qcNotConfirmedTitle => 'Von der Cloud nicht bestätigt';
+
+  @override
+  String qcNotConfirmedBody(int count) {
+    return 'Die Entscheidung ist auf diesem Gerät gespeichert, aber die Cloud hat sie für $count Objekte noch nicht bestätigt. Die Registrierung bleibt deshalb in der Prüfliste. Bitte die App nicht schließen und die Seite nicht neu laden. Auf der Startseite die Sync-Anzeige antippen und dann „Jetzt synchronisieren“ wählen. Steht die Registrierung danach immer noch in der Prüfliste, bitte den Support kontaktieren.';
+  }
 }

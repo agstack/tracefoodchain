@@ -156,6 +156,19 @@ class UserRegistryService {
     return response.statusCode == 200;
   }
 
+  /// Short reachability check via the unauthenticated `/health` endpoint.
+  Future<bool> isAvailable(
+      {Duration timeout = const Duration(seconds: 5)}) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$baseUrl/health')).timeout(timeout);
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('User Registry health check failed: $e');
+      return false;
+    }
+  }
+
   /// Get List of allowed domains
   Future<List<String>> getDomains() async {
     final uri = Uri.parse('$baseUrl/domains');

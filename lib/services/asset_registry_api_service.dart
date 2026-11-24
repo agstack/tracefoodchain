@@ -173,6 +173,23 @@ class AssetRegistryService {
     return (data['percentage'] as num).toDouble();
   }
 
+  /// Short reachability check without authentication: `/domains` answers
+  /// without a token. Used before a batch of registrations, so an unavailable
+  /// registry costs one quick request instead of one timeout per field.
+  static Future<bool> isAvailable({
+    String baseUrl = 'https://api-ar.agstack.org/',
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    try {
+      final uri = Uri.parse(baseUrl).replace(path: '/domains');
+      final response = await http.get(uri).timeout(timeout);
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Asset Registry health check failed: $e');
+      return false;
+    }
+  }
+
   Future<List<String>> getDomains() async {
     final uri = _baseUri.replace(path: '/domains');
     final response = await http.get(uri).timeout(timeout);

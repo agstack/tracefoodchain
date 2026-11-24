@@ -2940,7 +2940,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retakeConsentFormPhoto => 'Retake Consent Form Photo';
 
   @override
-  String get consentFormPhoto2 => 'Consent Form Photo 2 (optional)';
+  String get consentFormPhoto2 => 'Consent Form Photo 2 (back side)';
 
   @override
   String get consentFormPhoto2Optional =>
@@ -4153,4 +4153,263 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qcLoadSatelliteMap => 'Load satellite map';
+
+  @override
+  String get qcFieldDecisionApprove => 'Approve';
+
+  @override
+  String get qcFieldDecisionDefer => 'Defer';
+
+  @override
+  String get qcFieldDecisionReject => 'Reject';
+
+  @override
+  String get qcFieldDeferredHint =>
+      'This plot stays in the queue and can be corrected and approved later. Farmer, farm and the other plots are decided without it.';
+
+  @override
+  String get qcFieldRejectedHint =>
+      'This plot is rejected for good and its area is removed from the farm. Only use this if it cannot be corrected (duplicate, wrong farm, not a coffee plot). For mapping errors, defer it or replace the polygon.';
+
+  @override
+  String qcDecisionSummary(int approve, int defer, int reject) {
+    return 'Plots: $approve approve · $defer defer · $reject reject';
+  }
+
+  @override
+  String get qcSaveDecision => 'Save decision';
+
+  @override
+  String get qcRejectAll => 'Reject all';
+
+  @override
+  String get qcFieldsReason => 'Reason for deferred or rejected plots';
+
+  @override
+  String get qcNothingToDecide =>
+      'Nothing to save - farmer and farm are already approved and all plots are deferred.';
+
+  @override
+  String get qcPartialDecisionSaved =>
+      'Decision saved. Deferred plots stay in the queue.';
+
+  @override
+  String get qcPrecheckTitle => 'Automatic precheck';
+
+  @override
+  String get qcPrecheckRun => 'Run precheck';
+
+  @override
+  String get qcPrecheckRerun => 'Check again';
+
+  @override
+  String qcPrecheckRunAll(int count) {
+    return 'Precheck shown ($count)';
+  }
+
+  @override
+  String qcPrecheckRunAllConfirm(int count) {
+    return 'The photos of $count registrations will be analysed by AI (Gemini on Vertex AI, EU region) - without metadata and without the entered data. Results are only hints; you still decide and sign. Continue?';
+  }
+
+  @override
+  String get qcPrecheckRunning => 'Precheck running...';
+
+  @override
+  String qcPrecheckProgress(int done, int total) {
+    return 'Precheck: $done of $total';
+  }
+
+  @override
+  String get qcPrecheckFailed => 'Precheck failed';
+
+  @override
+  String get qcPrecheckNotRun => 'not run yet';
+
+  @override
+  String get qcPrecheckGreen => 'Precheck green';
+
+  @override
+  String get qcPrecheckYellow => 'Precheck: check hints';
+
+  @override
+  String get qcPrecheckRed => 'Precheck: problems found';
+
+  @override
+  String get qcPrecheckCheckOk => 'Precheck: no findings';
+
+  @override
+  String qcPrecheckAdoptGreen(int count) {
+    return 'Tick $count green checks';
+  }
+
+  @override
+  String get qcPrecheckOnlyGreen => 'Precheck green only';
+
+  @override
+  String get qcPrecheckRulesOnly =>
+      'Rules only - the AI part is not configured.';
+
+  @override
+  String get qcPrecheckDisclaimer =>
+      'The precheck only shows where to look closely. You decide and sign.';
+
+  @override
+  String get qcPrNameMissing => 'First or last name missing';
+
+  @override
+  String get qcPrIdMissing => 'ID number missing';
+
+  @override
+  String get qcPrIdWrongLength => 'ID number does not have 13 digits';
+
+  @override
+  String get qcPrIdImplausible =>
+      'ID number looks unusual (municipality code or year)';
+
+  @override
+  String get qcPrPhotoMissing => 'Photo missing';
+
+  @override
+  String get qcPrPhotoNotUploaded => 'Photo not uploaded yet';
+
+  @override
+  String get qcPrAiUnavailable => 'Photo not checked by AI';
+
+  @override
+  String get qcPrPhotoUnusable => 'Photo could not be loaded';
+
+  @override
+  String get qcPrNotAnIdCard => 'Photo does not show an ID card';
+
+  @override
+  String get qcPrIdBackSide =>
+      'Photo shows the back of the ID card, not the front';
+
+  @override
+  String get qcPrPhotoUnreadable => 'Photo hard to read';
+
+  @override
+  String get qcPrIdUnreadable => 'ID number on the photo not legible';
+
+  @override
+  String get qcPrIdTypo =>
+      'ID number differs from the photo in 1-2 digits (typo?)';
+
+  @override
+  String get qcPrIdMismatch => 'ID number does not match the photo';
+
+  @override
+  String get qcPrNamesUnreadable => 'Names on the photo not legible';
+
+  @override
+  String get qcPrNameMismatch => 'Names do not match the ID card';
+
+  @override
+  String get qcPrNamePartialMatch => 'Only some of the names match the ID card';
+
+  @override
+  String get qcPrConsentBackMissing => 'Back of the consent form missing';
+
+  @override
+  String get qcPrConsentPagesIdentical =>
+      'Both consent photos show the same page';
+
+  @override
+  String get qcPrNotConsentForm => 'Photo does not show the consent form';
+
+  @override
+  String get qcPrCheckboxesNotFound => 'No acceptance checkboxes found';
+
+  @override
+  String get qcPrCheckboxesNotTicked =>
+      'Not all acceptance checkboxes are ticked';
+
+  @override
+  String get qcPrSignatureMissing => 'No signature or fingerprint found';
+
+  @override
+  String get qcPrPolygonMissing => 'No usable field boundary';
+
+  @override
+  String get qcPrPolygonSelfIntersecting => 'Field boundary intersects itself';
+
+  @override
+  String get qcPrPolygonTiny => 'Field is smaller than 0.01 ha';
+
+  @override
+  String get qcPrPhotoWithoutLocation => 'Field photo has no location';
+
+  @override
+  String get qcPrPhotoFarFromPlot =>
+      'Field photo taken more than 300 m from the plot';
+
+  @override
+  String get qcPrPhotoNearPlot => 'Field photo taken 50-300 m from the plot';
+
+  @override
+  String get qcPrNoCrop => 'Photo does not show a plot with crop';
+
+  @override
+  String get qcPrCoffeeNotRecognized => 'Coffee plants not recognised';
+
+  @override
+  String get qcPrPrecheckFailed => 'Precheck failed for this item';
+
+  @override
+  String get nationalIdRequired => 'National ID number required';
+
+  @override
+  String get nationalIdWrongLength =>
+      'The ID number must have exactly 13 digits (hyphens and spaces are ignored).';
+
+  @override
+  String get nationalIdImplausible =>
+      'This ID number looks unusual (municipality code or year). Please compare it with the ID card.';
+
+  @override
+  String get idCheckTitle => 'Please check the ID';
+
+  @override
+  String get idOcrNoNumber =>
+      'No ID number could be read from the photo. Is the front of the card sharp and fully visible?';
+
+  @override
+  String idOcrMismatch(String typed, String read) {
+    return 'Entered: $typed - the photo seems to show: $read.';
+  }
+
+  @override
+  String get idOcrNameMismatch =>
+      'The entered first and last name were not found on the ID photo.';
+
+  @override
+  String get idOcrUseRead => 'Use number from photo';
+
+  @override
+  String get idOcrKeep => 'Keep entry';
+
+  @override
+  String get idOcrRetake => 'Retake photo';
+
+  @override
+  String get consentFormPhoto2Required =>
+      'Please also photograph the back of the consent form.';
+
+  @override
+  String qcRegisteringFieldsProgress(int done, int total) {
+    return 'Registering plots in the Asset Registry ($done/$total)...';
+  }
+
+  @override
+  String get qcConfirmingInCloud =>
+      'Waiting for the cloud to confirm the decision...';
+
+  @override
+  String get qcNotConfirmedTitle => 'Not confirmed by the cloud';
+
+  @override
+  String qcNotConfirmedBody(int count) {
+    return 'The decision is saved on this device, but the cloud has not yet confirmed it for $count objects, so the registration stays in the queue. Please do not close the app or reload the page. On the start page, tap the sync indicator and then \"Sync now\". If the registration is still in the queue afterwards, please contact support.';
+  }
 }
