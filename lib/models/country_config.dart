@@ -182,7 +182,8 @@ class CountryConfig {
         'regions': regions,
         'whispNationalCode': whispNationalCode,
         'producerRegistry': producerRegistry,
-        'updatedAt': updatedAt?.toIso8601String(),
+        // UTC mit 'Z' - siehe helpers/utc_time.dart.
+        'updatedAt': updatedAt?.toUtc().toIso8601String(),
         'updatedBy': updatedBy,
       };
 

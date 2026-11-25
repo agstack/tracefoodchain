@@ -26,6 +26,7 @@ import 'package:trace_foodchain_app/utils/file_download.dart';
 import 'package:trace_foodchain_app/screens/fast_upload_screen.dart';
 import 'package:trace_foodchain_app/helpers/field_download_helper.dart';
 import 'package:trace_foodchain_app/helpers/field_trust.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 /// Eine einfache LatLng Klasse für Koordinaten
 class LatLng {
@@ -719,8 +720,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         return false;
       }
       if (_searchQuery.isEmpty) return true;
-      final name = (field["name"] as String? ?? '').toLowerCase();
-      return name.contains(_searchQuery);
+      // Feldnamen sind meist nur Datum und Uhrzeit der Aufnahme - gesucht
+      // wird deshalb auch nach Farm und Farmer, die in der Zeile stehen.
+      return [field["name"], field["farmName"], field["farmerName"]].any(
+          (value) =>
+              (value as String? ?? '').toLowerCase().contains(_searchQuery));
     }).toList();
     filteredFields.sort(_compareFields);
   }
@@ -830,13 +834,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
         onStatus(l10n.loadingFieldDetailsProgress(
             (i + 1).toString(), totalCount.toString(), fieldName));
 
-        DateTime? registrationDate;
-        final existenceStarts = field["existenceStarts"];
-        if (existenceStarts is Timestamp) {
-          registrationDate = existenceStarts.toDate();
-        } else if (existenceStarts is String && existenceStarts.isNotEmpty) {
-          registrationDate = DateTime.tryParse(existenceStarts);
-        }
+        DateTime? registrationDate = parseStoredTime(field["existenceStarts"]);
         if (registrationDate == null) {
           registrationDate =
               await _getRegistrationDate(field["methodHistoryRef"]);
@@ -903,11 +901,11 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
     Query query = baseQuery();
     if (fromDate != null) {
       query = query.where('existenceStarts',
-          isGreaterThanOrEqualTo: fromDate.toIso8601String());
+          isGreaterThanOrEqualTo: toUtcIso(fromDate));
     }
     if (toDate != null) {
       query = query.where('existenceStarts',
-          isLessThan: toDate.toIso8601String());
+          isLessThan: toUtcIso(toDate));
     }
     query = query.orderBy('existenceStarts', descending: true);
 
@@ -1033,11 +1031,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
   bool _isInDateRange(dynamic value, DateTime? fromDate, DateTime? toDate) {
     if (fromDate == null && toDate == null) return true;
-    final date = value is Timestamp
-        ? value.toDate()
-        : value is DateTime
-            ? value
-            : DateTime.tryParse(value?.toString() ?? '');
+    final date = parseStoredTime(value);
     if (date == null) return false;
     if (fromDate != null && date.isBefore(fromDate)) return false;
     if (toDate != null && !date.isBefore(toDate)) return false;
@@ -1218,15 +1212,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
 
       if (methodSnapshot.exists) {
         final methodData = methodSnapshot.data();
-        final existenceStarts = methodData!['existenceStarts'];
-
-        if (existenceStarts != null) {
-          if (existenceStarts is Timestamp) {
-            return existenceStarts.toDate();
-          } else if (existenceStarts is String) {
-            return DateTime.tryParse(existenceStarts);
-          }
-        }
+        return parseStoredTime(methodData!['existenceStarts']);
       }
     } catch (e) {}
 
@@ -1800,7 +1786,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
             Map<String, dynamic> newField = await getOpenRALTemplate("field");
             //Name
             newField["identity"]["name"] = fieldName; //GeoID
-            newField["existenceStarts"] = DateTime.now().toIso8601String();
+            newField["existenceStarts"] = utcNowIso();
             newField["objectState"] = "undefined";
             newField["identity"]["alternateIDs"] = [
               {"UID": geoId, "issuedBy": "Asset Registry"}
@@ -1961,7 +1947,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
           }
 
           if (!hasStartDate) {
-            existingField["existenceStarts"] = DateTime.now().toIso8601String();
+            existingField["existenceStarts"] = utcNowIso();
           }
 
           if (!currentOwners.any((owner) => owner["UID"] == appUserUID)) {
@@ -1982,7 +1968,7 @@ class _FieldRegistryScreenState extends State<FieldRegistryScreen> {
       Map<String, dynamic> newField = await getOpenRALTemplate("field");
       //Name
       newField["identity"]["name"] = fieldName; //GeoID
-      newField["existenceStarts"] = DateTime.now().toIso8601String();
+      newField["existenceStarts"] = utcNowIso();
       newField["objectState"] = "undefined";
       newField["identity"]["alternateIDs"] = [
         {"UID": geoId, "issuedBy": "Asset Registry"}

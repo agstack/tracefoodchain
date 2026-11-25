@@ -18,6 +18,7 @@ import '../helpers/field_download_helper.dart';
 import '../screens/register_additional_farm_screen.dart';
 import '../widgets/field_boundary_recorder.dart';
 import '../main.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 class ViewHistoryScreen extends StatefulWidget {
   const ViewHistoryScreen({super.key});
@@ -288,15 +289,8 @@ class _ViewHistoryScreenState extends State<ViewHistoryScreen> {
                 // Versuche die Methode aus localStorage zu laden
                 final methodDoc = localStorage!.get(firstMethodUid);
                 if (methodDoc != null && methodDoc is Map) {
-                  final existenceStarts =
-                      methodDoc['existenceStarts']?.toString();
-                  if (existenceStarts != null) {
-                    try {
-                      registrationDate = DateTime.parse(existenceStarts);
-                    } catch (e) {
-                      debugPrint('Error parsing existenceStarts: $e');
-                    }
-                  }
+                  registrationDate =
+                      parseStoredTime(methodDoc['existenceStarts']);
                 }
               }
             }

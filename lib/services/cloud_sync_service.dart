@@ -22,6 +22,7 @@ import 'package:trace_foodchain_app/services/media_outbox_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/sync_outbox_service.dart';
 import 'package:trace_foodchain_app/services/sync_settings_service.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 //import 'dart:html' as html;
 
 class CloudApiClient {
@@ -1266,6 +1267,20 @@ class CloudSyncService {
                       debugPrint(
                           '[SYNC 409] conflictObject ${object["objectUid"]} saved with hasMergeConflict=true');
                     }
+                    // Auch die Methode selbst: sie kommt so nie durch, weil
+                    // die Cloud neuere Fassungen ihrer Objekte hat. Ohne
+                    // Kennzeichnung zählte sie als "wartet auf Upload", und
+                    // kein Sync könnte daran etwas ändern.
+                    final conflictMethod =
+                        await getLocalObjectMethod(getObjectMethodUID(doc2));
+                    if (conflictMethod.isNotEmpty &&
+                        conflictMethod["hasMergeConflict"] != true) {
+                      conflictMethod["hasMergeConflict"] = true;
+                      conflictMethod["mergeConflictReason"] =
+                          "outputObjectConflict";
+                      conflictCount++;
+                      await setObjectMethod(conflictMethod, false, true);
+                    }
                   }
                   debugPrint(
                       '[SYNC 409] 409 handling done, continuing loop (syncSuccess=false)');
@@ -1660,7 +1675,7 @@ class CloudSyncService {
       doc.remove("role"); //Remove unwanted role declaration of objects
     }
     if (doc.containsKey("existenceStarts") && doc["existenceStarts"] == null) {
-      doc["existenceStarts"] = DateTime.now();
+      doc["existenceStarts"] = utcNowIso();
     }
     return doc;
   }

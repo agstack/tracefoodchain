@@ -22,6 +22,7 @@ import 'package:trace_foodchain_app/repositories/initial_data.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/services/media_outbox_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 var uuid = const Uuid();
 
@@ -210,8 +211,9 @@ Future<Map<String, dynamic>> setObjectMethod(
     if (objectMethod.containsKey("existenceStarts")) {
       //EXISTING METHOD
       if (objectMethod["existenceStarts"] == null) {
-        objectMethod["existenceStarts"] = DateTime
-            .now(); //ToDo: Test: Can this be stored in Hive? Otherwise ISO8601 String!
+        // UTC als Text - signiert und hochgeladen wird genau dieser Wert
+        // (siehe utc_time.dart).
+        objectMethod["existenceStarts"] = utcNowIso();
       }
       //***************  EXISTING METHOD TO SIGN ***************
       if (signMethod == true) {

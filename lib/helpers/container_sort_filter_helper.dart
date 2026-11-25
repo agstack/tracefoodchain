@@ -1,4 +1,5 @@
 import 'package:trace_foodchain_app/widgets/container_search_filter_widget.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 class ContainerSortFilterHelper {
   /// Filtert Container basierend auf dem Suchbegriff
@@ -123,11 +124,8 @@ class ContainerSortFilterHelper {
   /// Hilfsfunktion: Gibt das Erstellungsdatum des Containers zurück
   static DateTime _getContainerCreationDate(Map<String, dynamic> container) {
     // Versuche verschiedene Felder für das Erstellungsdatum
-    final existenceStarts = container["existenceStarts"];
-    if (existenceStarts != null) {
-      final date = DateTime.tryParse(existenceStarts.toString());
-      if (date != null) return date;
-    }
+    final date = parseStoredTime(container["existenceStarts"]);
+    if (date != null) return date;
 
     // Fallback auf das aktuelle Datum, wenn kein Erstellungsdatum gefunden wird
     return DateTime.now();

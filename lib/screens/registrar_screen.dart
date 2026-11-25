@@ -25,6 +25,7 @@ import '../providers/app_state.dart';
 import '../main.dart';
 import '../services/open_ral_service.dart';
 import '../services/service_functions.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 class RegistrarScreen extends StatefulWidget {
   const RegistrarScreen({super.key});
@@ -151,9 +152,7 @@ class _RegistrarScreenState extends State<RegistrarScreen> {
         if (firstMethodUid == null) continue;
         final methodDoc = localStorage!.get(firstMethodUid);
         if (methodDoc == null || methodDoc is! Map) continue;
-        final existenceStartsRaw = methodDoc['existenceStarts']?.toString();
-        if (existenceStartsRaw == null) continue;
-        final createdAt = DateTime.tryParse(existenceStartsRaw);
+        final createdAt = parseStoredTime(methodDoc['existenceStarts']);
         if (createdAt != null &&
             createdAt.isAfter(todayStart) &&
             createdAt.isBefore(todayEnd)) {

@@ -46,6 +46,7 @@ import '../utils/gps_quality.dart';
 import '../services/service_functions.dart';
 import '../utils/file_download.dart';
 import '../utils/leave_guard.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 /// Screen für QC-Review und Genehmigung von registrierten Farmen, Farmern und Feldern
 class RegistrarQCScreen extends StatefulWidget {
@@ -1491,8 +1492,7 @@ class _RegistrarQCScreenState extends State<RegistrarQCScreen> {
 
     if (methodData != null) {
       try {
-        registeredAt =
-            DateTime.tryParse(methodData['existenceStarts']?.toString() ?? '');
+        registeredAt = parseStoredTime(methodData['existenceStarts']);
         final executor = methodData['executor'];
         if (executor is Map) {
           final executorIdentity = executor['identity'];
@@ -5889,7 +5889,12 @@ class _ObjectDetailsDialog extends StatelessWidget {
       if (firstMethod is Map && firstMethod.containsKey('timestamp')) {
         final timestamp = firstMethod['timestamp'];
         if (timestamp != null) {
-          details.add(_buildInfoRow(l10n.created, timestamp.toString()));
+          final local = parseStoredTime(timestamp);
+          details.add(_buildInfoRow(
+              l10n.created,
+              local != null
+                  ? DateFormat('yyyy-MM-dd HH:mm').format(local)
+                  : timestamp.toString()));
         }
       }
     }

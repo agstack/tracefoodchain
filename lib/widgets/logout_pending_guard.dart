@@ -13,12 +13,19 @@ import '../services/background_sync_service.dart';
 /// weiterarbeitet, verliert es faktisch.
 ///
 /// Gewarnt wird nur bei Einträgen, die noch hochgeladen werden können:
-/// Konflikte und verlorene Fotos ändern sich durch Warten nicht und würden
-/// sonst bei jedem Abmelden eine Warnung auslösen.
+/// Konflikte, von der Cloud abgelehnte Methoden (400/409) und verlorene Fotos
+/// ändern sich durch Warten nicht und würden sonst bei jedem Abmelden eine
+/// Warnung auslösen, die kein Sync beheben kann.
 Future<bool> confirmLogoutWithPendingUploads(BuildContext context) async {
+  bool rejectedByCloud(PendingItem item) {
+    final reason = item.reason ?? '';
+    return reason.startsWith('409') || reason.startsWith('400');
+  }
+
   while (context.mounted) {
     final waiting = collectPendingItems()
-        .where((item) => !item.hasConflict && !item.isLost)
+        .where((item) =>
+            !item.hasConflict && !item.isLost && !rejectedByCloud(item))
         .length;
     if (waiting == 0) return true;
 

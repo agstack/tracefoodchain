@@ -18,6 +18,7 @@ import 'package:trace_foodchain_app/widgets/ihcafe_producer_widgets.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
 import 'package:trace_foodchain_app/services/user_registry_api_service.dart';
 import 'package:trace_foodchain_app/utils/file_download.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 /// Hält das aufbereitete Ergebnis pro Feld für die DB-Persistierung.
 class _FieldResult {
@@ -1206,7 +1207,7 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
             //  Neues Feld: openRAL-Objekt erstellen und mit generateDigitalSibling persistieren
             Map<String, dynamic> newField = await getOpenRALTemplate('field');
             newField['identity']['name'] = result.fieldName;
-            newField['existenceStarts'] = DateTime.now().toIso8601String();
+            newField['existenceStarts'] = utcNowIso();
             newField['objectState'] = 'undefined';
             newField['identity']['alternateIDs'] = [
               {'UID': result.geoId, 'issuedBy': 'Asset Registry'}
@@ -1298,7 +1299,7 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
                 changed = true;
               }
               if (!hasStartDate) {
-                existing['existenceStarts'] = DateTime.now().toIso8601String();
+                existing['existenceStarts'] = utcNowIso();
                 changed = true;
               }
               if (existing['identity']['name'] == 'N/A') {
@@ -1318,7 +1319,7 @@ class _FastUploadScreenState extends State<FastUploadScreen> {
               // Kein Firebase-Eintrag vorhanden: neu anlegen mit bekannter GeoID
               Map<String, dynamic> newField = await getOpenRALTemplate('field');
               newField['identity']['name'] = result.fieldName;
-              newField['existenceStarts'] = DateTime.now().toIso8601String();
+              newField['existenceStarts'] = utcNowIso();
               newField['objectState'] = 'undefined';
               newField['identity']['alternateIDs'] = [
                 {'UID': result.geoId, 'issuedBy': 'Asset Registry'}

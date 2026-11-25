@@ -10,6 +10,7 @@ import 'package:trace_foodchain_app/providers/app_state.dart';
 import 'package:trace_foodchain_app/screens/settings_screen.dart';
 import 'package:trace_foodchain_app/services/cloud_sync_service.dart';
 import 'package:trace_foodchain_app/services/open_ral_service.dart';
+import 'package:trace_foodchain_app/helpers/utc_time.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -359,18 +360,15 @@ class DatabaseHelper {
   }
 }
 
+/// Anzeige eines gespeicherten Zeitpunkts in Ortszeit (UTC-Werte werden
+/// umgerechnet, siehe utc_time.dart).
 String formatTimestamp(dynamic timestamp) {
-  if (timestamp is! DateTime) {
-    if (timestamp is String) {
-      final parsedDate = DateTime.tryParse(timestamp);
-      if (parsedDate != null) {
-        return DateFormat('yyyy-MM-dd HH:mm').format(parsedDate);
-      }
-    }
-    return 'N/A';
-  }
+  final local = timestamp is DateTime || timestamp is String
+      ? parseStoredTime(timestamp)
+      : null;
+  if (local == null) return 'N/A';
   try {
-    return DateFormat('yyyy-MM-dd HH:mm').format(timestamp);
+    return DateFormat('yyyy-MM-dd HH:mm').format(local);
   } catch (e) {
     return 'Invalid Date';
   }
